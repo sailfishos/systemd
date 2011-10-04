@@ -1,0 +1,30 @@
+From 8449381f7da9d8f2930b9cacfd655396a90d379b Mon Sep 17 00:00:00 2001
+From: Marko Saukko <marko.saukko@gmail.com>
+Date: Mon, 5 Sep 2011 21:57:59 +0300
+Subject: [PATCH] In MeeGo there was more than one ExecStart lines present
+ that caused the systemd to refuse the rescue.service.
+
+---
+ units/rescue.service.m4 |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/units/rescue.service.m4 b/units/rescue.service.m4
+index d2fd582..c49e029 100644
+--- a/units/rescue.service.m4
++++ b/units/rescue.service.m4
+@@ -25,10 +25,10 @@ ExecStart=-/bin/bash -c "exec ${SINGLE}"',
+ m4_ifdef(`TARGET_MANDRIVA',
+ `EnvironmentFile=/etc/sysconfig/init
+ ExecStart=-/bin/bash -c "exec ${SINGLE}"',
+-`ExecStart=-/sbin/sulogin'
+ m4_ifdef(`TARGET_MEEGO',
+ `EnvironmentFile=/etc/sysconfig/init
+-ExecStart=-/bin/bash -c "exec ${SINGLE}"',)))
++ExecStart=-/bin/bash -c "exec ${SINGLE}"',
++`ExecStart=-/sbin/sulogin')))
+ ExecStopPost=-/bin/systemctl --fail --no-block default
+ StandardInput=tty-force
+ KillMode=process
+-- 
+1.7.4.4
+

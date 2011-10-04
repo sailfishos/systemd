@@ -1,0 +1,74 @@
+* Mon Sep 05 2011 Marko Saukko <marko.saukko@cybercom.com> - 35
+- Added systemd-35-execstart-line-rescue-service.patch to
+  fix multiple ExecStart lines in rescue.service.
+
+* Fri Sep 02 2011 Marko Saukko <marko.saukko@cybercom.com> - 35
+- Update to version 35
+- Removed hwclock-load.service link creation as destination does not exist anymore.
+- Moved %fdupes under %install to fix BMC#22706
+
+* Mon Aug 22 2011 Carsten Munk <carsten@maemo.org> - 30
+- Remove libnotify dependancy, drags in gtk+ and other
+  things.
+
+* Wed Jul 20 2011 Auke Kok <auke-jan.h.kok@intel.com> - 30
+- Cosmetic cleanups
+- Disabling internal logger as it's nonfunctional - we'll fall
+  back to dmesg logging only for now.
+- With systemd-loginctl we no longer need to pre-activate tty2
+- Vala isn't needed to build because we disable building the gtk UI app.
+- Fix several rpmlint warnings (perms, %config out of place).
+- Fix rpm group names.
+- Rename -analyze subpackage to -tools. There will likely be more dev tools coming.
+- Enable ACL dependency, we really want to use it going forward.
+- Run %fdupes.
+
+- Disable tcp_wrappers dependency as we don't use it in MeeGo.
+
+* Thu Jul 14 2011 Chris Ferron <chris.e.ferron@linux.intel.com> - 30
+- updated to version 30, and udpate patch set in MeeGo. 
+
+* Fri Jul 01 2011 Chris Ferron <chris.e.ferron@linux.intel.com> - 29
+- added install alias to serial-getty unit file
+
+* Thu Jun 30 2011 Chris Ferron <chris.e.ferron@linux.intel.com> - 29
+- BMC#18652 - Separate packages for hardware adaptation serials
+
+* Wed Jun 22 2011 Chris Ferron <chris.e.ferron@linux.intel.com> - 29
+- removed provides and obsolete of removed packages as they are not needed
+
+* Thu Jun 16 2011 Chris Ferron <chris.e.ferron@linux.intel.com> - 29
+- updated to 29
+
+* Tue Jun 14 2011 Chris Ferron <chris.e.ferron@linux.intel.com> - 28
+- udpate to 28
+
+* Mon Jun 06 2011 Chris Ferron <chris.e.ferron@linux.intel.com> - 26
+- split out the systemd man pages into separate subpackages
+
+* Sun May 22 2011 Auke Kok <auke-jan.h.kok@intel.com> - 26
+- split out the systemd-analyze tool into a separate subpackage, as it
+  requires python/pycairo to run
+
+* Fri May 13 2011 William Douglas <william.douglas@linux.intel.com> - 25
+- Update to 26
+- add a syslog daemon inside systemd
+
+* Wed May 11 2011 Chris Ferron <chris.e.ferron@linux.intel.com> - 25
+- sysvinit hack until sysvinit get removed
+
+* Wed May 04 2011 Chris Ferron <chris.e.ferron@linux.intel.com> - 25
+- Update to -25
+
+* Thu Apr 07 2011 Chris Ferron <chris.e.ferron@linux.intel.com> -24
+- Update to -24
+
+* Fri Apr 01 2011 Chris Ferron <chris.e.ferron@linux.intel.com> -22
+- Update to -22
+- Initial Port work for MeeGo 
+
+* Mon Mar 28 2011 Auke Kok <auke-jan.h.kok@intel.com> - 20
+- Updated to -20
+
+* Mon Nov 08 2010 - Autospectacle <autospectacle@meego.com> - 11
+- Initial automated packaging
