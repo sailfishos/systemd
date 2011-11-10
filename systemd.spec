@@ -3,7 +3,7 @@
 
 Name:       systemd
 Summary:    System and Session Manager
-Version:    35
+Version:    37
 Release:    1
 Group:      System/System Control
 License:    GPLv2
@@ -11,7 +11,6 @@ URL:        http://www.freedesktop.org/wiki/Software/systemd
 Source0:    http://www.freedesktop.org/software/systemd/%{name}-%{version}.tar.bz2
 Source1:    pamconsole-tmp.conf
 Patch1:     %{name}-24-fsck-disable-l-util-linux.patch
-Patch2:     systemd-35-execstart-line-rescue-service.patch
 BuildRequires:  pkgconfig(dbus-1) >= 1.3.2
 BuildRequires:  pkgconfig(dbus-glib-1)
 BuildRequires:  pkgconfig(gio-unix-2.0)
@@ -139,7 +138,6 @@ to replace sysvinit.
 %setup -q -n %{name}-%{version}
 
 %patch1 -p1 
-%patch2 -p1 
 
 %build
 autoreconf 
@@ -167,11 +165,15 @@ ln -s ../bin/systemctl %{buildroot}/sbin/runlevel
 ln -s ../bin/systemctl %{buildroot}/sbin/shutdown
 ln -s ../bin/systemctl %{buildroot}/sbin/telinit
 
+# We need a /run directory for early systemd
 mkdir %{buildroot}/run
 
 # Make sure these directories are properly owned
 mkdir -p %{buildroot}/lib/systemd/system/basic.target.wants
+mkdir -p %{buildroot}/lib/systemd/system/default.target.wants
 mkdir -p %{buildroot}/lib/systemd/system/dbus.target.wants
+mkdir -p %{buildroot}/lib/systemd/system/getty.target.wants
+mkdir -p %{buildroot}/lib/systemd/system/syslog.target.wants
 
 # enable readahead by default
 ln -s ../systemd-readahead-collect.service %{buildroot}/lib/systemd/system/sysinit.target.wants/systemd-readahead-collect.service
@@ -185,22 +187,19 @@ install -m 0644 %{SOURCE1} %{buildroot}/etc/tmpfiles.d/pamconsole-tmp.conf
 mkdir -p %{buildroot}/etc/systemd/system/basic.target.wants
 
 #console-ttyMFD2
-ln -s ../serial-getty@.service %{buildroot}/lib/systemd/system/sysinit.target.wants/serial-getty@ttyMFD2.service
+ln -s ../serial-getty@.service %{buildroot}/lib/systemd/system/getty.target.wants/serial-getty@ttyMFD2.service
 
 #console-ttyS0
-ln -s ../serial-getty@.service %{buildroot}/lib/systemd/system/sysinit.target.wants/serial-getty@ttyS0.service
+ln -s ../serial-getty@.service %{buildroot}/lib/systemd/system/getty.target.wants/serial-getty@ttyS0.service
 
 #console-ttyS1
-ln -s ../serial-getty@.service %{buildroot}/lib/systemd/system/sysinit.target.wants/serial-getty@ttyS1.service
+ln -s ../serial-getty@.service %{buildroot}/lib/systemd/system/getty.target.wants/serial-getty@ttyS1.service
 
 #console-tty01
-ln -s ../serial-getty@.service %{buildroot}/lib/systemd/system/sysinit.target.wants/serial-getty@tty01.service
+ln -s ../serial-getty@.service %{buildroot}/lib/systemd/system/getty.target.wants/serial-getty@tty01.service
 
 #console-ttyO2
-ln -s ../serial-getty@.service %{buildroot}/lib/systemd/system/sysinit.target.wants/serial-getty@ttyO2.service
-
-# >> install post
-# << install post
+ln -s ../serial-getty@.service %{buildroot}/lib/systemd/system/getty.target.wants/serial-getty@ttyO2.service
 
 %fdupes  %{buildroot}/%{_datadir}/man/
 
@@ -217,10 +216,6 @@ fi
 
 %files
 %defattr(-,root,root,-)
-/bin/*
-/usr/bin/systemd-cgls
-/usr/bin/systemd-nspawn
-/usr/bin/systemd-stdio-bridge
 /run
 %config %{_sysconfdir}/dbus-1/system.d/org.freedesktop.systemd1.conf
 %config %{_sysconfdir}/dbus-1/system.d/org.freedesktop.hostname1.conf
@@ -236,6 +231,17 @@ fi
 %config %{_sysconfdir}/bash_completion.d/systemctl-bash-completion.sh
 %{_prefix}/%{_lib}/tmpfiles.d/*
 %{_prefix}/%{_lib}/systemd/user/*
+/bin/systemctl
+/bin/systemd
+/bin/systemd-notify
+/bin/systemd-ask-password
+/bin/systemd-tty-ask-password-agent
+/bin/systemd-machine-id-setup
+/bin/systemd-loginctl
+/bin/systemd-tmpfiles
+/usr/bin/systemd-cgls
+/usr/bin/systemd-nspawn
+/usr/bin/systemd-stdio-bridge
 /%{_lib}/systemd
 /%{_lib}/security/pam_systemd.so
 /%{_lib}/udev/rules.d/99-systemd.rules
@@ -255,42 +261,36 @@ fi
 %{_datadir}/dbus-1/interfaces/org.freedesktop.hostname1.xml
 %{_datadir}/dbus-1/interfaces/org.freedesktop.locale1.xml
 %{_datadir}/dbus-1/interfaces/org.freedesktop.timedate1.xml
-%exclude %{systemd_dir}/sysinit.target.wants/serial-getty@tty01.service
-%exclude %{systemd_dir}/sysinit.target.wants/serial-getty@ttyMFD2.service
-%exclude %{systemd_dir}/sysinit.target.wants/serial-getty@ttyO2.service
-%exclude %{systemd_dir}/sysinit.target.wants/serial-getty@ttyS0.service
-%exclude %{systemd_dir}/sysinit.target.wants/serial-getty@ttyS1.service
+%{_datadir}/systemd/kbd-model-map
+%exclude %{systemd_dir}/getty.target.wants/serial-getty@tty01.service
+%exclude %{systemd_dir}/getty.target.wants/serial-getty@ttyMFD2.service
+%exclude %{systemd_dir}/getty.target.wants/serial-getty@ttyO2.service
+%exclude %{systemd_dir}/getty.target.wants/serial-getty@ttyS0.service
+%exclude %{systemd_dir}/getty.target.wants/serial-getty@ttyS1.service
 
 %files docs
 %defattr(-,root,root,-)
 %doc %{_mandir}/man?/*
 
-# disable SElinux automount
-%exclude %{systemd_dir}/sysinit.target.wants/sys-kernel-security.automount
-
 %files console-ttyMFD2
 %defattr(-,root,root,-)
-%{systemd_dir}/sysinit.target.wants/serial-getty@ttyMFD2.service
+%{systemd_dir}/getty.target.wants/serial-getty@ttyMFD2.service
 
 %files console-ttyS0
 %defattr(-,root,root,-)
-%{systemd_dir}/sysinit.target.wants/serial-getty@ttyS0.service
+%{systemd_dir}/getty.target.wants/serial-getty@ttyS0.service
 
 %files console-ttyS1
 %defattr(-,root,root,-)
-%{systemd_dir}/sysinit.target.wants/serial-getty@ttyS1.service
+%{systemd_dir}/getty.target.wants/serial-getty@ttyS1.service
 
 %files console-tty01
 %defattr(-,root,root,-)
-%{systemd_dir}/sysinit.target.wants/serial-getty@tty01.service
+%{systemd_dir}/getty.target.wants/serial-getty@tty01.service
 
 %files console-ttyO2
 %defattr(-,root,root,-)
-%{systemd_dir}/sysinit.target.wants/serial-getty@ttyO2.service
-
-
-# >> files
-# << files
+%{systemd_dir}/getty.target.wants/serial-getty@ttyO2.service
 
 %files tools
 %defattr(-,root,root,-)

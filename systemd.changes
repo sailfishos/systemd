@@ -1,3 +1,14 @@
+* Wed Nov 23 2011 David Greaves <david@dgreaves.com> - 37
+- Restore /run directory
+
+* Thu Nov 17 2011 Marko Saukko <marko.saukko@cybercom.com> - 37
+- Moved consoles from sysinit.target.wants to getty.target.wants
+
+* Wed Nov 09 2011 David Greaves <david@dgreaves.com> - 37
+- New upstream version 37
+- ExecStart patch accepted upstream
+- kbd-model-map packaged
+
 * Mon Sep 05 2011 Marko Saukko <marko.saukko@cybercom.com> - 35
 - Added systemd-35-execstart-line-rescue-service.patch to
   fix multiple ExecStart lines in rescue.service.
