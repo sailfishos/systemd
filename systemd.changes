@@ -1,3 +1,6 @@
+* Sun Jan 22 2012 Carsten Munk <carsten.munk@gmail.com> - 37
+- Add ttyAMA0 system console ability
+
 * Wed Nov 23 2011 David Greaves <david@dgreaves.com> - 37
 - Restore /run directory
 

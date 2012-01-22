@@ -97,6 +97,14 @@ Requires:   %{name}
 %description console-ttyMFD2
 This package will setup a serial getty for ttyMFD2 is desired.
 
+%package console-ttyAMA0
+Summary:    Systemd console ttyAMA0
+Group:      System/System Control
+Requires:   %{name}
+
+%description console-ttyAMA0
+This package will setup a serial getty for ttyAMA0 is desired.
+
 %package docs
 Summary:   System and session manager man pages
 Group:     Development/Libraries
@@ -201,6 +209,10 @@ ln -s ../serial-getty@.service %{buildroot}/lib/systemd/system/getty.target.want
 #console-ttyO2
 ln -s ../serial-getty@.service %{buildroot}/lib/systemd/system/getty.target.wants/serial-getty@ttyO2.service
 
+#console-ttyAMA0
+ln -s ../serial-getty@.service %{buildroot}/lib/systemd/system/getty.target.wants/serial-getty@ttyAMA0.service
+
+
 %fdupes  %{buildroot}/%{_datadir}/man/
 
 %post
@@ -291,6 +303,10 @@ fi
 %files console-ttyO2
 %defattr(-,root,root,-)
 %{systemd_dir}/getty.target.wants/serial-getty@ttyO2.service
+
+%files console-ttyAMA0
+%defattr(-,root,root,-)
+%{systemd_dir}/getty.target.wants/serial-getty@ttyAMA0.service
 
 %files tools
 %defattr(-,root,root,-)
