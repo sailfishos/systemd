@@ -1,3 +1,6 @@
+* Thu Feb 09 2012 Marko Saukko <marko.saukko@gmail.com> - 41
+- Fixes MER#114: Update systemd to newer version
+
 * Sun Jan 22 2012 Carsten Munk <carsten.munk@gmail.com> - 37
 - Add ttyAMA0 system console ability
 

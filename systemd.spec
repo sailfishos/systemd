@@ -3,14 +3,15 @@
 
 Name:       systemd
 Summary:    System and Session Manager
-Version:    37
+Version:    41
 Release:    1
 Group:      System/System Control
 License:    GPLv2
 URL:        http://www.freedesktop.org/wiki/Software/systemd
-Source0:    http://www.freedesktop.org/software/systemd/%{name}-%{version}.tar.bz2
+Source0:    http://www.freedesktop.org/software/systemd/%{name}-%{version}.tar.xz
 Source1:    pamconsole-tmp.conf
 Patch1:     %{name}-24-fsck-disable-l-util-linux.patch
+Patch2:     systemd-41-fix-reexecution-of-systemd.patch
 BuildRequires:  pkgconfig(dbus-1) >= 1.3.2
 BuildRequires:  pkgconfig(dbus-glib-1)
 BuildRequires:  pkgconfig(gio-unix-2.0)
@@ -22,6 +23,8 @@ BuildRequires:  intltool >= 0.40.0
 BuildRequires:  libacl-devel
 BuildRequires:  fdupes
 BuildRequires:  gperf
+BuildRequires:  xz-devel
+BuildRequires:  kmod-devel >= 5
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
 
@@ -38,6 +41,7 @@ control logic. It can work as a drop-in replacement for sysvinit.
 %package tools
 Summary:    Analyze systemd startup timing
 Group:      Development/Tools
+Requires:   dbus-python
 Requires:   pycairo
 Requires:   %{name} = %{version}-%{release}
 
@@ -146,11 +150,13 @@ to replace sysvinit.
 %setup -q -n %{name}-%{version}
 
 %patch1 -p1 
+%patch2 -p1
 
 %build
 autoreconf 
 %configure --disable-static \
-    --with-rootdir=/ \
+    --with-rootprefix= \
+    --with-rootlibdir=/%{_lib} \
     --with-distro=meego \
     --disable-gtk \
     --disable-selinux \
@@ -164,14 +170,14 @@ make %{?_smp_mflags}
 
 # Create SysV compatibility symlinks. systemctl/systemd are smart
 # enough to detect in which way they are called.
-install -d %{buildroot}/sbin/
-ln -s ../bin/systemd %{buildroot}/sbin/init
+mkdir -p %{buildroot}/sbin
+ln -s ../lib/systemd/systemd %{buildroot}/sbin/init
+ln -s ../bin/systemctl %{buildroot}/sbin/reboot
 ln -s ../bin/systemctl %{buildroot}/sbin/halt
 ln -s ../bin/systemctl %{buildroot}/sbin/poweroff
-ln -s ../bin/systemctl %{buildroot}/sbin/reboot
-ln -s ../bin/systemctl %{buildroot}/sbin/runlevel
 ln -s ../bin/systemctl %{buildroot}/sbin/shutdown
 ln -s ../bin/systemctl %{buildroot}/sbin/telinit
+ln -s ../bin/systemctl %{buildroot}/sbin/runlevel
 
 # We need a /run directory for early systemd
 mkdir %{buildroot}/run
@@ -212,15 +218,11 @@ ln -s ../serial-getty@.service %{buildroot}/lib/systemd/system/getty.target.want
 #console-ttyAMA0
 ln -s ../serial-getty@.service %{buildroot}/lib/systemd/system/getty.target.wants/serial-getty@ttyAMA0.service
 
-
 %fdupes  %{buildroot}/%{_datadir}/man/
 
 %post
-if [ "`readlink /etc/mtab`" != "/proc/self/mounts" ]; then
-	rm -f /etc/mtab
-	ln -s /proc/self/mounts /etc/mtab
-fi
-/bin/systemd-machine-id-setup >/dev/null 2>&1 || :
+/bin/systemd-machine-id-setup > /dev/null 2>&1 || :
+/bin/systemctl daemon-reexec > /dev/null 2>&1 || :
 
 /sbin/ldconfig
 
@@ -240,25 +242,29 @@ fi
 %config %{_sysconfdir}/systemd
 %config %{_sysconfdir}/tmpfiles.d/*
 %config %{_sysconfdir}/xdg/systemd/user
-%config %{_sysconfdir}/bash_completion.d/systemctl-bash-completion.sh
+%config %{_sysconfdir}/bash_completion.d/systemd-bash-completion.sh
 %{_prefix}/%{_lib}/tmpfiles.d/*
 %{_prefix}/%{_lib}/systemd/user/*
 /bin/systemctl
-/bin/systemd
 /bin/systemd-notify
 /bin/systemd-ask-password
 /bin/systemd-tty-ask-password-agent
 /bin/systemd-machine-id-setup
 /bin/systemd-loginctl
+/bin/systemd-journalctl
 /bin/systemd-tmpfiles
+/usr/bin/systemd-cat
+/usr/bin/systemd-cgtop
 /usr/bin/systemd-cgls
 /usr/bin/systemd-nspawn
 /usr/bin/systemd-stdio-bridge
 /%{_lib}/systemd
 /%{_lib}/security/pam_systemd.so
 /%{_lib}/udev/rules.d/99-systemd.rules
-/%{_libdir}/libsystemd-daemon.so.*
-/%{_libdir}/libsystemd-login.so.*
+/%{_lib}/libsystemd-daemon.so.*
+/%{_lib}/libsystemd-login.so.*
+/%{_lib}/libsystemd-journal.so.*
+/%{_lib}/libsystemd-id128.so.*
 %{_datadir}/dbus-1/*/org.freedesktop.systemd1.*
 %{_defaultdocdir}/systemd
 %{_datadir}/polkit-1/actions/org.freedesktop.systemd1.policy
@@ -274,11 +280,9 @@ fi
 %{_datadir}/dbus-1/interfaces/org.freedesktop.locale1.xml
 %{_datadir}/dbus-1/interfaces/org.freedesktop.timedate1.xml
 %{_datadir}/systemd/kbd-model-map
-%exclude %{systemd_dir}/getty.target.wants/serial-getty@tty01.service
-%exclude %{systemd_dir}/getty.target.wants/serial-getty@ttyMFD2.service
-%exclude %{systemd_dir}/getty.target.wants/serial-getty@ttyO2.service
-%exclude %{systemd_dir}/getty.target.wants/serial-getty@ttyS0.service
-%exclude %{systemd_dir}/getty.target.wants/serial-getty@ttyS1.service
+/usr/lib/sysctl.d/coredump.conf
+# Just make sure we don't package these by default
+%exclude %{systemd_dir}/getty.target.wants/serial-getty@*.service
 
 %files docs
 %defattr(-,root,root,-)
@@ -314,12 +318,12 @@ fi
 
 %files devel
 %defattr(-,root,root,-)
-%{_includedir}/systemd/sd-daemon.h
-%{_includedir}/systemd/sd-login.h
+%{_includedir}/systemd/*.h
 %{_libdir}/libsystemd-login.so
 %{_libdir}/libsystemd-daemon.so
-%{_libdir}/pkgconfig/libsystemd-daemon.pc
-%{_libdir}/pkgconfig/libsystemd-login.pc
+%{_libdir}/libsystemd-journal.so
+%{_libdir}/libsystemd-id128.so
+%{_libdir}/pkgconfig/libsystemd-*.pc
 %{_datadir}/pkgconfig/systemd.pc
 
 %files sysv
