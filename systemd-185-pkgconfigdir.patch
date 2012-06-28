@@ -1,0 +1,22 @@
+diff -ru systemd-185/Makefile.am systemd-185-pkgconfigdir/Makefile.am
+--- systemd-185/Makefile.am	2012-06-04 20:14:57.703501056 +0200
++++ systemd-185-pkgconfigdir/Makefile.am	2012-06-28 11:59:21.271254144 +0200
+@@ -53,7 +53,7 @@
+ dbussystemservicedir=@dbussystemservicedir@
+ dbusinterfacedir=@dbusinterfacedir@
+ pamlibdir=@pamlibdir@
+-pkgconfigdatadir=$(datadir)/pkgconfig
++pkgconfigdatadir=$(libdir)/pkgconfig
+ pkgconfiglibdir=$(libdir)/pkgconfig
+ polkitpolicydir=$(datadir)/polkit-1/actions
+ bashcompletiondir=$(sysconfdir)/bash_completion.d
+@@ -1462,7 +1462,7 @@
+ dist_udevconf_DATA = \
+ 	src/udev/udev.conf
+ 
+-sharepkgconfigdir = $(datadir)/pkgconfig
++sharepkgconfigdir = $(libdir)/pkgconfig
+ sharepkgconfig_DATA = \
+ 	src/udev/udev.pc
+ 
+Only in systemd-185-pkgconfigdir: Makefile.am~

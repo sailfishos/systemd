@@ -3,19 +3,19 @@
 
 Name:       systemd
 Summary:    System and Session Manager
-Version:    41
+Version:    185
 Release:    1
 Group:      System/System Control
-License:    GPLv2
+License:    LGPLv2.1+
 URL:        http://www.freedesktop.org/wiki/Software/systemd
 Source0:    http://www.freedesktop.org/software/systemd/%{name}-%{version}.tar.xz
 Source1:    pamconsole-tmp.conf
-Patch1:     %{name}-24-fsck-disable-l-util-linux.patch
-Patch2:     systemd-41-fix-reexecution-of-systemd.patch
+Patch0:     systemd-185-pkgconfigdir.patch
 BuildRequires:  pkgconfig(dbus-1) >= 1.3.2
 BuildRequires:  pkgconfig(dbus-glib-1)
 BuildRequires:  pkgconfig(gio-unix-2.0)
-BuildRequires:  pkgconfig(libudev) >= 172
+BuildRequires:  pkgconfig(blkid)
+BuildRequires:  pkgconfig(usbutils)
 BuildRequires:  libcap-devel
 BuildRequires:  libxslt
 BuildRequires:  pam-devel
@@ -24,9 +24,12 @@ BuildRequires:  libacl-devel
 BuildRequires:  fdupes
 BuildRequires:  gperf
 BuildRequires:  xz-devel
+BuildRequires:  hwdata
 BuildRequires:  kmod-devel >= 5
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
+Provides: udev = %{version}
+Obsoletes: udev < 184 
 
 %description
 system and session manager for Linux, compatible with SysV and
@@ -132,6 +135,38 @@ Summary:   System and session manager - SysV links
 Group:     System/Startup Services
 Requires:  %{name} = %{version}-%{release}
 
+%package -n libgudev1
+Summary: Libraries for adding libudev support to applications that use glib
+Group: Development/Libraries
+ 
+%description -n libgudev1
+This package contains the libraries that make it easier to use libudev
+functionality from applications that use glib.
+ 
+%package -n libgudev1-devel
+Summary: Header files for adding libudev support to applications that use glib
+Group: Development/Libraries
+Requires: libgudev1 = %{version}-%{release}
+ 
+%description -n libgudev1-devel
+This package contains the header and pkg-config files for developing
+glib-based applications using libudev functionality.
+
+%package -n libudev
+Summary: Library for accessing udev functionality
+Group: Development/Libraries
+
+%description -n libudev
+This package contains a shared library for accesing libudev functionality.
+
+%package -n libudev-devel
+Summary: Headers for libudev
+Group: Development/Libraries
+Requires: libudev = %{version}-%{release}
+
+%description -n libudev-devel
+This package contains libraries and include files, 
+which needed to link against libudev.
 
 
 %description sysv
@@ -148,9 +183,7 @@ to replace sysvinit.
 
 %prep
 %setup -q -n %{name}-%{version}
-
-%patch1 -p1 
-%patch2 -p1
+%patch0 -p1 -b .pkgconfig
 
 %build
 autoreconf 
@@ -158,10 +191,8 @@ autoreconf
     --with-rootprefix= \
     --with-rootlibdir=/%{_lib} \
     --with-distro=meego \
-    --disable-gtk \
-    --disable-selinux \
-    --disable-tcpwrap \
-    --with-udevrulesdir=/lib/udev/rules.d/
+    --with-pci-ids-path=/usr/share/hwdata/pci.ids \
+    --libexecdir=/%{_lib}
 
 make %{?_smp_mflags}
 
@@ -228,6 +259,13 @@ ln -s ../serial-getty@.service %{buildroot}/lib/systemd/system/getty.target.want
 
 %postun -p /sbin/ldconfig
 
+%post -n libudev -p /sbin/ldconfig
+%postun -n libudev -p /sbin/ldconfig
+
+%post -n libgudev1 -p /sbin/ldconfig
+%postun -n libgudev1 -p /sbin/ldconfig
+
+
 %files
 %defattr(-,root,root,-)
 /run
@@ -236,31 +274,38 @@ ln -s ../serial-getty@.service %{buildroot}/lib/systemd/system/getty.target.want
 %config %{_sysconfdir}/dbus-1/system.d/org.freedesktop.locale1.conf
 %config %{_sysconfdir}/dbus-1/system.d/org.freedesktop.login1.conf
 %config %{_sysconfdir}/dbus-1/system.d/org.freedesktop.timedate1.conf
-%attr(0644,root,root) %{udev_libdir}/rules.d/70-uaccess.rules
-%attr(0644,root,root) %{udev_libdir}/rules.d/71-seat.rules
-%attr(0644,root,root) %{udev_libdir}/rules.d/73-seat-late.rules
 %config %{_sysconfdir}/systemd
 %config %{_sysconfdir}/tmpfiles.d/*
 %config %{_sysconfdir}/xdg/systemd/user
 %config %{_sysconfdir}/bash_completion.d/systemd-bash-completion.sh
+%config %{_sysconfdir}/udev/udev.conf
 %{_prefix}/%{_lib}/tmpfiles.d/*
 %{_prefix}/%{_lib}/systemd/user/*
+%dir %{_sysconfdir}/udev/
+%dir %{_sysconfdir}/udev/rules.d/
+%dir %{udev_libdir}/
+
+%{udev_libdir}/*
+
 /bin/systemctl
+/bin/journalctl
+/bin/loginctl
+/bin/systemd-inhibit
 /bin/systemd-notify
 /bin/systemd-ask-password
 /bin/systemd-tty-ask-password-agent
 /bin/systemd-machine-id-setup
-/bin/systemd-loginctl
-/bin/systemd-journalctl
 /bin/systemd-tmpfiles
 /usr/bin/systemd-cat
 /usr/bin/systemd-cgtop
 /usr/bin/systemd-cgls
+/usr/bin/systemd-delta
+/usr/bin/systemd-detect-virt
 /usr/bin/systemd-nspawn
 /usr/bin/systemd-stdio-bridge
+/usr/bin/udevadm
 /%{_lib}/systemd
 /%{_lib}/security/pam_systemd.so
-/%{_lib}/udev/rules.d/99-systemd.rules
 /%{_lib}/libsystemd-daemon.so.*
 /%{_lib}/libsystemd-login.so.*
 /%{_lib}/libsystemd-journal.so.*
@@ -324,11 +369,11 @@ ln -s ../serial-getty@.service %{buildroot}/lib/systemd/system/getty.target.want
 %{_libdir}/libsystemd-journal.so
 %{_libdir}/libsystemd-id128.so
 %{_libdir}/pkgconfig/libsystemd-*.pc
-%{_datadir}/pkgconfig/systemd.pc
+%{_libdir}/pkgconfig/systemd.pc
+
 
 %files sysv
 %defattr(-,root,root,-)
-%doc LICENSE
 /sbin/halt
 /sbin/init
 /sbin/poweroff
@@ -340,3 +385,28 @@ ln -s ../serial-getty@.service %{buildroot}/lib/systemd/system/getty.target.want
 %files sysv-docs
 %defattr(-,root,root,-)
 %doc %{_mandir}/man?/*
+
+%files -n libudev
+%defattr(0644, root, root, 0755)
+%attr(0755,root,root) /%{_lib}/libudev.so.*
+
+%files -n libudev-devel
+%defattr(0644, root, root, 0755)
+%attr(0644,root,root) %{_mandir}/man8/udev*.8*
+%attr(0644,root,root) %{_mandir}/man7/udev*.7*
+%{_includedir}/libudev.h
+%{_libdir}/libudev.so
+%{_libdir}/pkgconfig/libudev.pc
+%{_libdir}/pkgconfig/udev.pc
+
+
+%files -n libgudev1
+%defattr(0644, root, root, 0755)
+%attr(0755,root,root) /%{_lib}/libgudev-1.0.so.*
+
+%files -n libgudev1-devel
+%defattr(0644, root, root, 0755)
+%attr(0755,root,root) %{_libdir}/libgudev-1.0.so
+%attr(0644,root,root) %{_includedir}/gudev-1.0/gudev/*.h
+%attr(0644,root,root) %{_libdir}/pkgconfig/gudev-1.0*
+ 

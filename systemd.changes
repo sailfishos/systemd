@@ -1,3 +1,6 @@
+* Thu Jun 28 2012 Carsten Munk <carsten.munk@gmail.com> - 185
+- Fixes MER#364: Upgrade to 185, now includes udev 
+
 * Thu Feb 09 2012 Marko Saukko <marko.saukko@gmail.com> - 41
 - Fixes MER#114: Update systemd to newer version
 
