@@ -1,45 +1,44 @@
-%define udev_libdir /lib/udev
-%define systemd_dir /lib/systemd/system
-
-Name:       systemd
-Summary:    System and Session Manager
-Version:    185
-Release:    1
-Group:      System/System Control
-License:    LGPLv2.1+
-URL:        http://www.freedesktop.org/wiki/Software/systemd
-Source0:    http://www.freedesktop.org/software/systemd/%{name}-%{version}.tar.xz
-Source1:    pamconsole-tmp.conf
-Patch0:     systemd-185-pkgconfigdir.patch
+Name:           systemd
+URL:            http://www.freedesktop.org/wiki/Software/systemd
+Version:        187
+Release:        1
+License:        LGPLv2+ and MIT and GPLv2+
+Group:          System/System Control
+Summary:        A System and Service Manager
+BuildRequires:  libcap-devel
+BuildRequires:  pam-devel
 BuildRequires:  pkgconfig(dbus-1) >= 1.3.2
 BuildRequires:  pkgconfig(dbus-glib-1)
-BuildRequires:  pkgconfig(gio-unix-2.0)
-BuildRequires:  pkgconfig(blkid)
-BuildRequires:  pkgconfig(usbutils)
-BuildRequires:  libcap-devel
 BuildRequires:  libxslt
-BuildRequires:  pam-devel
-BuildRequires:  intltool >= 0.40.0
 BuildRequires:  libacl-devel
-BuildRequires:  fdupes
+BuildRequires:  glib2-devel
+BuildRequires:  hwdata
+BuildRequires:  pkgconfig(usbutils) >= 0.82
+BuildRequires:  pkgconfig(blkid) >= 2.20
+BuildRequires:  intltool >= 0.40.0
 BuildRequires:  gperf
 BuildRequires:  xz-devel
-BuildRequires:  hwdata
 BuildRequires:  kmod-devel >= 5
+BuildRequires:  fdupes
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
-Provides: udev = %{version}
-Obsoletes: udev < 184 
+Requires:       dbus
+Requires:       hwdata
+Requires:       filesystem >= 3
+Source0:        http://www.freedesktop.org/software/systemd/%{name}-%{version}.tar.xz
+Patch0:         systemd-185-pkgconfigdir.patch
+Provides:       udev = %{version}
+Obsoletes:      udev < 184 
 
 %description
-system and session manager for Linux, compatible with SysV and
-LSB init scripts. systemd provides aggressive parallelization
-capabilities, uses socket and D-Bus activation for starting
-services, offers on-demand starting of daemons, keeps track of
-processes using Linux cgroups, supports snapshotting and restoring
-of the system state, maintains mount and automount points and
-implements an elaborate transactional dependency-based service
-control logic. It can work as a drop-in replacement for sysvinit.
+systemd is a system and service manager for Linux, compatible with
+SysV and LSB init scripts. systemd provides aggressive parallelization
+capabilities, uses socket and D-Bus activation for starting services,
+offers on-demand starting of daemons, keeps track of processes using
+Linux cgroups, supports snapshotting and restoring of the system
+state, maintains mount and automount points and implements an
+elaborate transactional dependency-based service control logic. It can
+work as a drop-in replacement for sysvinit.
 
 %package tools
 Summary:    Analyze systemd startup timing
@@ -53,13 +52,13 @@ This package installs the systemd-analyze tool, which allows one to
 inspect and graph service startup timing in table or graph format.
 
 %package devel
-Summary:    Development tools for systemd
-Group:      Development/Libraries
-Requires:   %{name} = %{version}-%{release}
+Group:          System Environment/Base
+Summary:        Development headers for systemd
+License:        LGPLv2+ and MIT
+Requires:       %{name} = %{version}-%{release}
 
 %description devel
-This package includes the libraries and header files you will need
-to compile applications for systemd.
+Development headers and auxiliary files for developing applications for systemd.
 
 %package console-ttyS0
 Summary:    Systemd console ttyS0
@@ -136,18 +135,20 @@ Group:     System/Startup Services
 Requires:  %{name} = %{version}-%{release}
 
 %package -n libgudev1
-Summary: Libraries for adding libudev support to applications that use glib
-Group: Development/Libraries
- 
+Summary:        Libraries for adding libudev support to applications that use glib
+Group:          Development/Libraries
+License:        LGPLv2+
+
 %description -n libgudev1
 This package contains the libraries that make it easier to use libudev
 functionality from applications that use glib.
- 
+
 %package -n libgudev1-devel
-Summary: Header files for adding libudev support to applications that use glib
-Group: Development/Libraries
-Requires: libgudev1 = %{version}-%{release}
- 
+Summary:        Header files for adding libudev support to applications that use glib
+Group:          Development/Libraries
+Requires:       libgudev1 = %{version}-%{release}
+License:        LGPLv2+
+
 %description -n libgudev1-devel
 This package contains the header and pkg-config files for developing
 glib-based applications using libudev functionality.
@@ -187,12 +188,13 @@ to replace sysvinit.
 
 %build
 autoreconf 
-%configure --disable-static \
-    --with-rootprefix= \
-    --with-rootlibdir=/%{_lib} \
-    --with-distro=meego \
-    --with-pci-ids-path=/usr/share/hwdata/pci.ids \
-    --libexecdir=/%{_lib}
+%configure \
+  --with-rootprefix= \
+  --with-rootlibdir=/%{_lib} \
+  --with-distro=other \
+  --with-pci-ids-path=/usr/share/hwdata/pci.ids \
+  --libexecdir=/%{_lib} \
+  --disable-static 
 
 make %{?_smp_mflags}
 
@@ -201,17 +203,16 @@ make %{?_smp_mflags}
 
 # Create SysV compatibility symlinks. systemctl/systemd are smart
 # enough to detect in which way they are called.
-mkdir -p %{buildroot}/sbin
+mkdir -p %{buildroot}/{%{_sbindir},sbin}
 ln -s ../lib/systemd/systemd %{buildroot}/sbin/init
-ln -s ../bin/systemctl %{buildroot}/sbin/reboot
-ln -s ../bin/systemctl %{buildroot}/sbin/halt
-ln -s ../bin/systemctl %{buildroot}/sbin/poweroff
-ln -s ../bin/systemctl %{buildroot}/sbin/shutdown
-ln -s ../bin/systemctl %{buildroot}/sbin/telinit
-ln -s ../bin/systemctl %{buildroot}/sbin/runlevel
+ln -s ../../bin/systemctl %{buildroot}%{_sbindir}/reboot
+ln -s ../../bin/systemctl %{buildroot}%{_sbindir}/halt
+ln -s ../../bin/systemctl %{buildroot}%{_sbindir}/poweroff
+ln -s ../../bin/systemctl %{buildroot}%{_sbindir}/shutdown
+ln -s ../../bin/systemctl %{buildroot}%{_sbindir}/telinit
+ln -s ../../bin/systemctl %{buildroot}%{_sbindir}/runlevel
 
-# We need a /run directory for early systemd
-mkdir %{buildroot}/run
+ln -sf ../bin/udevadm %{buildroot}%{_sbindir}/udevadm
 
 # Make sure these directories are properly owned
 mkdir -p %{buildroot}/lib/systemd/system/basic.target.wants
@@ -224,10 +225,19 @@ mkdir -p %{buildroot}/lib/systemd/system/syslog.target.wants
 ln -s ../systemd-readahead-collect.service %{buildroot}/lib/systemd/system/sysinit.target.wants/systemd-readahead-collect.service
 ln -s ../systemd-readahead-replay.service %{buildroot}/lib/systemd/system/sysinit.target.wants/systemd-readahead-replay.service
 
+# Install Fedora default preset policy
+mkdir -p %{buildroot}%{_prefix}/lib/systemd/system-preset/
+mkdir -p %{buildroot}%{_prefix}/lib/systemd/user-preset/
+
+# Make sure the shutdown/sleep drop-in dirs exist
+mkdir -p %{buildroot}%{_prefix}/lib/systemd/system-shutdown/
+mkdir -p %{buildroot}%{_prefix}/lib/systemd/system-sleep/
+
+# Make sure the NTP units dir exists
+mkdir -p %{buildroot}%{_prefix}/lib/systemd/ntp-units.d/
+
 # Don't ship documentation in the wrong place
 rm %{buildroot}/%{_docdir}/systemd/*
-
-install -m 0644 %{SOURCE1} %{buildroot}/etc/tmpfiles.d/pamconsole-tmp.conf
 
 mkdir -p %{buildroot}/etc/systemd/system/basic.target.wants
 
@@ -251,6 +261,12 @@ ln -s ../serial-getty@.service %{buildroot}/lib/systemd/system/getty.target.want
 
 %fdupes  %{buildroot}/%{_datadir}/man/
 
+%pre
+getent group cdrom >/dev/null || /usr/sbin/groupadd -g 11 cdrom || :
+getent group tape >/dev/null || /usr/sbin/groupadd -g 33 tape || :
+getent group dialout >/dev/null || /usr/sbin/groupadd -g 18 dialout || :
+getent group floppy >/dev/null || /usr/sbin/groupadd -g 19 floppy || :
+
 %post
 /bin/systemd-machine-id-setup > /dev/null 2>&1 || :
 /bin/systemctl daemon-reexec > /dev/null 2>&1 || :
@@ -265,27 +281,32 @@ ln -s ../serial-getty@.service %{buildroot}/lib/systemd/system/getty.target.want
 %post -n libgudev1 -p /sbin/ldconfig
 %postun -n libgudev1 -p /sbin/ldconfig
 
-
 %files
 %defattr(-,root,root,-)
-/run
+%dir %{_sysconfdir}/systemd
+%dir %{_sysconfdir}/systemd/system
+%dir %{_sysconfdir}/systemd/user
+%dir %{_sysconfdir}/tmpfiles.d
+%dir %{_sysconfdir}/bash_completion.d
+%dir %{_sysconfdir}/udev
+%dir %{_sysconfdir}/udev/rules.d
 %config %{_sysconfdir}/dbus-1/system.d/org.freedesktop.systemd1.conf
 %config %{_sysconfdir}/dbus-1/system.d/org.freedesktop.hostname1.conf
 %config %{_sysconfdir}/dbus-1/system.d/org.freedesktop.locale1.conf
 %config %{_sysconfdir}/dbus-1/system.d/org.freedesktop.login1.conf
 %config %{_sysconfdir}/dbus-1/system.d/org.freedesktop.timedate1.conf
 %config %{_sysconfdir}/systemd
-%config %{_sysconfdir}/tmpfiles.d/*
 %config %{_sysconfdir}/xdg/systemd/user
 %config %{_sysconfdir}/bash_completion.d/systemd-bash-completion.sh
 %config %{_sysconfdir}/udev/udev.conf
-%{_prefix}/%{_lib}/tmpfiles.d/*
-%{_prefix}/%{_lib}/systemd/user/*
+%config %{_sysconfdir}/rpm/macros.systemd
+%{_libdir}/tmpfiles.d/*
+%{_libdir}/systemd/user/*
 %dir %{_sysconfdir}/udev/
 %dir %{_sysconfdir}/udev/rules.d/
-%dir %{udev_libdir}/
+%dir /lib/udev/
 
-%{udev_libdir}/*
+/lib/udev/*
 
 /bin/systemctl
 /bin/journalctl
@@ -296,14 +317,15 @@ ln -s ../serial-getty@.service %{buildroot}/lib/systemd/system/getty.target.want
 /bin/systemd-tty-ask-password-agent
 /bin/systemd-machine-id-setup
 /bin/systemd-tmpfiles
-/usr/bin/systemd-cat
-/usr/bin/systemd-cgtop
-/usr/bin/systemd-cgls
-/usr/bin/systemd-delta
-/usr/bin/systemd-detect-virt
-/usr/bin/systemd-nspawn
-/usr/bin/systemd-stdio-bridge
-/usr/bin/udevadm
+%{_bindir}/systemd-cat
+%{_bindir}/systemd-cgls
+%{_bindir}/systemd-cgtop
+%{_bindir}/systemd-delta
+%{_bindir}/systemd-detect-virt
+%{_bindir}/systemd-nspawn
+%{_bindir}/systemd-stdio-bridge
+%{_bindir}/udevadm
+%{_sbindir}/udevadm
 /%{_lib}/systemd
 /%{_lib}/security/pam_systemd.so
 /%{_lib}/libsystemd-daemon.so.*
@@ -318,16 +340,16 @@ ln -s ../serial-getty@.service %{buildroot}/lib/systemd/system/getty.target.want
 %{_datadir}/polkit-1/actions/org.freedesktop.timedate1.policy
 %{_datadir}/polkit-1/actions/org.freedesktop.hostname1.policy
 %{_datadir}/dbus-1/system-services/org.freedesktop.hostname1.service
-%{_datadir}/dbus-1/system-services/org.freedesktop.locale1.service
 %{_datadir}/dbus-1/system-services/org.freedesktop.login1.service
+%{_datadir}/dbus-1/system-services/org.freedesktop.locale1.service
 %{_datadir}/dbus-1/system-services/org.freedesktop.timedate1.service
 %{_datadir}/dbus-1/interfaces/org.freedesktop.hostname1.xml
 %{_datadir}/dbus-1/interfaces/org.freedesktop.locale1.xml
 %{_datadir}/dbus-1/interfaces/org.freedesktop.timedate1.xml
 %{_datadir}/systemd/kbd-model-map
-/usr/lib/sysctl.d/coredump.conf
+%{_libdir}/sysctl.d/coredump.conf
 # Just make sure we don't package these by default
-%exclude %{systemd_dir}/getty.target.wants/serial-getty@*.service
+%exclude /lib/systemd/system/getty.target.wants/serial-getty@*.service
 
 %files docs
 %defattr(-,root,root,-)
@@ -335,52 +357,51 @@ ln -s ../serial-getty@.service %{buildroot}/lib/systemd/system/getty.target.want
 
 %files console-ttyMFD2
 %defattr(-,root,root,-)
-%{systemd_dir}/getty.target.wants/serial-getty@ttyMFD2.service
+/lib/systemd/system/getty.target.wants/serial-getty@ttyMFD2.service
 
 %files console-ttyS0
 %defattr(-,root,root,-)
-%{systemd_dir}/getty.target.wants/serial-getty@ttyS0.service
+/lib/systemd/system/getty.target.wants/serial-getty@ttyS0.service
 
 %files console-ttyS1
 %defattr(-,root,root,-)
-%{systemd_dir}/getty.target.wants/serial-getty@ttyS1.service
+/lib/systemd/system/getty.target.wants/serial-getty@ttyS1.service
 
 %files console-tty01
 %defattr(-,root,root,-)
-%{systemd_dir}/getty.target.wants/serial-getty@tty01.service
+/lib/systemd/system/getty.target.wants/serial-getty@tty01.service
 
 %files console-ttyO2
 %defattr(-,root,root,-)
-%{systemd_dir}/getty.target.wants/serial-getty@ttyO2.service
+/lib/systemd/system/getty.target.wants/serial-getty@ttyO2.service
 
 %files console-ttyAMA0
 %defattr(-,root,root,-)
-%{systemd_dir}/getty.target.wants/serial-getty@ttyAMA0.service
+/lib/systemd/system/getty.target.wants/serial-getty@ttyAMA0.service
 
 %files tools
 %defattr(-,root,root,-)
-/usr/bin/systemd-analyze
+%{_bindir}/systemd-analyze
 
 %files devel
 %defattr(-,root,root,-)
 %{_includedir}/systemd/*.h
-%{_libdir}/libsystemd-login.so
 %{_libdir}/libsystemd-daemon.so
+%{_libdir}/libsystemd-login.so
 %{_libdir}/libsystemd-journal.so
 %{_libdir}/libsystemd-id128.so
 %{_libdir}/pkgconfig/libsystemd-*.pc
 %{_libdir}/pkgconfig/systemd.pc
 
-
 %files sysv
 %defattr(-,root,root,-)
-/sbin/halt
+%{_sbindir}/halt
 /sbin/init
-/sbin/poweroff
-/sbin/reboot
-/sbin/runlevel
-/sbin/shutdown
-/sbin/telinit
+%{_sbindir}/poweroff
+%{_sbindir}/reboot
+%{_sbindir}/runlevel
+%{_sbindir}/shutdown
+%{_sbindir}/telinit
 
 %files sysv-docs
 %defattr(-,root,root,-)
@@ -399,14 +420,15 @@ ln -s ../serial-getty@.service %{buildroot}/lib/systemd/system/getty.target.want
 %{_libdir}/pkgconfig/libudev.pc
 %{_libdir}/pkgconfig/udev.pc
 
-
 %files -n libgudev1
-%defattr(0644, root, root, 0755)
+%defattr(-,root,root,-)
 %attr(0755,root,root) /%{_lib}/libgudev-1.0.so.*
 
 %files -n libgudev1-devel
-%defattr(0644, root, root, 0755)
+%defattr(-,root,root,-)
 %attr(0755,root,root) %{_libdir}/libgudev-1.0.so
+%dir %attr(0755,root,root) %{_includedir}/gudev-1.0
+%dir %attr(0755,root,root) %{_includedir}/gudev-1.0/gudev
 %attr(0644,root,root) %{_includedir}/gudev-1.0/gudev/*.h
-%attr(0644,root,root) %{_libdir}/pkgconfig/gudev-1.0*
- 
+%attr(0644,root,root) %{_libdir}/pkgconfig/gudev-1.0.pc
+

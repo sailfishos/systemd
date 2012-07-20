@@ -1,3 +1,7 @@
+* Fri Jul 20 2012 Marko Saukko <marko.saukko@jollamobile.com> - 187
+- Updated to version 187
+- Require filesystem >= 3 as /run was moved to that package.
+
 * Thu Jun 28 2012 Carsten Munk <carsten.munk@gmail.com> - 185
 - Fixes MER#364: Upgrade to 185, now includes udev 
 
