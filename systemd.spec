@@ -24,7 +24,6 @@ Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
 Requires:       dbus
 Requires:       hwdata
-Requires:       filesystem >= 3
 Source0:        http://www.freedesktop.org/software/systemd/%{name}-%{version}.tar.xz
 Patch0:         systemd-185-pkgconfigdir.patch
 Provides:       udev = %{version}

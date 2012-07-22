@@ -1,3 +1,6 @@
+* Sun Jul 22 2012 Carsten Munk <carsten@merproject.org> - 187
+- Drop filesystem >= 3 as this causes unresolvables.
+
 * Fri Jul 20 2012 Marko Saukko <marko.saukko@jollamobile.com> - 187
 - Updated to version 187
 - Require filesystem >= 3 as /run was moved to that package.
