@@ -24,6 +24,9 @@ Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
 Requires:       dbus
 Requires:       hwdata
+Requires:       filesystem >= 3
+# fsck with -l option was introduced in 2.21.2 packaging
+Requires:       util-linux >= 2.21.2
 Source0:        http://www.freedesktop.org/software/systemd/%{name}-%{version}.tar.xz
 Patch0:         systemd-185-pkgconfigdir.patch
 Provides:       udev = %{version}
@@ -136,6 +139,7 @@ Requires:  %{name} = %{version}-%{release}
 %package -n libgudev1
 Summary:        Libraries for adding libudev support to applications that use glib
 Group:          Development/Libraries
+Conflicts:      filesystem < 3
 License:        LGPLv2+
 
 %description -n libgudev1
@@ -192,7 +196,6 @@ autoreconf
   --with-rootlibdir=/%{_lib} \
   --with-distro=other \
   --with-pci-ids-path=/usr/share/hwdata/pci.ids \
-  --libexecdir=/%{_lib} \
   --disable-static 
 
 make %{?_smp_mflags}
@@ -235,6 +238,10 @@ mkdir -p %{buildroot}%{_prefix}/lib/systemd/system-sleep/
 # Make sure the NTP units dir exists
 mkdir -p %{buildroot}%{_prefix}/lib/systemd/ntp-units.d/
 
+mkdir -p %{buildroot}%{_sysconfdir}/sysctl.d
+mkdir -p %{buildroot}%{_sysconfdir}/modules-load.d
+mkdir -p %{buildroot}%{_sysconfdir}/binfmt.d
+
 # Don't ship documentation in the wrong place
 rm %{buildroot}/%{_docdir}/systemd/*
 
@@ -265,12 +272,12 @@ getent group cdrom >/dev/null || /usr/sbin/groupadd -g 11 cdrom || :
 getent group tape >/dev/null || /usr/sbin/groupadd -g 33 tape || :
 getent group dialout >/dev/null || /usr/sbin/groupadd -g 18 dialout || :
 getent group floppy >/dev/null || /usr/sbin/groupadd -g 19 floppy || :
+systemctl stop systemd-udev.service systemd-udev-control.socket systemd-udev-kernel.socket >/dev/null 2>&1 || :
 
 %post
+/sbin/ldconfig
 /bin/systemd-machine-id-setup > /dev/null 2>&1 || :
 /bin/systemctl daemon-reexec > /dev/null 2>&1 || :
-
-/sbin/ldconfig
 
 %postun -p /sbin/ldconfig
 
@@ -286,43 +293,48 @@ getent group floppy >/dev/null || /usr/sbin/groupadd -g 19 floppy || :
 %dir %{_sysconfdir}/systemd/system
 %dir %{_sysconfdir}/systemd/user
 %dir %{_sysconfdir}/tmpfiles.d
+%dir %{_sysconfdir}/sysctl.d
+%dir %{_sysconfdir}/modules-load.d
+%dir %{_sysconfdir}/binfmt.d
 %dir %{_sysconfdir}/bash_completion.d
 %dir %{_sysconfdir}/udev
 %dir %{_sysconfdir}/udev/rules.d
-%config %{_sysconfdir}/dbus-1/system.d/org.freedesktop.systemd1.conf
-%config %{_sysconfdir}/dbus-1/system.d/org.freedesktop.hostname1.conf
-%config %{_sysconfdir}/dbus-1/system.d/org.freedesktop.locale1.conf
-%config %{_sysconfdir}/dbus-1/system.d/org.freedesktop.login1.conf
-%config %{_sysconfdir}/dbus-1/system.d/org.freedesktop.timedate1.conf
-%config %{_sysconfdir}/systemd
-%config %{_sysconfdir}/xdg/systemd/user
-%config %{_sysconfdir}/bash_completion.d/systemd-bash-completion.sh
-%config %{_sysconfdir}/udev/udev.conf
-%config %{_sysconfdir}/rpm/macros.systemd
+%dir %{_prefix}/lib/systemd
+%dir %{_prefix}/lib/tmpfiles.d
+%dir %{_prefix}/lib/sysctl.d
+%dir %{_datadir}/systemd
+%config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.systemd1.conf
+%config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.hostname1.conf
+%config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.login1.conf
+%config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.locale1.conf
+%config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.timedate1.conf
+%config(noreplace) %{_sysconfdir}/systemd
+%config(noreplace) %{_sysconfdir}/xdg/systemd/user
+%config(noreplace) %{_sysconfdir}/bash_completion.d/systemd-bash-completion.sh
+%config(noreplace) %{_sysconfdir}/udev/udev.conf
+%{_sysconfdir}/rpm/macros.systemd
 %{_libdir}/tmpfiles.d/*
 %{_libdir}/systemd/user/*
-%dir %{_sysconfdir}/udev/
-%dir %{_sysconfdir}/udev/rules.d/
 %dir /lib/udev/
 
 /lib/udev/*
 
 /bin/systemctl
-/bin/journalctl
-/bin/loginctl
-/bin/systemd-inhibit
 /bin/systemd-notify
 /bin/systemd-ask-password
 /bin/systemd-tty-ask-password-agent
 /bin/systemd-machine-id-setup
+/bin/loginctl
+/bin/journalctl
 /bin/systemd-tmpfiles
+%{_bindir}/systemd-nspawn
+%{_bindir}/systemd-stdio-bridge
 %{_bindir}/systemd-cat
 %{_bindir}/systemd-cgls
 %{_bindir}/systemd-cgtop
 %{_bindir}/systemd-delta
 %{_bindir}/systemd-detect-virt
-%{_bindir}/systemd-nspawn
-%{_bindir}/systemd-stdio-bridge
+/bin/systemd-inhibit
 %{_bindir}/udevadm
 %{_sbindir}/udevadm
 /%{_lib}/systemd
@@ -333,11 +345,6 @@ getent group floppy >/dev/null || /usr/sbin/groupadd -g 19 floppy || :
 /%{_lib}/libsystemd-id128.so.*
 %{_datadir}/dbus-1/*/org.freedesktop.systemd1.*
 %{_defaultdocdir}/systemd
-%{_datadir}/polkit-1/actions/org.freedesktop.systemd1.policy
-%{_datadir}/polkit-1/actions/org.freedesktop.locale1.policy
-%{_datadir}/polkit-1/actions/org.freedesktop.login1.policy
-%{_datadir}/polkit-1/actions/org.freedesktop.timedate1.policy
-%{_datadir}/polkit-1/actions/org.freedesktop.hostname1.policy
 %{_datadir}/dbus-1/system-services/org.freedesktop.hostname1.service
 %{_datadir}/dbus-1/system-services/org.freedesktop.login1.service
 %{_datadir}/dbus-1/system-services/org.freedesktop.locale1.service
@@ -345,6 +352,11 @@ getent group floppy >/dev/null || /usr/sbin/groupadd -g 19 floppy || :
 %{_datadir}/dbus-1/interfaces/org.freedesktop.hostname1.xml
 %{_datadir}/dbus-1/interfaces/org.freedesktop.locale1.xml
 %{_datadir}/dbus-1/interfaces/org.freedesktop.timedate1.xml
+%{_datadir}/polkit-1/actions/org.freedesktop.systemd1.policy
+%{_datadir}/polkit-1/actions/org.freedesktop.login1.policy
+%{_datadir}/polkit-1/actions/org.freedesktop.locale1.policy
+%{_datadir}/polkit-1/actions/org.freedesktop.timedate1.policy
+%{_datadir}/polkit-1/actions/org.freedesktop.hostname1.policy
 %{_datadir}/systemd/kbd-model-map
 %{_libdir}/sysctl.d/coredump.conf
 # Just make sure we don't package these by default

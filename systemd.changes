@@ -1,5 +1,5 @@
-* Sun Jul 22 2012 Carsten Munk <carsten@merproject.org> - 187
-- Drop filesystem >= 3 as this causes unresolvables.
+* Tue Jul 24 2012 Marko Saukko <marko.saukko@jollamobile.com> - 187
+- Require util-linux >= 2.21.2 because of fsck.
 
 * Fri Jul 20 2012 Marko Saukko <marko.saukko@jollamobile.com> - 187
 - Updated to version 187
