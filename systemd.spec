@@ -29,6 +29,7 @@ Requires:       filesystem >= 3
 Requires:       util-linux >= 2.21.2
 Source0:        http://www.freedesktop.org/software/systemd/%{name}-%{version}.tar.xz
 Patch0:         systemd-185-pkgconfigdir.patch
+Patch1:	        systemd-187-reintroduce-support-for-deprecated-oom.patch
 Provides:       udev = %{version}
 Obsoletes:      udev < 184 
 
@@ -188,6 +189,7 @@ to replace sysvinit.
 %prep
 %setup -q -n %{name}-%{version}
 %patch0 -p1 -b .pkgconfig
+%patch1 -p1 -R 
 
 %build
 autoreconf 

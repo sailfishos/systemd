@@ -1,3 +1,7 @@
+* Tue Jul 31 2012 Marko Saukko <marko.saukko@jollamobile.com> - 187
+- Added systemd-187-reintroduce-support-for-deprecated-oom.patch to
+  readd support for older kernels.
+
 * Tue Jul 24 2012 Marko Saukko <marko.saukko@jollamobile.com> - 187
 - Require util-linux >= 2.21.2 because of fsck.
 
