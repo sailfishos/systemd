@@ -1,3 +1,6 @@
+* Tue Aug 14 2012 Marko Saukko <marko.saukko@jollamobile.com> - 187
+- Require network.target with multi-user.target.
+
 * Tue Jul 31 2012 Marko Saukko <marko.saukko@jollamobile.com> - 187
 - Added systemd-187-reintroduce-support-for-deprecated-oom.patch to
   readd support for older kernels.

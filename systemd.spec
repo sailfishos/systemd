@@ -229,6 +229,10 @@ mkdir -p %{buildroot}/lib/systemd/system/syslog.target.wants
 ln -s ../systemd-readahead-collect.service %{buildroot}/lib/systemd/system/sysinit.target.wants/systemd-readahead-collect.service
 ln -s ../systemd-readahead-replay.service %{buildroot}/lib/systemd/system/sysinit.target.wants/systemd-readahead-replay.service
 
+# Require network to be enabled with multi-user.target
+mkdir -p %{buildroot}/lib/systemd/system/multi-user.target.wants/
+ln -s ../network.target %{buildroot}/lib/systemd/system/multi-user.target.wants/network.target
+
 # Install Fedora default preset policy
 mkdir -p %{buildroot}%{_prefix}/lib/systemd/system-preset/
 mkdir -p %{buildroot}%{_prefix}/lib/systemd/user-preset/
