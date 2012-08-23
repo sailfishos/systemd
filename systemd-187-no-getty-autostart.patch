@@ -1,0 +1,9 @@
+diff -ru systemd-187/units/getty@.service.m4 systemd-187-no-getty-autostart/units/getty@.service.m4
+--- systemd-187/units/getty@.service.m4	2012-06-19 17:29:22.584187352 +0200
++++ systemd-187-no-getty-autostart/units/getty@.service.m4	2012-08-21 12:39:06.690607380 +0200
+@@ -63,4 +63,3 @@
+ KillSignal=SIGHUP
+ 
+ [Install]
+-Alias=getty.target.wants/getty@tty1.service
+Only in systemd-187-no-getty-autostart/units: getty@.service.m4~

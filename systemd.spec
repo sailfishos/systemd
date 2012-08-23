@@ -30,6 +30,8 @@ Requires:       util-linux >= 2.21.2
 Source0:        http://www.freedesktop.org/software/systemd/%{name}-%{version}.tar.xz
 Patch0:         systemd-185-pkgconfigdir.patch
 Patch1:	        systemd-187-reintroduce-support-for-deprecated-oom.patch
+Patch2:		systemd-187-video.patch
+Patch3:         systemd-187-no-getty-autostart.patch
 Provides:       udev = %{version}
 Obsoletes:      udev < 184 
 
@@ -190,6 +192,8 @@ to replace sysvinit.
 %setup -q -n %{name}-%{version}
 %patch0 -p1 -b .pkgconfig
 %patch1 -p1 -R 
+%patch2 -p1
+%patch3 -p1
 
 %build
 autoreconf 
@@ -367,6 +371,7 @@ systemctl stop systemd-udev.service systemd-udev-control.socket systemd-udev-ker
 %{_libdir}/sysctl.d/coredump.conf
 # Just make sure we don't package these by default
 %exclude /lib/systemd/system/getty.target.wants/serial-getty@*.service
+%exclude %{_libdir}/systemd/user/default.target
 
 %files docs
 %defattr(-,root,root,-)

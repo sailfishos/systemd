@@ -1,3 +1,9 @@
+* Tue Aug 23 2012 Carsten Munk <carsten.munk@jollamobile.com> - 187
+- Prep for user sessions:
+  - make sure video owns tty and input devices, for xorg startup
+  - don't start tty1 automatically
+  - exclude /usr/lib/systemd/user/default.target - vendors provide that
+
 * Tue Aug 14 2012 Marko Saukko <marko.saukko@jollamobile.com> - 187
 - Require network.target with multi-user.target.
 
