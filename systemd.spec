@@ -31,7 +31,6 @@ Source0:        http://www.freedesktop.org/software/systemd/%{name}-%{version}.t
 Patch0:         systemd-185-pkgconfigdir.patch
 Patch1:	        systemd-187-reintroduce-support-for-deprecated-oom.patch
 Patch2:		systemd-187-video.patch
-Patch3:         systemd-187-no-getty-autostart.patch
 Provides:       udev = %{version}
 Obsoletes:      udev < 184 
 
@@ -193,7 +192,6 @@ to replace sysvinit.
 %patch0 -p1 -b .pkgconfig
 %patch1 -p1 -R 
 %patch2 -p1
-%patch3 -p1
 
 %build
 autoreconf 
@@ -301,6 +299,7 @@ systemctl stop systemd-udev.service systemd-udev-control.socket systemd-udev-ker
 %defattr(-,root,root,-)
 %dir %{_sysconfdir}/systemd
 %dir %{_sysconfdir}/systemd/system
+%exclude %{_sysconfdir}/systemd/system/getty.target.wants/getty@tty1.service
 %dir %{_sysconfdir}/systemd/user
 %dir %{_sysconfdir}/tmpfiles.d
 %dir %{_sysconfdir}/sysctl.d
