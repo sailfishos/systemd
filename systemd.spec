@@ -32,6 +32,7 @@ Source1:        systemd-stop-user-sessions.service
 Patch0:         systemd-185-pkgconfigdir.patch
 Patch1:	        systemd-187-reintroduce-support-for-deprecated-oom.patch
 Patch2:		systemd-187-video.patch
+Patch3:         systemd-187-make-readahead-depend-on-sysinit.patch
 Provides:       udev = %{version}
 Obsoletes:      udev < 184 
 
@@ -193,6 +194,7 @@ to replace sysvinit.
 %patch0 -p1 -b .pkgconfig
 %patch1 -p1 -R 
 %patch2 -p1
+%patch3 -p1 
 
 %build
 autoreconf 
@@ -201,6 +203,7 @@ autoreconf
   --with-rootlibdir=/%{_lib} \
   --with-distro=other \
   --with-pci-ids-path=/usr/share/hwdata/pci.ids \
+  --disable-coredump \
   --disable-static 
 
 make %{?_smp_mflags}
@@ -373,7 +376,6 @@ systemctl stop systemd-udev.service systemd-udev-control.socket systemd-udev-ker
 %{_datadir}/polkit-1/actions/org.freedesktop.timedate1.policy
 %{_datadir}/polkit-1/actions/org.freedesktop.hostname1.policy
 %{_datadir}/systemd/kbd-model-map
-%{_libdir}/sysctl.d/coredump.conf
 # Just make sure we don't package these by default
 %exclude /lib/systemd/system/getty.target.wants/serial-getty@*.service
 %exclude %{_libdir}/systemd/user/default.target

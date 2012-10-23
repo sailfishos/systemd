@@ -1,3 +1,7 @@
+* Tue Oct 23 2012 Carsten Munk <carsten.munk@jollamobile.com> - 187
+- Disable collecting core dumps in journal
+- Add systemd-187-make-readahead-depend-on-sysinit.patch by Thilo Fromm to sort out readahead
+
 * Thu Oct 11 2012 Pekka Lundstrom <pekka.lundstrom@jollamobile.com> - 187
 - Added file /lib/systemd/system/systemd-stop-user-sessions.service
   Fixes NEMO#502: Shutdown is not working properly when systemd user session is used 
