@@ -46,14 +46,16 @@ state, maintains mount and automount points and implements an
 elaborate transactional dependency-based service control logic. It can
 work as a drop-in replacement for sysvinit.
 
-%package tools
+%package analyze
 Summary:    Analyze systemd startup timing
 Group:      Development/Tools
 Requires:   dbus-python
-Requires:   pycairo
+Requires:   python-cairo
 Requires:   %{name} = %{version}-%{release}
+Provides:   %{name}-tools = %{version}
+Obsoletes:  %{name}-tools <= 187
 
-%description tools
+%description analyze
 This package installs the systemd-analyze tool, which allows one to
 inspect and graph service startup timing in table or graph format.
 
@@ -408,7 +410,7 @@ systemctl stop systemd-udev.service systemd-udev-control.socket systemd-udev-ker
 %defattr(-,root,root,-)
 /lib/systemd/system/getty.target.wants/serial-getty@ttyAMA0.service
 
-%files tools
+%files analyze
 %defattr(-,root,root,-)
 %{_bindir}/systemd-analyze
 
