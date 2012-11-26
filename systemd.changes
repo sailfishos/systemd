@@ -1,3 +1,8 @@
+* Mon Nov 26 2012 Pekka Lundstrom <pekka.lundstrom@jollamobile.com> - 187
+- Added support for EnvironmentDir in .service files.
+  systemd-187-support-env-dirs.patch
+  Fixes MER#640 : systemd .service files should support EnvironmentDir option
+
 * Sun Nov 11 2012 Marko Saukko <makro.saukko@jollamobile.com> - 187
 - Renamed -tools package to -analyze.
 - Fixes MER#82: Change pycairo to python-cairo dependency in -analyze.
