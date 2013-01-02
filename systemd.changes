@@ -1,3 +1,9 @@
+* Wed Jan 02 2013 Pekka Lundstrom <pekka.lundstrom@jollamobile.com> - 187
+- EnvironmentDir support is replaced with globbing support in EnvironmentFile
+  deleted systemd-187-support-env-dirs.patch
+  added systemd-187-support-glob-EnvironmentFile.patch
+  Fixes MER#640 : systemd .service files should support EnvironmentDir option
+
 * Mon Nov 26 2012 Pekka Lundstrom <pekka.lundstrom@jollamobile.com> - 187
 - Added support for EnvironmentDir in .service files.
   systemd-187-support-env-dirs.patch

@@ -33,7 +33,7 @@ Patch0:         systemd-185-pkgconfigdir.patch
 Patch1:	        systemd-187-reintroduce-support-for-deprecated-oom.patch
 Patch2:		systemd-187-video.patch
 Patch3:         systemd-187-make-readahead-depend-on-sysinit.patch
-Patch4:         systemd-187-support-env-dirs.patch
+Patch4:         systemd-187-support-glob-EnvironmentFile.patch
 Provides:       udev = %{version}
 Obsoletes:      udev < 184 
 

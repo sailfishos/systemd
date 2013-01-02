@@ -1,0 +1,99 @@
+From f552f38f643afa820d1502544ce2702ba331f2f8 Mon Sep 17 00:00:00 2001
+From: Pekka Lundstrom <pekka.lundstrom@jollamobile.com>
+Date: Wed, 2 Jan 2013 11:02:24 +0200
+Subject: [PATCH] Added globbing support to EnvironmentFile
+
+---
+ src/core/execute.c |   51 +++++++++++++++++++++++++++++++++++++++------------
+ 1 file changed, 39 insertions(+), 12 deletions(-)
+
+diff --git a/src/core/execute.c b/src/core/execute.c
+index fc0edc6..4279a89 100644
+--- a/src/core/execute.c
++++ b/src/core/execute.c
+@@ -39,6 +39,7 @@
+ #include <linux/oom.h>
+ #include <sys/poll.h>
+ #include <linux/seccomp-bpf.h>
++#include <glob.h>
+ 
+ #ifdef HAVE_PAM
+ #include <security/pam_appl.h>
+@@ -1659,6 +1660,8 @@ int exec_context_load_environment(const ExecContext *c, char ***l) {
+                 int k;
+                 bool ignore = false;
+                 char **p;
++                glob_t pglob;
++                int count, n;
+ 
+                 fn = *i;
+ 
+@@ -1676,29 +1679,53 @@ int exec_context_load_environment(const ExecContext *c, char ***l) {
+                         return -EINVAL;
+                 }
+ 
+-                if ((k = load_env_file(fn, &p)) < 0) {
++                /* Filename supports globbing, take all matching files */
++                pglob.gl_pathc = 0;
++                pglob.gl_pathv = NULL;
++                if (glob(fn, 0, NULL, &pglob) != 0) {
++                        globfree(&pglob);
++                        if (ignore)
++                                continue;
+ 
++                        strv_free(r);
++                        return -EINVAL;
++                }
++                if ((count = pglob.gl_pathc) == 0) {
++                        globfree(&pglob);
+                         if (ignore)
+                                 continue;
+ 
+                         strv_free(r);
+-                        return k;
++                        return -EINVAL;
+                 }
++                for (n = 0; n < count; n++) {
++                        if ((k = load_env_file(pglob.gl_pathv[n], &p)) < 0) {
++                                if (ignore)
++                                        continue;
+ 
+-                if (r == NULL)
+-                        r = p;
+-                else {
+-                        char **m;
++                                strv_free(r);
++                                globfree(&pglob);
++                                return k;
++                         }
+ 
+-                        m = strv_env_merge(2, r, p);
+-                        strv_free(r);
+-                        strv_free(p);
++                        if (r == NULL)
++                                r = p;
++                        else {
++                                char **m;
+ 
+-                        if (!m)
+-                                return -ENOMEM;
++                                m = strv_env_merge(2, r, p);
++                                strv_free(r);
++                                strv_free(p);
+ 
+-                        r = m;
++                                if (!m) {
++                                        globfree(&pglob);
++                                        return -ENOMEM;
++                                }
++
++                                r = m;
++                        }
+                 }
++                globfree(&pglob);
+         }
+ 
+         *l = r;
+-- 
+1.7.9.5
+
