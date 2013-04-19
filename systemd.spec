@@ -29,11 +29,13 @@ Requires:       filesystem >= 3
 Requires:       util-linux >= 2.21.2
 Source0:        http://www.freedesktop.org/software/systemd/%{name}-%{version}.tar.xz
 Source1:        systemd-stop-user-sessions.service
+Source2:        tests.xml
 Patch0:         systemd-185-pkgconfigdir.patch
 Patch1:	        systemd-187-reintroduce-support-for-deprecated-oom.patch
 Patch2:		systemd-187-video.patch
 Patch3:         systemd-187-make-readahead-depend-on-sysinit.patch
 Patch4:         systemd-187-support-glob-EnvironmentFile.patch
+Patch5:         systemd-187-install-test-bin.patch
 Provides:       udev = %{version}
 Obsoletes:      udev < 184 
 
@@ -128,6 +130,14 @@ Requires:  %{name} = %{version}-%{release}
 %description docs
 This package includes the man pages for systemd.
 
+%package tests
+Summary:   Systemd tests
+Group:     System/System Control
+Requires:  %{name} = %{version}-%{release}
+Requires:  blts-tools
+
+%description tests
+This package includes tests for systemd.
 
 %package sysv-docs
 Summary:   System and session manager man pages - SysV links
@@ -199,6 +209,7 @@ to replace sysvinit.
 %patch2 -p1
 %patch3 -p1 
 %patch4 -p1
+%patch5 -p1
 
 %build
 autoreconf 
@@ -287,6 +298,10 @@ ln -s ../serial-getty@.service %{buildroot}/lib/systemd/system/getty.target.want
 ln -s ../serial-getty@.service %{buildroot}/lib/systemd/system/getty.target.wants/serial-getty@ttyAMA0.service
 
 %fdupes  %{buildroot}/%{_datadir}/man/
+
+# Install tests.xml
+install -d -m 755 %{buildroot}/opt/tests/systemd-tests
+install -m 644 %{SOURCE2} %{buildroot}/opt/tests/systemd-tests
 
 %pre
 getent group cdrom >/dev/null || /usr/sbin/groupadd -g 11 cdrom || :
@@ -387,6 +402,11 @@ systemctl stop systemd-udev.service systemd-udev-control.socket systemd-udev-ker
 %files docs
 %defattr(-,root,root,-)
 %doc %{_mandir}/man?/*
+
+%files tests
+%defattr(-,root,root,-)
+/opt/tests/systemd-tests/tests.xml
+/opt/tests/systemd-tests/bin/*
 
 %files console-ttyMFD2
 %defattr(-,root,root,-)
