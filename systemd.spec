@@ -30,6 +30,7 @@ Requires:       util-linux >= 2.21.2
 Source0:        http://www.freedesktop.org/software/systemd/%{name}-%{version}.tar.xz
 Source1:        systemd-stop-user-sessions.service
 Source2:        tests.xml
+Source3:        systemctl-user
 Patch0:         systemd-185-pkgconfigdir.patch
 Patch1:	        systemd-187-reintroduce-support-for-deprecated-oom.patch
 Patch2:		systemd-187-video.patch
@@ -297,6 +298,9 @@ ln -s ../serial-getty@.service %{buildroot}/lib/systemd/system/getty.target.want
 #console-ttyAMA0
 ln -s ../serial-getty@.service %{buildroot}/lib/systemd/system/getty.target.wants/serial-getty@ttyAMA0.service
 
+# Add systemctl-user helper script
+install -D -m 755 %{SOURCE3} %{buildroot}/bin/systemctl-user
+
 %fdupes  %{buildroot}/%{_datadir}/man/
 
 # Install tests.xml
@@ -357,6 +361,7 @@ systemctl stop systemd-udev.service systemd-udev-control.socket systemd-udev-ker
 /lib/udev/*
 
 /bin/systemctl
+/bin/systemctl-user
 /bin/systemd-notify
 /bin/systemd-ask-password
 /bin/systemd-tty-ask-password-agent

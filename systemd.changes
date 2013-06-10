@@ -1,3 +1,7 @@
+* Mon June 10 2013 Pekka Lundstrom <pekka.lundstrom@jollamobile.com> - 187
+- Added helper script systemctl-user
+  It can be used to run "systemctl --user" commands when logged in as root
+
 * Fri Apr 19 2013 Matti Kosola <matti.kosola@jollamobile.com> - 187
 - Add test package for upstream tests with tests.xml
 
