@@ -1,3 +1,11 @@
+* Mon June 17 2013 Pekka Lundstrom <pekka.lundstrom@jollamobile.com> - 187
+- Systemd config files separated to new package called systemd-config-mer
+  Vendors can replace this package with their own configuration by 
+  having a package that "Provides:   systemd-config"
+- default.target is also moved into this config package
+- Removed link /etc/systemd/system/multi-user.target.wants/remote-fs.target
+- Removed need for display-manager.service in graphical.target
+
 * Mon June 10 2013 Pekka Lundstrom <pekka.lundstrom@jollamobile.com> - 187
 - Added helper script systemctl-user
   It can be used to run "systemctl --user" commands when logged in as root

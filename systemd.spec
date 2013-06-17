@@ -25,6 +25,7 @@ Requires(postun): /sbin/ldconfig
 Requires:       dbus
 Requires:       hwdata
 Requires:       filesystem >= 3
+Requires:       systemd-config
 # fsck with -l option was introduced in 2.21.2 packaging
 Requires:       util-linux >= 2.21.2
 Source0:        http://www.freedesktop.org/software/systemd/%{name}-%{version}.tar.xz
@@ -37,6 +38,7 @@ Patch2:		systemd-187-video.patch
 Patch3:         systemd-187-make-readahead-depend-on-sysinit.patch
 Patch4:         systemd-187-support-glob-EnvironmentFile.patch
 Patch5:         systemd-187-install-test-bin.patch
+Patch6:         systemd-187-remove-display-manager.service.patch
 Provides:       udev = %{version}
 Obsoletes:      udev < 184 
 
@@ -49,6 +51,15 @@ Linux cgroups, supports snapshotting and restoring of the system
 state, maintains mount and automount points and implements an
 elaborate transactional dependency-based service control logic. It can
 work as a drop-in replacement for sysvinit.
+
+%package config-mer
+Summary:    Default configuration for systemd
+Group:      System/System Control
+Requires:   %{name} = %{version}-%{release}
+Provides:   systemd-config
+
+%description config-mer
+This package provides default configuration for systemd
 
 %package analyze
 Summary:    Analyze systemd startup timing
@@ -211,6 +222,7 @@ to replace sysvinit.
 %patch3 -p1 
 %patch4 -p1
 %patch5 -p1
+%patch6 -p1
 
 %build
 autoreconf 
@@ -349,10 +361,9 @@ systemctl stop systemd-udev.service systemd-udev-control.socket systemd-udev-ker
 %config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.login1.conf
 %config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.locale1.conf
 %config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.timedate1.conf
-%config(noreplace) %{_sysconfdir}/systemd
 %config(noreplace) %{_sysconfdir}/xdg/systemd/user
 %config(noreplace) %{_sysconfdir}/bash_completion.d/systemd-bash-completion.sh
-%config(noreplace) %{_sysconfdir}/udev/udev.conf
+%{_sysconfdir}/systemd/system/*
 %{_sysconfdir}/rpm/macros.systemd
 %{_libdir}/tmpfiles.d/*
 %{_libdir}/systemd/user/*
@@ -402,7 +413,18 @@ systemctl stop systemd-udev.service systemd-udev-control.socket systemd-udev-ker
 %{_datadir}/systemd/kbd-model-map
 # Just make sure we don't package these by default
 %exclude /lib/systemd/system/getty.target.wants/serial-getty@*.service
+%exclude /lib/systemd/system/default.target
 %exclude %{_libdir}/systemd/user/default.target
+%exclude %{_sysconfdir}/systemd/system/multi-user.target.wants/remote-fs.target
+
+%files config-mer
+%defattr(-,root,root,-)
+%config(noreplace) %{_sysconfdir}/systemd/journald.conf
+%config(noreplace) %{_sysconfdir}/systemd/logind.conf
+%config(noreplace) %{_sysconfdir}/systemd/system.conf
+%config(noreplace) %{_sysconfdir}/systemd/user.conf
+%config(noreplace) %{_sysconfdir}/udev/udev.conf
+/lib/systemd/system/default.target
 
 %files docs
 %defattr(-,root,root,-)
