@@ -232,8 +232,8 @@ autoreconf
   --with-distro=other \
   --with-pci-ids-path=/usr/share/hwdata/pci.ids \
   --disable-coredump \
-  --disable-static 
-
+  --disable-static \
+  --with-firmware-path=/lib/firmware/updates:/lib/firmware:/system/etc/firmware:/etc/firmware:/vendor/firmware:/firmware/image
 make %{?_smp_mflags}
 
 %install
