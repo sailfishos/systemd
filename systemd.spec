@@ -39,6 +39,7 @@ Patch3:         systemd-187-make-readahead-depend-on-sysinit.patch
 Patch4:         systemd-187-support-glob-EnvironmentFile.patch
 Patch5:         systemd-187-install-test-bin.patch
 Patch6:         systemd-187-remove-display-manager.service.patch
+Patch7:		systemd-187-fix-ftbfs.patch
 Provides:       udev = %{version}
 Obsoletes:      udev < 184 
 
@@ -223,6 +224,7 @@ to replace sysvinit.
 %patch4 -p1
 %patch5 -p1
 %patch6 -p1
+%patch7 -p1
 
 %build
 autoreconf 

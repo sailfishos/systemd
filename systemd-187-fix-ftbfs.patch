@@ -1,0 +1,28 @@
+From e17187091d463ad008c0b74eb04de5078b2abb96 Mon Sep 17 00:00:00 2001
+From: Michal Schmidt <mschmidt@redhat.com>
+Date: Wed, 14 Nov 2012 13:44:05 +0000
+Subject: configure.ac: fix FTBFS with new glibc
+
+glibc moved clock_* functions from librt to the core libc. As a result,
+clock_gettime is no more a suitable symbol to use when finding librt.
+Look for mq_open instead.
+Reference:
+http://www.sourceware.org/git/gitweb.cgi?p=glibc.git&h=6e6249d0b461b952d0f544792372663feb6d792a
+
+Fixes a FTBFS in Fedora Rawhide.
+---
+diff --git a/configure.ac b/configure.ac
+index c4638d1..71ea6ad 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -171,7 +171,7 @@ CC_CHECK_FLAGS_APPEND([with_ldflags], [LDFLAGS], [\
+         -Wl,-z,now])
+ AC_SUBST([OUR_LDFLAGS], $with_ldflags)
+ 
+-AC_SEARCH_LIBS([clock_gettime], [rt], [], [AC_MSG_ERROR([*** POSIX RT library not found])])
++AC_SEARCH_LIBS([mq_open], [rt], [], [AC_MSG_ERROR([*** POSIX RT library not found])])
+ AC_SEARCH_LIBS([dlsym], [dl], [], [AC_MSG_ERROR([*** Dynamic linking loader library not found])])
+ 
+ save_LIBS="$LIBS"
+--
+cgit v0.9.0.2-2-gbebe 
