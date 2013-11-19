@@ -1,6 +1,6 @@
 Name:           systemd
 URL:            http://www.freedesktop.org/wiki/Software/systemd
-Version:        187
+Version:        208
 Release:        1
 License:        LGPLv2+ and MIT and GPLv2+
 Group:          System/System Control
@@ -12,18 +12,17 @@ BuildRequires:  pkgconfig(dbus-glib-1)
 BuildRequires:  libxslt
 BuildRequires:  libacl-devel
 BuildRequires:  glib2-devel
-BuildRequires:  hwdata
+BuildRequires:  libgcrypt-devel
 BuildRequires:  pkgconfig(usbutils) >= 0.82
 BuildRequires:  pkgconfig(blkid) >= 2.20
 BuildRequires:  intltool >= 0.40.0
 BuildRequires:  gperf
 BuildRequires:  xz-devel
-BuildRequires:  kmod-devel >= 5
+BuildRequires:  kmod-devel >= 15
 BuildRequires:  fdupes
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
 Requires:       dbus
-Requires:       hwdata
 Requires:       filesystem >= 3
 Requires:       systemd-config
 # fsck with -l option was introduced in 2.21.2 packaging
@@ -32,16 +31,30 @@ Source0:        http://www.freedesktop.org/software/systemd/%{name}-%{version}.t
 Source1:        systemd-stop-user-sessions.service
 Source2:        tests.xml
 Source3:        systemctl-user
-Patch0:         systemd-185-pkgconfigdir.patch
-Patch1:	        systemd-187-reintroduce-support-for-deprecated-oom.patch
-Patch2:		systemd-187-video.patch
+Patch0:         systemd-208-video.patch
+Patch1:         systemd-208-pkgconfigdir.patch
+Patch2:         systemd-187-remove-display-manager.service.patch
 Patch3:         systemd-187-make-readahead-depend-on-sysinit.patch
-Patch4:         systemd-187-support-glob-EnvironmentFile.patch
-Patch5:         systemd-187-install-test-bin.patch
-Patch6:         systemd-187-remove-display-manager.service.patch
-Patch7:		systemd-187-fix-ftbfs.patch
+Patch4:         systemd-208-install-test-binaries.patch
 Provides:       udev = %{version}
 Obsoletes:      udev < 184 
+Provides:       systemd-sysv = %{version}
+Obsoletes:      systemd-sysv < %{version}
+Provides:       systemd-sysv-docs = %{version}
+Obsoletes:      systemd-sysv-docs < %{version}
+
+Provides:       systemd-console-ttyMFD2 = %{version}
+Obsoletes:      systemd-console-ttyMFD2 <= 187
+Provides:       systemd-console-ttyS0 = %{version}
+Obsoletes:      systemd-console-ttyS0 <= 187
+Provides:       systemd-console-ttyS1 = %{version}
+Obsoletes:      systemd-console-ttyS1 <= 187
+Provides:       systemd-console-tty01 = %{version}
+Obsoletes:      systemd-console-tty01 <= 187
+Provides:       systemd-console-ttyO2 = %{version}
+Obsoletes:      systemd-console-ttyO2 <= 187
+Provides:       systemd-console-ttyAMA0 = %{version}
+Obsoletes:      systemd-console-ttyAMA0 <= 187
 
 %description
 systemd is a system and service manager for Linux, compatible with
@@ -75,65 +88,27 @@ Obsoletes:  %{name}-tools <= 187
 This package installs the systemd-analyze tool, which allows one to
 inspect and graph service startup timing in table or graph format.
 
+%package libs
+Summary:        systemd libraries
+License:        LGPLv2+ and MIT
+Provides:       libudev = %{version}
+Obsoletes:      libudev < %{version}
+Obsoletes:      systemd <= 187
+Conflicts:      systemd <= 187
+
+%description libs
+Libraries for systemd and udev, as well as the systemd PAM module.
+
 %package devel
 Group:          System Environment/Base
 Summary:        Development headers for systemd
 License:        LGPLv2+ and MIT
 Requires:       %{name} = %{version}-%{release}
+Provides:       libudev-devel = %{version}
+Obsoletes:      libudev-devel < %{version}
 
 %description devel
 Development headers and auxiliary files for developing applications for systemd.
-
-%package console-ttyS0
-Summary:    Systemd console ttyS0
-Group:      System/System Control
-Requires:   %{name}
-
-%description console-ttyS0
-This package will setup a serial getty for ttyS0 is desired.
-
-
-%package console-ttyS1
-Summary:    Systemd console ttyS1
-Group:      System/System Control
-Requires:   %{name}
-
-%description console-ttyS1
-This package will setup a serial getty for ttyS1 is desired.
-
-
-%package console-tty01
-Summary:    Systemd console tty01
-Group:      System/System Control
-Requires:   %{name}
-
-%description console-tty01
-This package will setup a serial getty for tty01 is desired.
-
-
-%package console-ttyO2
-Summary:    Systemd console ttyO2
-Group:      System/System Control
-Requires:   %{name}
-
-%description console-ttyO2
-This package will setup a serial getty for ttyO2 is desired.
-
-%package console-ttyMFD2
-Summary:    Systemd console ttyMFD2
-Group:      System/System Control
-Requires:   %{name}
-
-%description console-ttyMFD2
-This package will setup a serial getty for ttyMFD2 is desired.
-
-%package console-ttyAMA0
-Summary:    Systemd console ttyAMA0
-Group:      System/System Control
-Requires:   %{name}
-
-%description console-ttyAMA0
-This package will setup a serial getty for ttyAMA0 is desired.
 
 %package docs
 Summary:   System and session manager man pages
@@ -152,24 +127,11 @@ Requires:  blts-tools
 %description tests
 This package includes tests for systemd.
 
-%package sysv-docs
-Summary:   System and session manager man pages - SysV links
-Group:     Development/Libraries
-Requires:  %{name} = %{version}-%{release}
-
-%description sysv-docs
-This package provides the manual pages needed for systemd
-to replace sysvinit.
-
-%package sysv
-Summary:   System and session manager - SysV links
-Group:     System/Startup Services
-Requires:  %{name} = %{version}-%{release}
-
 %package -n libgudev1
 Summary:        Libraries for adding libudev support to applications that use glib
 Group:          Development/Libraries
 Conflicts:      filesystem < 3
+Requires:       %{name} = %{version}-%{release}
 License:        LGPLv2+
 
 %description -n libgudev1
@@ -186,56 +148,25 @@ License:        LGPLv2+
 This package contains the header and pkg-config files for developing
 glib-based applications using libudev functionality.
 
-%package -n libudev
-Summary: Library for accessing udev functionality
-Group: Development/Libraries
-
-%description -n libudev
-This package contains a shared library for accesing libudev functionality.
-
-%package -n libudev-devel
-Summary: Headers for libudev
-Group: Development/Libraries
-Requires: libudev = %{version}-%{release}
-
-%description -n libudev-devel
-This package contains libraries and include files, 
-which needed to link against libudev.
-
-
-%description sysv
-Systemd is a replacement for sysvinit.  It is dependency-based and
-able to read the LSB init script headers in addition to parsing rcN.d
-links as hints.
-
-It also provides process supervision using cgroups and the ability to
-not only depend on other init script being started, but also
-availability of a given mount point or dbus service.
-
-This package provides the links needed for systemd
-to replace sysvinit.
-
 %prep
-%setup -q -n %{name}-%{version}
-%patch0 -p1 -b .pkgconfig
-%patch1 -p1 -R 
+%setup -q -n %{name}-%{version}/systemd
+%patch0 -p1
+%patch1 -p1
 %patch2 -p1
-%patch3 -p1 
+%patch3 -p1
 %patch4 -p1
-%patch5 -p1
-%patch6 -p1
-%patch7 -p1
 
 %build
-autoreconf 
+./autogen.sh
 %configure \
   --with-rootprefix= \
-  --with-rootlibdir=/%{_lib} \
-  --with-distro=other \
-  --with-pci-ids-path=/usr/share/hwdata/pci.ids \
   --disable-coredump \
   --disable-static \
-  --with-firmware-path=/lib/firmware/updates:/lib/firmware:/system/etc/firmware:/etc/firmware:/vendor/firmware:/firmware/image
+  --with-firmware-path=/lib/firmware/updates:/lib/firmware:/system/etc/firmware:/etc/firmware:/vendor/firmware:/firmware/image \
+  --disable-manpages \
+  --disable-python-devel \
+  --enable-tests
+
 make %{?_smp_mflags}
 
 %install
@@ -280,6 +211,14 @@ mkdir -p %{buildroot}%{_prefix}/lib/systemd/system-sleep/
 # Make sure the NTP units dir exists
 mkdir -p %{buildroot}%{_prefix}/lib/systemd/ntp-units.d/
 
+# Make sure directories in /var exist
+mkdir -p %{buildroot}%{_localstatedir}/lib/systemd/coredump
+mkdir -p %{buildroot}%{_localstatedir}/lib/systemd/catalog
+mkdir -p %{buildroot}%{_localstatedir}/log/journal
+touch %{buildroot}%{_localstatedir}/lib/systemd/catalog/database
+touch %{buildroot}%{_sysconfdir}/udev/hwdb.bin
+touch %{buildroot}%{_localstatedir}/lib/systemd/random-seed
+
 mkdir -p %{buildroot}%{_sysconfdir}/sysctl.d
 mkdir -p %{buildroot}%{_sysconfdir}/modules-load.d
 mkdir -p %{buildroot}%{_sysconfdir}/binfmt.d
@@ -294,24 +233,6 @@ install -D -m 644 %{SOURCE1} %{buildroot}/lib/systemd/system/systemd-stop-user-s
 mkdir -p %{buildroot}/lib/systemd/system/shutdown.target.wants
 ln -s ../systemd-stop-user-sessions.service %{buildroot}/lib/systemd/system/shutdown.target.wants/systemd-stop-user-sessions.service
 
-#console-ttyMFD2
-ln -s ../serial-getty@.service %{buildroot}/lib/systemd/system/getty.target.wants/serial-getty@ttyMFD2.service
-
-#console-ttyS0
-ln -s ../serial-getty@.service %{buildroot}/lib/systemd/system/getty.target.wants/serial-getty@ttyS0.service
-
-#console-ttyS1
-ln -s ../serial-getty@.service %{buildroot}/lib/systemd/system/getty.target.wants/serial-getty@ttyS1.service
-
-#console-tty01
-ln -s ../serial-getty@.service %{buildroot}/lib/systemd/system/getty.target.wants/serial-getty@tty01.service
-
-#console-ttyO2
-ln -s ../serial-getty@.service %{buildroot}/lib/systemd/system/getty.target.wants/serial-getty@ttyO2.service
-
-#console-ttyAMA0
-ln -s ../serial-getty@.service %{buildroot}/lib/systemd/system/getty.target.wants/serial-getty@ttyAMA0.service
-
 # Add systemctl-user helper script
 install -D -m 755 %{SOURCE3} %{buildroot}/bin/systemctl-user
 
@@ -321,22 +242,28 @@ install -D -m 755 %{SOURCE3} %{buildroot}/bin/systemctl-user
 install -d -m 755 %{buildroot}/opt/tests/systemd-tests
 install -m 644 %{SOURCE2} %{buildroot}/opt/tests/systemd-tests
 
+mkdir -p %{buildroot}/lib/security/
+mv %{buildroot}%{_libdir}/security/pam_systemd.so %{buildroot}/lib/security/pam_systemd.so
+
 %pre
-getent group cdrom >/dev/null || /usr/sbin/groupadd -g 11 cdrom || :
-getent group tape >/dev/null || /usr/sbin/groupadd -g 33 tape || :
-getent group dialout >/dev/null || /usr/sbin/groupadd -g 18 dialout || :
-getent group floppy >/dev/null || /usr/sbin/groupadd -g 19 floppy || :
-systemctl stop systemd-udev.service systemd-udev-control.socket systemd-udev-kernel.socket >/dev/null 2>&1 || :
+getent group cdrom >/dev/null 2>&1 || groupadd -r -g 11 cdrom >/dev/null 2>&1 || :
+getent group tape >/dev/null 2>&1 || groupadd -r -g 33 tape >/dev/null 2>&1 || :
+getent group dialout >/dev/null 2>&1 || groupadd -r -g 18 dialout >/dev/null 2>&1 || :
+getent group floppy >/dev/null 2>&1 || groupadd -r -g 19 floppy >/dev/null 2>&1 || :
+getent group systemd-journal >/dev/null 2>&1 || groupadd -r -g 190 systemd-journal 2>&1 || :
+
+systemctl stop systemd-udevd-control.socket systemd-udevd-kernel.socket systemd-udevd.service >/dev/null 2>&1 || :
 
 %post
-/sbin/ldconfig
-/bin/systemd-machine-id-setup > /dev/null 2>&1 || :
-/bin/systemctl daemon-reexec > /dev/null 2>&1 || :
+systemd-machine-id-setup >/dev/null 2>&1 || :
+/usr/lib/systemd/systemd-random-seed save >/dev/null 2>&1 || :
+systemctl daemon-reexec >/dev/null 2>&1 || :
+systemctl start systemd-udevd.service >/dev/null 2>&1 || :
+udevadm hwdb --update >/dev/null 2>&1 || :
+journalctl --update-catalog >/dev/null 2>&1 || :
 
-%postun -p /sbin/ldconfig
-
-%post -n libudev -p /sbin/ldconfig
-%postun -n libudev -p /sbin/ldconfig
+%post libs -p /sbin/ldconfig
+%postun libs -p /sbin/ldconfig
 
 %post -n libgudev1 -p /sbin/ldconfig
 %postun -n libgudev1 -p /sbin/ldconfig
@@ -351,23 +278,38 @@ systemctl stop systemd-udev.service systemd-udev-control.socket systemd-udev-ker
 %dir %{_sysconfdir}/sysctl.d
 %dir %{_sysconfdir}/modules-load.d
 %dir %{_sysconfdir}/binfmt.d
-%dir %{_sysconfdir}/bash_completion.d
 %dir %{_sysconfdir}/udev
 %dir %{_sysconfdir}/udev/rules.d
 %dir %{_prefix}/lib/systemd
+%dir %{_prefix}/lib/systemd/catalog
 %dir %{_prefix}/lib/tmpfiles.d
 %dir %{_prefix}/lib/sysctl.d
+%dir %{_prefix}/lib/modules-load.d
+%dir %{_prefix}/lib/binfmt.d
 %dir %{_datadir}/systemd
+%dir %{_localstatedir}/log/journal
+%dir %{_localstatedir}/lib/systemd
+%dir %{_localstatedir}/lib/systemd/catalog
+%dir %{_localstatedir}/lib/systemd/coredump
+%ghost %{_localstatedir}/lib/systemd/random-seed
+%ghost %{_localstatedir}/lib/systemd/catalog/database
+
+%{_localstatedir}/log/README
 %config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.systemd1.conf
 %config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.hostname1.conf
 %config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.login1.conf
 %config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.locale1.conf
 %config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.timedate1.conf
+%config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.machine1.conf
+%config(noreplace) %{_sysconfdir}/systemd/bootchart.conf
+%config(noreplace) %{_sysconfdir}/pam.d/systemd-user
+%ghost %{_sysconfdir}/udev/hwdb.bin
+%{_libdir}/rpm/macros.d/macros.systemd
+%{_sysconfdir}/init.d/README
 %config(noreplace) %{_sysconfdir}/xdg/systemd/user
-%config(noreplace) %{_sysconfdir}/bash_completion.d/systemd-bash-completion.sh
 %{_sysconfdir}/systemd/system/*
-%{_sysconfdir}/rpm/macros.systemd
 %{_libdir}/tmpfiles.d/*
+%{_libdir}/sysctl.d/50-default.conf
 %{_libdir}/systemd/user/*
 %dir /lib/udev/
 
@@ -381,7 +323,11 @@ systemctl stop systemd-udev.service systemd-udev-control.socket systemd-udev-ker
 /bin/systemd-machine-id-setup
 /bin/loginctl
 /bin/journalctl
+/bin/machinectl
 /bin/systemd-tmpfiles
+%{_bindir}/systemd-run
+/bin/udevadm
+%{_bindir}/kernel-install
 %{_bindir}/systemd-nspawn
 %{_bindir}/systemd-stdio-bridge
 %{_bindir}/systemd-cat
@@ -390,34 +336,57 @@ systemctl stop systemd-udev.service systemd-udev-control.socket systemd-udev-ker
 %{_bindir}/systemd-delta
 %{_bindir}/systemd-detect-virt
 /bin/systemd-inhibit
-%{_bindir}/udevadm
+%{_bindir}/hostnamectl
+%{_bindir}/localectl
+%{_bindir}/timedatectl
+%{_bindir}/bootctl
 %{_sbindir}/udevadm
 /%{_lib}/systemd
-/%{_lib}/security/pam_systemd.so
-/%{_lib}/libsystemd-daemon.so.*
-/%{_lib}/libsystemd-login.so.*
-/%{_lib}/libsystemd-journal.so.*
-/%{_lib}/libsystemd-id128.so.*
 %{_datadir}/dbus-1/*/org.freedesktop.systemd1.*
 %{_defaultdocdir}/systemd
 %{_datadir}/dbus-1/system-services/org.freedesktop.hostname1.service
 %{_datadir}/dbus-1/system-services/org.freedesktop.login1.service
 %{_datadir}/dbus-1/system-services/org.freedesktop.locale1.service
 %{_datadir}/dbus-1/system-services/org.freedesktop.timedate1.service
+%{_datadir}/dbus-1/system-services/org.freedesktop.machine1.service
 %{_datadir}/dbus-1/interfaces/org.freedesktop.hostname1.xml
 %{_datadir}/dbus-1/interfaces/org.freedesktop.locale1.xml
 %{_datadir}/dbus-1/interfaces/org.freedesktop.timedate1.xml
 %{_datadir}/polkit-1/actions/org.freedesktop.systemd1.policy
+%{_datadir}/polkit-1/actions/org.freedesktop.hostname1.policy
 %{_datadir}/polkit-1/actions/org.freedesktop.login1.policy
 %{_datadir}/polkit-1/actions/org.freedesktop.locale1.policy
 %{_datadir}/polkit-1/actions/org.freedesktop.timedate1.policy
-%{_datadir}/polkit-1/actions/org.freedesktop.hostname1.policy
+%{_datadir}/bash-completion/completions/hostnamectl
+%{_datadir}/bash-completion/completions/journalctl
+%{_datadir}/bash-completion/completions/localectl
+%{_datadir}/bash-completion/completions/loginctl
+%{_datadir}/bash-completion/completions/systemctl
+%{_datadir}/bash-completion/completions/timedatectl
+%{_datadir}/bash-completion/completions/udevadm
+%{_datadir}/bash-completion/completions/systemd-analyze
+%{_datadir}/bash-completion/completions/kernel-install
+%{_datadir}/bash-completion/completions/systemd-run
+%{_datadir}/zsh/site-functions/*
+
+/usr/lib/systemd/catalog/systemd.catalog
+/usr/lib/kernel/install.d/50-depmod.install
+/usr/lib/kernel/install.d/90-loaderentry.install
+
+%{_sbindir}/halt
+/sbin/init
+%{_sbindir}/poweroff
+%{_sbindir}/reboot
+%{_sbindir}/runlevel
+%{_sbindir}/shutdown
+%{_sbindir}/telinit
+
 %{_datadir}/systemd/kbd-model-map
 # Just make sure we don't package these by default
-%exclude /lib/systemd/system/getty.target.wants/serial-getty@*.service
 %exclude /lib/systemd/system/default.target
 %exclude %{_libdir}/systemd/user/default.target
 %exclude %{_sysconfdir}/systemd/system/multi-user.target.wants/remote-fs.target
+%exclude /lib/systemd/system/user@.service
 
 %files config-mer
 %defattr(-,root,root,-)
@@ -427,84 +396,55 @@ systemctl stop systemd-udev.service systemd-udev-control.socket systemd-udev-ker
 %config(noreplace) %{_sysconfdir}/systemd/user.conf
 %config(noreplace) %{_sysconfdir}/udev/udev.conf
 /lib/systemd/system/default.target
+/lib/systemd/system/user@.service
 
 %files docs
 %defattr(-,root,root,-)
-%doc %{_mandir}/man?/*
+#%doc %{_mandir}/man?/*
 
 %files tests
 %defattr(-,root,root,-)
 /opt/tests/systemd-tests/tests.xml
-/opt/tests/systemd-tests/bin/*
-
-%files console-ttyMFD2
-%defattr(-,root,root,-)
-/lib/systemd/system/getty.target.wants/serial-getty@ttyMFD2.service
-
-%files console-ttyS0
-%defattr(-,root,root,-)
-/lib/systemd/system/getty.target.wants/serial-getty@ttyS0.service
-
-%files console-ttyS1
-%defattr(-,root,root,-)
-/lib/systemd/system/getty.target.wants/serial-getty@ttyS1.service
-
-%files console-tty01
-%defattr(-,root,root,-)
-/lib/systemd/system/getty.target.wants/serial-getty@tty01.service
-
-%files console-ttyO2
-%defattr(-,root,root,-)
-/lib/systemd/system/getty.target.wants/serial-getty@ttyO2.service
-
-%files console-ttyAMA0
-%defattr(-,root,root,-)
-/lib/systemd/system/getty.target.wants/serial-getty@ttyAMA0.service
+/opt/tests/systemd-tests/bin/test-*
 
 %files analyze
 %defattr(-,root,root,-)
 %{_bindir}/systemd-analyze
 
+%files libs
+/lib/security/pam_systemd.so
+%{_libdir}/libnss_myhostname.so.2
+%{_libdir}/libsystemd-daemon.so.*
+%{_libdir}/libsystemd-login.so.*
+%{_libdir}/libsystemd-journal.so.*
+%{_libdir}/libsystemd-id128.so.*
+%{_libdir}/libudev.so.*
+
 %files devel
-%defattr(-,root,root,-)
-%{_includedir}/systemd/*.h
+%dir %{_includedir}/systemd
 %{_libdir}/libsystemd-daemon.so
 %{_libdir}/libsystemd-login.so
 %{_libdir}/libsystemd-journal.so
 %{_libdir}/libsystemd-id128.so
-%{_libdir}/pkgconfig/libsystemd-*.pc
-%{_libdir}/pkgconfig/systemd.pc
-
-%files sysv
-%defattr(-,root,root,-)
-%{_sbindir}/halt
-/sbin/init
-%{_sbindir}/poweroff
-%{_sbindir}/reboot
-%{_sbindir}/runlevel
-%{_sbindir}/shutdown
-%{_sbindir}/telinit
-
-%files sysv-docs
-%defattr(-,root,root,-)
-%doc %{_mandir}/man?/*
-
-%files -n libudev
-%defattr(0644, root, root, 0755)
-%attr(0755,root,root) /%{_lib}/libudev.so.*
-
-%files -n libudev-devel
-%defattr(0644, root, root, 0755)
-%attr(0644,root,root) %{_mandir}/man8/udev*.8*
-%attr(0644,root,root) %{_mandir}/man7/udev*.7*
-%{_includedir}/libudev.h
 %{_libdir}/libudev.so
+%{_includedir}/systemd/sd-daemon.h
+%{_includedir}/systemd/sd-login.h
+%{_includedir}/systemd/sd-journal.h
+%{_includedir}/systemd/sd-id128.h
+%{_includedir}/systemd/sd-messages.h
+%{_includedir}/systemd/sd-shutdown.h
+%{_includedir}/libudev.h
+%{_libdir}/pkgconfig/libsystemd-daemon.pc
+%{_libdir}/pkgconfig/libsystemd-login.pc
+%{_libdir}/pkgconfig/libsystemd-journal.pc
+%{_libdir}/pkgconfig/libsystemd-id128.pc
 %{_libdir}/pkgconfig/libudev.pc
+%{_libdir}/pkgconfig/systemd.pc
 %{_libdir}/pkgconfig/udev.pc
 
 %files -n libgudev1
 %defattr(-,root,root,-)
-%attr(0755,root,root) /%{_lib}/libgudev-1.0.so.*
+%attr(0755,root,root) %{_libdir}/libgudev-1.0.so.*
 
 %files -n libgudev1-devel
 %defattr(-,root,root,-)

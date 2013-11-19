@@ -1,0 +1,27 @@
+diff --git a/Makefile.am b/Makefile.am
+index 8d9c587..5622ffa 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -96,6 +96,7 @@ udevrulesdir=$(udevlibexecdir)/rules.d
+ udevhwdbdir=$(udevlibexecdir)/hwdb.d
+ catalogdir=$(prefix)/lib/systemd/catalog
+ kernelinstalldir = $(prefix)/lib/kernel/install.d
++testbindir = /opt/tests/systemd-tests/bin
+ 
+ # And these are the special ones for /
+ rootprefix=@rootprefix@
+@@ -132,11 +133,12 @@ check_PROGRAMS =
+ check_DATA =
+ tests=
+ manual_tests =
++noinst_PROGRAMS =
+ if ENABLE_TESTS
+-noinst_PROGRAMS = $(manual_tests) $(tests)
++testbin_PROGRAMS = $(manual_tests) $(tests)
+ TESTS = $(tests)
+ else
+-noinst_PROGRAMS =
++testbin_PROGRAMS =
+ TESTS =
+ endif
+ udevlibexec_PROGRAMS =
