@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testdefinition version="1.0">
+  <suite name="systemd-tests" domain="System Control">
+    <set name="Systemd upstream tests" description="Systemd upstream tests" feature="Systemd">
+      <case name="test-cgroup">
+        <step> /opt/tests/systemd-tests/bin/test-cgroup </step>
+      </case>
+      <case name="test-daemon">
+        <step> /opt/tests/systemd-tests/bin/test-daemon </step>
+      </case>
+      <case name="test-engine">
+        <step> /opt/tests/systemd-tests/bin/test-engine </step>
+      </case>
+      <case name="test-env-replace">
+        <step> /opt/tests/systemd-tests/bin/test-env-replace </step>
+      </case>
+      <case name="test-id128">
+        <step> /opt/tests/systemd-tests/bin/test-id128 </step>
+      </case>
+      <case name="test-inhibit">
+        <step> /opt/tests/systemd-tests/bin/test-inhibit </step>
+      </case>
+      <case name="test-job-type">
+        <step> /opt/tests/systemd-tests/bin/test-job-type </step>
+      </case>
+      <case name="test-journal">
+        <step> /opt/tests/systemd-tests/bin/test-journal </step>
+      </case>
+      <case name="test-journal-match">
+        <step> /opt/tests/systemd-tests/bin/test-journal-match </step>
+      </case>
+      <case name="test-journal-send">
+        <step> /opt/tests/systemd-tests/bin/test-journal-send </step>
+      </case>
+      <case name="test-journal-stream">
+        <step> /opt/tests/systemd-tests/bin/test-journal-stream </step>
+      </case>
+      <case name="test-loopback">
+        <step> /opt/tests/systemd-tests/bin/test-loopback </step>
+      </case>
+      <case name="test-strv">
+        <step> /opt/tests/systemd-tests/bin/test-strv </step>
+      </case>
+      <case name="test-unit-name">
+        <step> /opt/tests/systemd-tests/bin/test-unit-name </step>
+      </case>
+      <case name="test-watchdog">
+        <step> /usr/sbin/run-blts-root systemctl stop dsme.service </step>
+        <step> /usr/sbin/run-blts-root /opt/tests/systemd-tests/bin/test-watchdog </step>
+        <step> /usr/sbin/run-blts-root systemctl start dsme.service </step>
+        <step> /usr/sbin/run-blts-root systemctl start mce.service </step>
+      </case>
+    </set>
+  </suite>
+</testdefinition>

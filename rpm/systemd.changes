@@ -1,0 +1,161 @@
+* Sat Oct 19 2013 Carsten Munk <carsten.munk@jollamobile.com> - 187
+- configure.ac: fix FTBFS with new glibc
+
+* Wed Jun 26 2013 Carsten Munk <carsten.munk@jollamobile.com> - 187
+- Add traditional droid paths to firmware searches
+
+* Mon June 17 2013 Pekka Lundstrom <pekka.lundstrom@jollamobile.com> - 187
+- Systemd config files separated to new package called systemd-config-mer
+  Vendors can replace this package with their own configuration by 
+  having a package that "Provides:   systemd-config"
+- default.target is also moved into this config package
+- Removed link /etc/systemd/system/multi-user.target.wants/remote-fs.target
+- Removed need for display-manager.service in graphical.target
+
+* Mon June 10 2013 Pekka Lundstrom <pekka.lundstrom@jollamobile.com> - 187
+- Added helper script systemctl-user
+  It can be used to run "systemctl --user" commands when logged in as root
+
+* Fri Apr 19 2013 Matti Kosola <matti.kosola@jollamobile.com> - 187
+- Add test package for upstream tests with tests.xml
+
+* Wed Jan 02 2013 Pekka Lundstrom <pekka.lundstrom@jollamobile.com> - 187
+- EnvironmentDir support is replaced with globbing support in EnvironmentFile
+  deleted systemd-187-support-env-dirs.patch
+  added systemd-187-support-glob-EnvironmentFile.patch
+  Fixes MER#640 : systemd .service files should support EnvironmentDir option
+
+* Mon Nov 26 2012 Pekka Lundstrom <pekka.lundstrom@jollamobile.com> - 187
+- Added support for EnvironmentDir in .service files.
+  systemd-187-support-env-dirs.patch
+  Fixes MER#640 : systemd .service files should support EnvironmentDir option
+
+* Sun Nov 11 2012 Marko Saukko <makro.saukko@jollamobile.com> - 187
+- Renamed -tools package to -analyze.
+- Fixes MER#82: Change pycairo to python-cairo dependency in -analyze.
+
+* Tue Oct 23 2012 Carsten Munk <carsten.munk@jollamobile.com> - 187
+- Disable collecting core dumps in journal
+- Add systemd-187-make-readahead-depend-on-sysinit.patch by Thilo Fromm to sort out readahead
+
+* Thu Oct 11 2012 Pekka Lundstrom <pekka.lundstrom@jollamobile.com> - 187
+- Added file /lib/systemd/system/systemd-stop-user-sessions.service
+  Fixes NEMO#502: Shutdown is not working properly when systemd user session is used 
+
+* Mon Aug 27 2012 Marko Saukko <marko.saukko@jollamobile.com> - 187
+- Fix tty1 autostart by excluding the file in /etc/systemd/system/getty.target.wants/
+
+* Tue Aug 23 2012 Carsten Munk <carsten.munk@jollamobile.com> - 187
+- Prep for user sessions:
+  - make sure video owns tty and input devices, for xorg startup
+  - don't start tty1 automatically
+  - exclude /usr/lib/systemd/user/default.target - vendors provide that
+
+* Tue Aug 14 2012 Marko Saukko <marko.saukko@jollamobile.com> - 187
+- Require network.target with multi-user.target.
+
+* Tue Jul 31 2012 Marko Saukko <marko.saukko@jollamobile.com> - 187
+- Added systemd-187-reintroduce-support-for-deprecated-oom.patch to
+  readd support for older kernels.
+
+* Tue Jul 24 2012 Marko Saukko <marko.saukko@jollamobile.com> - 187
+- Require util-linux >= 2.21.2 because of fsck.
+
+* Fri Jul 20 2012 Marko Saukko <marko.saukko@jollamobile.com> - 187
+- Updated to version 187
+- Require filesystem >= 3 as /run was moved to that package.
+
+* Thu Jun 28 2012 Carsten Munk <carsten.munk@gmail.com> - 185
+- Fixes MER#364: Upgrade to 185, now includes udev 
+
+* Thu Feb 09 2012 Marko Saukko <marko.saukko@gmail.com> - 41
+- Fixes MER#114: Update systemd to newer version
+
+* Sun Jan 22 2012 Carsten Munk <carsten.munk@gmail.com> - 37
+- Add ttyAMA0 system console ability
+
+* Wed Nov 23 2011 David Greaves <david@dgreaves.com> - 37
+- Restore /run directory
+
+* Thu Nov 17 2011 Marko Saukko <marko.saukko@cybercom.com> - 37
+- Moved consoles from sysinit.target.wants to getty.target.wants
+
+* Wed Nov 09 2011 David Greaves <david@dgreaves.com> - 37
+- New upstream version 37
+- ExecStart patch accepted upstream
+- kbd-model-map packaged
+
+* Mon Sep 05 2011 Marko Saukko <marko.saukko@cybercom.com> - 35
+- Added systemd-35-execstart-line-rescue-service.patch to
+  fix multiple ExecStart lines in rescue.service.
+
+* Fri Sep 02 2011 Marko Saukko <marko.saukko@cybercom.com> - 35
+- Update to version 35
+- Removed hwclock-load.service link creation as destination does not exist anymore.
+- Moved %fdupes under %install to fix BMC#22706
+
+* Mon Aug 22 2011 Carsten Munk <carsten@maemo.org> - 30
+- Remove libnotify dependancy, drags in gtk+ and other
+  things.
+
+* Wed Jul 20 2011 Auke Kok <auke-jan.h.kok@intel.com> - 30
+- Cosmetic cleanups
+- Disabling internal logger as it's nonfunctional - we'll fall
+  back to dmesg logging only for now.
+- With systemd-loginctl we no longer need to pre-activate tty2
+- Vala isn't needed to build because we disable building the gtk UI app.
+- Fix several rpmlint warnings (perms, %config out of place).
+- Fix rpm group names.
+- Rename -analyze subpackage to -tools. There will likely be more dev tools coming.
+- Enable ACL dependency, we really want to use it going forward.
+- Run %fdupes.
+
+- Disable tcp_wrappers dependency as we don't use it in MeeGo.
+
+* Thu Jul 14 2011 Chris Ferron <chris.e.ferron@linux.intel.com> - 30
+- updated to version 30, and udpate patch set in MeeGo. 
+
+* Fri Jul 01 2011 Chris Ferron <chris.e.ferron@linux.intel.com> - 29
+- added install alias to serial-getty unit file
+
+* Thu Jun 30 2011 Chris Ferron <chris.e.ferron@linux.intel.com> - 29
+- BMC#18652 - Separate packages for hardware adaptation serials
+
+* Wed Jun 22 2011 Chris Ferron <chris.e.ferron@linux.intel.com> - 29
+- removed provides and obsolete of removed packages as they are not needed
+
+* Thu Jun 16 2011 Chris Ferron <chris.e.ferron@linux.intel.com> - 29
+- updated to 29
+
+* Tue Jun 14 2011 Chris Ferron <chris.e.ferron@linux.intel.com> - 28
+- udpate to 28
+
+* Mon Jun 06 2011 Chris Ferron <chris.e.ferron@linux.intel.com> - 26
+- split out the systemd man pages into separate subpackages
+
+* Sun May 22 2011 Auke Kok <auke-jan.h.kok@intel.com> - 26
+- split out the systemd-analyze tool into a separate subpackage, as it
+  requires python/pycairo to run
+
+* Fri May 13 2011 William Douglas <william.douglas@linux.intel.com> - 25
+- Update to 26
+- add a syslog daemon inside systemd
+
+* Wed May 11 2011 Chris Ferron <chris.e.ferron@linux.intel.com> - 25
+- sysvinit hack until sysvinit get removed
+
+* Wed May 04 2011 Chris Ferron <chris.e.ferron@linux.intel.com> - 25
+- Update to -25
+
+* Thu Apr 07 2011 Chris Ferron <chris.e.ferron@linux.intel.com> -24
+- Update to -24
+
+* Fri Apr 01 2011 Chris Ferron <chris.e.ferron@linux.intel.com> -22
+- Update to -22
+- Initial Port work for MeeGo 
+
+* Mon Mar 28 2011 Auke Kok <auke-jan.h.kok@intel.com> - 20
+- Updated to -20
+
+* Mon Nov 08 2010 - Autospectacle <autospectacle@meego.com> - 11
+- Initial automated packaging

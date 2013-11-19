@@ -1,0 +1,39 @@
+#!/bin/sh
+#
+#  This file is part of systemd.
+#
+#  Copyright (C) 2013 Jolla Ltd.
+#  Contact: Pekka Lundstrom  <pekka.lundstrom@jolla.com>
+#
+#  systemd is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU Lesser General Public License as published by
+#  the Free Software Foundation; either version 2.1 of the License, or
+#  (at your option) any later version.
+#
+#  systemd is distributed in the hope that it will be useful, but
+#  WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+#  Lesser General Public License for more details.
+#
+#  You should have received a copy of the GNU Lesser General Public License
+#  along with systemd; If not, see <http://www.gnu.org/licenses/>.
+#  ------------------------
+#
+# This is helper script that can be used to run systemctl commands on user 
+# session when logged in as root
+# It scans all running sessions and runs the command for each user
+# Usage:
+# systemctl-user <any systemctl command with parameters>
+# example:
+# systemctl-user stop myapp.service
+
+RUNNING_USERS=$(ps axu | grep "/lib/systemd/systemd --user" | grep -v grep | tr -s " ")
+[ -z "$RUNNING_USERS" ] && echo "systemd user session is not running" && exit 1
+USER_NAMES=$(echo "$RUNNING_USERS" | cut -d " " -f1)
+MY_ARGS=$@
+for U_NAME in $USER_NAMES; do
+    #echo "$U_NAME: systemctl --user $MY_ARGS"
+    su -l $U_NAME -c "systemctl --user $MY_ARGS"
+done
+
+
