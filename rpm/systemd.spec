@@ -245,6 +245,14 @@ install -m 644 %{SOURCE2} %{buildroot}/opt/tests/systemd-tests
 mkdir -p %{buildroot}/lib/security/
 mv %{buildroot}%{_libdir}/security/pam_systemd.so %{buildroot}/lib/security/pam_systemd.so
 
+# systemd macros
+# Old rpm versions assume macros in /etc/rpm/
+# New ones support /usr/lib/rpm/macros.d/
+# Systemd naturually uses later one
+# But we support both by adding link
+mkdir -p %{buildroot}%{_sysconfdir}/rpm
+ln -s %{_libdir}/rpm/macros.d/macros.systemd %{buildroot}%{_sysconfdir}/rpm/macros.systemd
+
 %pre
 getent group cdrom >/dev/null 2>&1 || groupadd -r -g 11 cdrom >/dev/null 2>&1 || :
 getent group tape >/dev/null 2>&1 || groupadd -r -g 33 tape >/dev/null 2>&1 || :
@@ -305,6 +313,7 @@ journalctl --update-catalog >/dev/null 2>&1 || :
 %config(noreplace) %{_sysconfdir}/pam.d/systemd-user
 %ghost %{_sysconfdir}/udev/hwdb.bin
 %{_libdir}/rpm/macros.d/macros.systemd
+%{_sysconfdir}/rpm/macros.systemd
 %{_sysconfdir}/init.d/README
 %config(noreplace) %{_sysconfdir}/xdg/systemd/user
 %{_sysconfdir}/systemd/system/*
