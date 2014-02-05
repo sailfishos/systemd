@@ -27,11 +27,12 @@
 # example:
 # systemctl-user stop myapp.service
 
-RUNNING_USERS=$(ps axu | grep "/lib/systemd/systemd --user" | grep -v grep | tr -s " ")
-[ -z "$RUNNING_USERS" ] && echo "systemd user session is not running" && exit 1
-USER_NAMES=$(echo "$RUNNING_USERS" | cut -d " " -f1)
+# Get all running systemd user sessions
+SESSION_PIDS=$(pidof systemd | cut -sd " " -f2-)
+[ -z "$SESSION_PIDS" ] && echo "systemd user session is not running" && exit 1
 MY_ARGS=$@
-for U_NAME in $USER_NAMES; do
+for PID in $SESSION_PIDS; do
+    U_NAME=$(ps -o user= $PID)
     #echo "$U_NAME: systemctl --user $MY_ARGS"
     su -l $U_NAME -c "systemctl --user $MY_ARGS"
 done
