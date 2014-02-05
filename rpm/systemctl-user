@@ -27,6 +27,9 @@
 # example:
 # systemctl-user stop myapp.service
 
+# First check that we are running in env where this works 
+# (rpm build envs don't have all tools)
+which pidof &> /dev/null && which cut &> /dev/null && which ps &> /dev/null || exit 1
 # Get all running systemd user sessions
 SESSION_PIDS=$(pidof systemd | cut -sd " " -f2-)
 [ -z "$SESSION_PIDS" ] && echo "systemd user session is not running" && exit 1
