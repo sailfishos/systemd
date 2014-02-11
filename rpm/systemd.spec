@@ -303,7 +303,6 @@ journalctl --update-catalog >/dev/null 2>&1 || :
 %config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.locale1.conf
 %config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.timedate1.conf
 %config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.machine1.conf
-%config(noreplace) %{_sysconfdir}/systemd/bootchart.conf
 %config(noreplace) %{_sysconfdir}/pam.d/systemd-user
 %ghost %{_sysconfdir}/udev/hwdb.bin
 %{_libdir}/rpm/macros.d/macros.systemd
@@ -398,6 +397,7 @@ journalctl --update-catalog >/dev/null 2>&1 || :
 %config(noreplace) %{_sysconfdir}/systemd/system.conf
 %config(noreplace) %{_sysconfdir}/systemd/user.conf
 %config(noreplace) %{_sysconfdir}/udev/udev.conf
+%config(noreplace) %{_sysconfdir}/systemd/bootchart.conf
 /lib/systemd/system/default.target
 /lib/systemd/system/user@.service
 
