@@ -2,23 +2,47 @@
 <testdefinition version="1.0">
   <suite name="systemd-tests" domain="System Control">
     <set name="Systemd upstream tests" description="Systemd upstream tests" feature="Systemd">
-      <case name="test-cgroup">
-        <step> /opt/tests/systemd-tests/bin/test-cgroup </step>
+      <case name="test-bus-chat">
+        <step> /opt/tests/systemd-tests/bin/test-bus-chat </step>
+      </case>
+      <case name="test-bus-marshal">
+        <step> /opt/tests/systemd-tests/bin/test-bus-marshal </step>
+      </case>
+      <case name="test-bus-match">
+        <step> /opt/tests/systemd-tests/bin/test-bus-match </step>
+      </case>
+      <case name="test-bus-server">
+        <step> /opt/tests/systemd-tests/bin/test-bus-server </step>
+      </case>
+      <case name="test-calendarspec">
+        <step> /opt/tests/systemd-tests/bin/test-calendarspec </step>
+      </case>
+      <case name="test-cgroup-util">
+        <step> /opt/tests/systemd-tests/bin/test-cgroup-util </step>
       </case>
       <case name="test-daemon">
         <step> /opt/tests/systemd-tests/bin/test-daemon </step>
       </case>
-      <case name="test-engine">
-        <step> /opt/tests/systemd-tests/bin/test-engine </step>
+      <case name="test-date">
+        <step> /opt/tests/systemd-tests/bin/test-date </step>
       </case>
-      <case name="test-env-replace">
-        <step> /opt/tests/systemd-tests/bin/test-env-replace </step>
+      <case name="test-device-nodes">
+        <step> /opt/tests/systemd-tests/bin/test-device-nodes </step>
+      </case>
+      <case name="test-fileio">
+        <step> /opt/tests/systemd-tests/bin/test-fileio </step>
+      </case>
+      <case name="test-hashmap">
+        <step> /opt/tests/systemd-tests/bin/test-hashmap </step>
+      </case>
+      <case name="test-hostname">
+        <step> /usr/sbin/run-blts-root /opt/tests/systemd-tests/bin/test-hostname </step>
       </case>
       <case name="test-id128">
         <step> /opt/tests/systemd-tests/bin/test-id128 </step>
       </case>
       <case name="test-inhibit">
-        <step> /opt/tests/systemd-tests/bin/test-inhibit </step>
+        <step> /usr/sbin/run-blts-root /opt/tests/systemd-tests/bin/test-inhibit </step>
       </case>
       <case name="test-job-type">
         <step> /opt/tests/systemd-tests/bin/test-job-type </step>
@@ -26,23 +50,62 @@
       <case name="test-journal">
         <step> /opt/tests/systemd-tests/bin/test-journal </step>
       </case>
+      <case name="test-journal-enum">
+        <step> /opt/tests/systemd-tests/bin/test-journal-enum </step>
+      </case>
+      <case name="test-journal-init">
+        <step> /opt/tests/systemd-tests/bin/test-journal-init </step>
+      </case>
+      <case name="test-journal-interleaving">
+        <step> /opt/tests/systemd-tests/bin/test-journal-interleaving </step>
+      </case>
       <case name="test-journal-match">
         <step> /opt/tests/systemd-tests/bin/test-journal-match </step>
       </case>
       <case name="test-journal-send">
         <step> /opt/tests/systemd-tests/bin/test-journal-send </step>
       </case>
-      <case name="test-journal-stream">
-        <step> /opt/tests/systemd-tests/bin/test-journal-stream </step>
+      <case name="test-journal-verify">
+        <step> /opt/tests/systemd-tests/bin/test-journal-verify </step>
       </case>
-      <case name="test-loopback">
-        <step> /opt/tests/systemd-tests/bin/test-loopback </step>
+      <case name="test-list">
+        <step> /opt/tests/systemd-tests/bin/test-list </step>
+      </case>
+      <case name="test-login-tables">
+        <step> /opt/tests/systemd-tests/bin/test-login-tables </step>
+      </case>
+      <case name="test-machine-tables">
+        <step> /opt/tests/systemd-tests/bin/test-machine-tables </step>
+      </case>
+      <case name="test-path-util">
+        <step> /opt/tests/systemd-tests/bin/test-path-util </step>
+      </case>
+      <case name="test-replace-var">
+        <step> /opt/tests/systemd-tests/bin/test-replace-var </step>
+      </case>
+      <case name="test-sleep">
+        <step> /opt/tests/systemd-tests/bin/test-sleep </step>
+      </case>
+      <case name="test-strip-tab-ansi">
+        <step> /opt/tests/systemd-tests/bin/test-strip-tab-ansi </step>
       </case>
       <case name="test-strv">
         <step> /opt/tests/systemd-tests/bin/test-strv </step>
       </case>
+      <case name="test-tables">
+        <step> /opt/tests/systemd-tests/bin/test-tables </step>
+      </case>
+      <case name="test-time">
+        <step> /opt/tests/systemd-tests/bin/test-time </step>
+      </case>
+      <case name="test-unit-file">
+        <step> /opt/tests/systemd-tests/bin/test-unit-file </step>
+      </case>
       <case name="test-unit-name">
-        <step> /opt/tests/systemd-tests/bin/test-unit-name </step>
+        <step> /usr/sbin/run-blts-root /opt/tests/systemd-tests/bin/test-unit-name </step>
+      </case>
+      <case name="test-util">
+        <step> /usr/sbin/run-blts-root /opt/tests/systemd-tests/bin/test-util </step>
       </case>
       <case name="test-watchdog">
         <step> /usr/sbin/run-blts-root systemctl stop dsme.service </step>
