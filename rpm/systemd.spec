@@ -232,7 +232,7 @@ rm %{buildroot}/%{_docdir}/systemd/*
 mkdir -p %{buildroot}/etc/systemd/system/basic.target.wants
 
 # Add systemctl-user helper script
-install -D -m 755 %{SOURCE3} %{buildroot}/bin/systemctl-user
+install -D -m 754 %{SOURCE3} %{buildroot}/bin/systemctl-user
 
 %fdupes  %{buildroot}/%{_datadir}/man/
 
