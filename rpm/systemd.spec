@@ -39,6 +39,7 @@ Patch5:         systemd-208-configure-timeout.patch
 Patch6:         systemd-208-configure-start-limit.patch
 Patch7:         systemd-208-fix-restart.patch
 Patch8:         systemd-208-count-only-restarts.patch
+Patch9:         systemd-208-do-not-pull-4-megs-from-stack-for-journal-send-test.patch
 Provides:       udev = %{version}
 Obsoletes:      udev < 184 
 Provides:       systemd-sysv = %{version}
@@ -162,6 +163,7 @@ glib-based applications using libudev functionality.
 %patch6 -p1
 %patch7 -p1
 %patch8 -p1
+%patch9 -p1
 
 %build
 ./autogen.sh

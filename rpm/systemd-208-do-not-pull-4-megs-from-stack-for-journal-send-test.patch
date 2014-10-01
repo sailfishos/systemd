@@ -1,0 +1,28 @@
+From 74026f8bd1ce3a7fd4eb4f4872ef091fa15b5992 Mon Sep 17 00:00:00 2001
+From: Matti Kosola <matti.kosola@jolla.com>
+Date: Wed, 1 Oct 2014 14:54:22 +0300
+Subject: [PATCH] Do not pull 4 megs from stack for journal send test
+
+Signed-off-by: Matti Kosola <matti.kosola@jolla.com>
+---
+ src/journal/test-journal-send.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/src/journal/test-journal-send.c b/src/journal/test-journal-send.c
+index 3e986ed..7aa913f 100644
+--- a/src/journal/test-journal-send.c
++++ b/src/journal/test-journal-send.c
+@@ -25,8 +25,9 @@
+ 
+ #include "log.h"
+ 
++static char huge[4096*1024];
++
+ int main(int argc, char *argv[]) {
+-        char huge[4096*1024];
+ 
+         log_set_max_level(LOG_DEBUG);
+ 
+-- 
+1.9.1
+
