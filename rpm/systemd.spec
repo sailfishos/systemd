@@ -200,6 +200,8 @@ mkdir -p %{buildroot}/lib/systemd/system/default.target.wants
 mkdir -p %{buildroot}/lib/systemd/system/dbus.target.wants
 mkdir -p %{buildroot}/lib/systemd/system/getty.target.wants
 mkdir -p %{buildroot}/lib/systemd/system/syslog.target.wants
+mkdir -p %{buildroot}/lib/systemd/system/graphical.target.wants
+mkdir -p %{buildroot}/lib/systemd/system/network.target.wants
 
 # enable readahead by default
 ln -s ../systemd-readahead-collect.service %{buildroot}/lib/systemd/system/sysinit.target.wants/systemd-readahead-collect.service
@@ -307,6 +309,7 @@ journalctl --update-catalog >/dev/null 2>&1 || :
 %ghost %{_localstatedir}/lib/systemd/catalog/database
 
 %{_localstatedir}/log/README
+%dir %{_sysconfdir}/dbus-1/system.d
 %config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.systemd1.conf
 %config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.hostname1.conf
 %config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.login1.conf
@@ -317,11 +320,14 @@ journalctl --update-catalog >/dev/null 2>&1 || :
 %ghost %{_sysconfdir}/udev/hwdb.bin
 %{_libdir}/rpm/macros.d/macros.systemd
 %{_sysconfdir}/rpm/macros.systemd
+%dir %{_sysconfdir}/init.d
 %{_sysconfdir}/init.d/README
+%dir %{_sysconfdir}/xdg/systemd
 %config(noreplace) %{_sysconfdir}/xdg/systemd/user
 %{_sysconfdir}/systemd/system/*
 %{_libdir}/tmpfiles.d/*
 %{_libdir}/sysctl.d/50-default.conf
+%dir %{_libdir}/systemd/user
 %{_libdir}/systemd/user/*
 %dir /lib/udev/
 
@@ -369,6 +375,8 @@ journalctl --update-catalog >/dev/null 2>&1 || :
 %{_datadir}/polkit-1/actions/org.freedesktop.login1.policy
 %{_datadir}/polkit-1/actions/org.freedesktop.locale1.policy
 %{_datadir}/polkit-1/actions/org.freedesktop.timedate1.policy
+%dir %{_datadir}/bash-completion
+%dir %{_datadir}/bash-completion/completions
 %{_datadir}/bash-completion/completions/hostnamectl
 %{_datadir}/bash-completion/completions/journalctl
 %{_datadir}/bash-completion/completions/localectl
@@ -379,9 +387,13 @@ journalctl --update-catalog >/dev/null 2>&1 || :
 %{_datadir}/bash-completion/completions/systemd-analyze
 %{_datadir}/bash-completion/completions/kernel-install
 %{_datadir}/bash-completion/completions/systemd-run
+%dir %{_datadir}/zsh
+%dir %{_datadir}/zsh/site-functions
 %{_datadir}/zsh/site-functions/*
 
 /usr/lib/systemd/catalog/systemd.catalog
+%dir /usr/lib/kernel
+%dir /usr/lib/kernel/install.d
 /usr/lib/kernel/install.d/50-depmod.install
 /usr/lib/kernel/install.d/90-loaderentry.install
 
@@ -417,7 +429,9 @@ journalctl --update-catalog >/dev/null 2>&1 || :
 
 %files tests
 %defattr(-,root,root,-)
+%dir /opt/tests/systemd-tests
 /opt/tests/systemd-tests/tests.xml
+%dir /opt/tests/systemd-tests/bin
 /opt/tests/systemd-tests/bin/test-*
 
 %files analyze
