@@ -43,6 +43,7 @@ Patch8:         systemd-208-count-only-restarts.patch
 Patch9:         systemd-208-do-not-pull-4-megs-from-stack-for-journal-send-test.patch
 Patch10:        systemd-208-support-additional-argument-in-reboot.patch
 Patch11:        systemd-208-do-not-wait-accelerometer.patch
+Patch12:        systemd-208-bootchart-svg-fix-checking-of-list-end.patch
 Provides:       udev = %{version}
 Obsoletes:      udev < 184 
 Provides:       systemd-sysv = %{version}
@@ -169,6 +170,7 @@ glib-based applications using libudev functionality.
 %patch9 -p1
 %patch10 -p1
 %patch11 -p1
+%patch12 -p1
 
 %build
 ./autogen.sh
