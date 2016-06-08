@@ -28,6 +28,8 @@ Requires:       filesystem >= 3
 Requires:       systemd-config
 # fsck with -l option was introduced in 2.21.2 packaging
 Requires:       util-linux >= 2.21.2
+# pidof command
+Requires:       psmisc
 Source0:        http://www.freedesktop.org/software/systemd/%{name}-%{version}.tar.xz
 Source2:        tests.xml
 Source3:        systemctl-user
