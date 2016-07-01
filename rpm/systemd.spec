@@ -183,6 +183,7 @@ glib-based applications using libudev functionality.
   --with-firmware-path=/lib/firmware/updates:/lib/firmware:/system/etc/firmware:/etc/firmware:/vendor/firmware:/firmware/image \
   --disable-manpages \
   --disable-python-devel \
+  --with-ldflags='-Wl,-rpath-link=./.libs' \
   --enable-tests
 
 make %{?_smp_mflags}
