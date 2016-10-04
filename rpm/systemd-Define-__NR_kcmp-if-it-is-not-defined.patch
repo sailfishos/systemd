@@ -1,0 +1,41 @@
+From 4b397a131461ebb574aeffa0826b1d314add3d49 Mon Sep 17 00:00:00 2001
+From: Igor Zhbanov <igor.zhbanov@jolla.com>
+Date: Sat, 5 Sep 2015 17:54:48 +0000
+Subject: [systemd] Define __NR_kcmp if it is not defined. Contributes to JB#32104
+
+Systemd can handle a stiuation when kcmp sytem call is not enabled in
+the kernel by checking for ENOSYS. But it needs to have syscall number
+anyway so define it for i386, x86_64 and arm platforms if it is not
+defined.
+
+Signed-off-by: Igor Zhbanov <igor.zhbanov@jolla.com>
+---
+ src/basic/missing.h | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/src/basic/missing.h b/src/basic/missing.h
+index dc1f244..21ea0b4 100644
+--- a/src/basic/missing.h
++++ b/src/basic/missing.h
+@@ -1027,6 +1027,18 @@ static inline int renameat2(int oldfd, const char *oldname, int newfd, const cha
+ #endif
+ 
+ #if !HAVE_DECL_KCMP
++#ifndef __NR_kcmp
++#  if defined __x86_64__
++#    define __NR_kcmp 349
++#  elif defined __arm__
++#    define __NR_kcmp 378
++#  elif defined __i386__
++#    define __NR_kcmp 312
++#  else
++#    error "__NR_kcmp unknown for your architecture"
++#  endif
++#endif
++
+ static inline int kcmp(pid_t pid1, pid_t pid2, int type, unsigned long idx1, unsigned long idx2) {
+         return syscall(__NR_kcmp, pid1, pid2, type, idx1, idx2);
+ }
+-- 
+1.8.3-rc3
+

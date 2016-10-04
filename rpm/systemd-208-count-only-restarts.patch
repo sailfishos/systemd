@@ -12,16 +12,16 @@ diff --git a/src/core/service.c b/src/core/service.c
 index 35053be..9d5f4c6 100644
 --- a/src/core/service.c
 +++ b/src/core/service.c
-@@ -2267,6 +2267,8 @@ fail:
+@@ -1728,6 +1728,8 @@ fail:
          service_enter_dead(s, SERVICE_FAILURE_RESOURCES, true);
  }
  
 +static int service_start_limit_test(Service *s);
 +
  static void service_enter_restart(Service *s) {
+         _cleanup_bus_error_free_ sd_bus_error error = SD_BUS_ERROR_NULL;
          int r;
-         DBusError error;
-@@ -2286,6 +2288,13 @@ static void service_enter_restart(Service *s) {
+@@ -1745,6 +1747,13 @@ static void service_enter_restart(Servic
                  return;
          }
  
@@ -35,7 +35,7 @@ index 35053be..9d5f4c6 100644
          /* Any units that are bound to this service must also be
           * restarted. We use JOB_RESTART (instead of the more obvious
           * JOB_START) here so that those dependency jobs will be added
-@@ -2489,7 +2498,6 @@ static int service_start_limit_test(Service *s) {
+@@ -1898,7 +1907,6 @@ static int service_start_limit_test(Serv
  
  static int service_start(Unit *u) {
          Service *s = SERVICE(u);
@@ -43,9 +43,9 @@ index 35053be..9d5f4c6 100644
  
          assert(s);
  
-@@ -2521,13 +2529,6 @@ static int service_start(Unit *u) {
+@@ -1925,13 +1933,6 @@ static int service_start(Unit *u) {
  
-         assert(s->state == SERVICE_DEAD || s->state == SERVICE_FAILED);
+         assert(IN_SET(s->state, SERVICE_DEAD, SERVICE_FAILED));
  
 -        /* Make sure we don't enter a busy loop of some kind. */
 -        r = service_start_limit_test(s);
@@ -57,6 +57,7 @@ index 35053be..9d5f4c6 100644
          s->result = SERVICE_SUCCESS;
          s->reload_result = SERVICE_SUCCESS;
          s->main_pid_known = false;
+
 -- 
 1.7.9.5
 

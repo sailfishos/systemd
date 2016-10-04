@@ -1,0 +1,112 @@
+From 55d073f2624258ce6f0799a4d09b8cc0d0d81c4c Mon Sep 17 00:00:00 2001
+From: Igor Zhbanov <igor.zhbanov@jolla.com>
+Date: Sat, 5 Sep 2015 17:29:59 +0000
+Subject: [backport] Revert usage of "ln --relative". Contributes to JB#32104
+
+Revert usage of "ln --relative" in Makefile.am because our couretils'
+"ln" version doesn't support "--relative" option.
+Remove test for "ln --relative" support from configure.ac.
+
+Reverted upstream commits (with some conflicts) are:
+44688352852 build-sys: at configure check for verifying that ln supports
+0ce91e4e3ba build-sys: Fix move-to-rootlibdir
+5e11d962c02 build-sys: work around broken ln --relative -s -f
+e2438b7a321 build-sys: prefer using ln --relative -s where appropriate
+
+TODO: Revert this commit after upgrading coreutils.
+
+Signed-off-by: Igor Zhbanov <igor.zhbanov@jolla.com>
+---
+ Makefile.am  | 26 ++++++--------------------
+ configure.ac |  2 --
+ 2 files changed, 6 insertions(+), 22 deletions(-)
+
+diff --git a/Makefile.am b/Makefile.am
+index 003308e..51ad568 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -249,8 +249,8 @@ define move-to-rootlibdir
+ 	if test "$(libdir)" != "$(rootlibdir)"; then \
+ 		$(MKDIR_P) $(DESTDIR)$(rootlibdir) && \
+ 		so_img_name=$$(readlink $(DESTDIR)$(libdir)/$$libname) && \
+-		rm -f $(DESTDIR)$(libdir)/$$libname && \
+-		$(LN_S) --relative -f $(DESTDIR)$(rootlibdir)/$$so_img_name $(DESTDIR)$(libdir)/$$libname && \
++		so_img_rel_target_prefix=$$(echo $(libdir) | sed 's,\(^/\|\)[^/][^/]*,..,g') && \
++		$(LN_S) -f $$so_img_rel_target_prefix$(rootlibdir)/$$so_img_name $(DESTDIR)$(libdir)/$$libname && \
+ 		mv $(DESTDIR)$(libdir)/$$libname.* $(DESTDIR)$(rootlibdir); \
+ 	fi
+ endef
+@@ -307,9 +307,9 @@ install-aliases-hook:
+ 	set -- $(SYSTEM_UNIT_ALIASES) && \
+ 		dir=$(systemunitdir) && $(install-aliases)
+ 	set -- $(USER_UNIT_ALIASES) && \
+-		dir=$(userunitdir) && $(install-relative-aliases)
++		dir=$(userunitdir) && $(install-aliases)
+ 	set -- $(GENERAL_ALIASES) && \
+-		dir= && $(install-relative-aliases)
++		dir= && $(install-aliases)
+ 
+ define install-aliases
+ 	while [ -n "$$1" ]; do \
+@@ -320,15 +320,6 @@ define install-aliases
+ 	done
+ endef
+ 
+-define install-relative-aliases
+-	while [ -n "$$1" ]; do \
+-		$(MKDIR_P) `dirname $(DESTDIR)$$dir/$$2` && \
+-		rm -f $(DESTDIR)$$dir/$$2 && \
+-		$(LN_S) --relative $(DESTDIR)$$1 $(DESTDIR)$$dir/$$2 && \
+-		shift 2 || exit $$?; \
+-	done
+-endef
+-
+ install-touch-usr-hook:
+ 	touch -c $(DESTDIR)/$(prefix)
+ 
+@@ -358,10 +349,6 @@ AM_V_LN = $(AM_V_LN_$(V))
+ AM_V_LN_ = $(AM_V_LN_$(AM_DEFAULT_VERBOSITY))
+ AM_V_LN_0 = @echo "  LN      " $@;
+ 
+-AM_V_RM = $(AM_V_RM_$(V))
+-AM_V_RM_ = $(AM_V_RM_$(AM_DEFAULT_VERBOSITY))
+-AM_V_RM_0 = @echo "  RM      " $@;
+-
+ # ------------------------------------------------------------------------------
+ rootbin_PROGRAMS = \
+ 	systemctl \
+@@ -2677,8 +2664,7 @@ systemd_dbus1_generator_LDADD = \
+ 
+ dbus1-generator-install-hook:
+ 	$(AM_V_at)$(MKDIR_P) $(DESTDIR)$(usergeneratordir)
+-	$(AM_V_RM)rm -f $(DESTDIR)$(usergeneratordir)/systemd-dbus1-generator
+-	$(AM_V_LN)$(LN_S) --relative -f $(DESTDIR)$(systemgeneratordir)/systemd-dbus1-generator $(DESTDIR)$(usergeneratordir)/systemd-dbus1-generator
++	$(AM_V_LN)$(LN_S) -f $(systemgeneratordir)/systemd-dbus1-generator $(DESTDIR)$(usergeneratordir)/systemd-dbus1-generator
+ 
+ dbus1-generator-uninstall-hook:
+ 	rm -f $(DESTDIR)$(usergeneratordir)/systemd-dbus1-generator
+@@ -5961,7 +5947,7 @@ GENERAL_ALIASES += \
+ 	$(systemunitdir)/remote-fs.target $(pkgsysconfdir)/system/multi-user.target.wants/remote-fs.target \
+ 	$(systemunitdir)/getty@.service $(pkgsysconfdir)/system/getty.target.wants/getty@tty1.service \
+ 	$(pkgsysconfdir)/user $(sysconfdir)/xdg/systemd/user \
+-	$(dbussystemservicedir)/org.freedesktop.systemd1.service $(dbussessionservicedir)/org.freedesktop.systemd1.service
++	../system-services/org.freedesktop.systemd1.service $(dbussessionservicedir)/org.freedesktop.systemd1.service
+ 
+ if HAVE_SYSV_COMPAT
+ INSTALL_DIRS += \
+diff --git a/configure.ac b/configure.ac
+index 10e42c0..9c5b750 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -111,8 +111,6 @@ AC_PATH_PROG([SULOGIN], [sulogin], [/usr/sbin/sulogin], [$PATH:/usr/sbin:/sbin])
+ AC_PATH_PROG([MOUNT_PATH], [mount], [/usr/bin/mount], [$PATH:/usr/sbin:/sbin])
+ AC_PATH_PROG([UMOUNT_PATH], [umount], [/usr/bin/umount], [$PATH:/usr/sbin:/sbin])
+ 
+-AS_IF([! ln --relative --help > /dev/null 2>&1], [AC_MSG_ERROR([*** ln doesn't support --relative ***])])
+-
+ M4_DEFINES=
+ 
+ AC_CHECK_TOOL(OBJCOPY, objcopy)
+-- 
+1.8.3-rc3
+

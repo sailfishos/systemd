@@ -2,8 +2,8 @@ diff --git a/Makefile.am b/Makefile.am
 index 8d9c587..7a91eaa 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -65,7 +65,7 @@ dbussystemservicedir=@dbussystemservicedir@
- dbusinterfacedir=@dbusinterfacedir@
+@@ -70,7 +70,7 @@ dbussessionservicedir=@dbussessionservic
+ dbussystemservicedir=@dbussystemservicedir@
  pamlibdir=@pamlibdir@
  pamconfdir=@pamconfdir@
 -pkgconfigdatadir=$(datadir)/pkgconfig
@@ -11,12 +11,3 @@ index 8d9c587..7a91eaa 100644
  pkgconfiglibdir=$(libdir)/pkgconfig
  polkitpolicydir=$(datadir)/polkit-1/actions
  bashcompletiondir=@bashcompletiondir@
-@@ -2228,7 +2228,7 @@ udevconfdir = $(sysconfdir)/udev
- dist_udevconf_DATA = \
- 	src/udev/udev.conf
- 
--sharepkgconfigdir = $(datadir)/pkgconfig
-+sharepkgconfigdir = $(libdir)/pkgconfig
- sharepkgconfig_DATA = \
- 	src/udev/udev.pc
- 

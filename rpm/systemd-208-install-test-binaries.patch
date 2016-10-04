@@ -2,18 +2,18 @@ diff --git a/Makefile.am b/Makefile.am
 index 8d9c587..5622ffa 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -96,6 +96,7 @@ udevrulesdir=$(udevlibexecdir)/rules.d
- udevhwdbdir=$(udevlibexecdir)/hwdb.d
- catalogdir=$(prefix)/lib/systemd/catalog
- kernelinstalldir = $(prefix)/lib/kernel/install.d
+@@ -109,6 +109,7 @@ kernelinstalldir = $(prefix)/lib/kernel/
+ factory_etcdir = $(datadir)/factory/etc
+ factory_pamdir = $(datadir)/factory/etc/pam.d
+ bootlibdir = $(prefix)/lib/systemd/boot/efi
 +testbindir = /opt/tests/systemd-tests/bin
  
  # And these are the special ones for /
  rootprefix=@rootprefix@
-@@ -132,11 +133,12 @@ check_PROGRAMS =
- check_DATA =
- tests=
+@@ -147,11 +148,12 @@ tests=
  manual_tests =
+ TEST_EXTENSIONS = .py
+ PY_LOG_COMPILER = $(PYTHON)
 +noinst_PROGRAMS =
  if ENABLE_TESTS
 -noinst_PROGRAMS = $(manual_tests) $(tests)
