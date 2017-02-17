@@ -2,8 +2,59 @@
 <testdefinition version="1.0">
   <suite name="systemd-tests" domain="System Control">
     <set name="Systemd upstream tests" description="Systemd upstream tests" feature="Systemd">
+      <case name="test-af-list">
+        <step> /opt/tests/systemd-tests/bin/test-af-list </step>
+      </case>
+      <case name="test-architecture">
+        <step> /opt/tests/systemd-tests/bin/test-architecture </step>
+      </case>
+      <case name="test-arphrd-list">
+        <step> /opt/tests/systemd-tests/bin/test-arphrd-list </step>
+      </case>
+      <case name="test-async">
+        <step> /opt/tests/systemd-tests/bin/test-async </step>
+      </case>
+      <case name="test-audit-type">
+        <step> /opt/tests/systemd-tests/bin/test-audit-type </step>
+      </case>
+      <case name="test-barrier">
+        <step> /opt/tests/systemd-tests/bin/test-barrier </step>
+      </case>
+      <case name="test-bitmap">
+        <step> /opt/tests/systemd-tests/bin/test-bitmap </step>
+      </case>
+      <case name="test-boot-timestamp">
+        <step> /opt/tests/systemd-tests/bin/test-boot-timestamp </step>
+      </case>
+      <case name="test-btrfs">
+        <step> /opt/tests/systemd-tests/bin/test-btrfs </step>
+      </case>
+      <case name="test-bus-benchmark">
+        <step> /opt/tests/systemd-tests/bin/test-bus-benchmark </step>
+      </case>
       <case name="test-bus-chat">
         <step> /opt/tests/systemd-tests/bin/test-bus-chat </step>
+      </case>
+      <case name="test-bus-cleanup">
+        <step> /opt/tests/systemd-tests/bin/test-bus-cleanup </step>
+      </case>
+      <case name="test-bus-creds">
+        <step> /opt/tests/systemd-tests/bin/test-bus-creds </step>
+      </case>
+      <case name="test-bus-error">
+        <step> /opt/tests/systemd-tests/bin/test-bus-error </step>
+      </case>
+      <case name="test-bus-gvariant">
+        <step> /opt/tests/systemd-tests/bin/test-bus-gvariant </step>
+      </case>
+      <case name="test-bus-introspect">
+        <step> /opt/tests/systemd-tests/bin/test-bus-introspect </step>
+      </case>
+      <case name="test-bus-kernel">
+        <step> /opt/tests/systemd-tests/bin/test-bus-kernel </step>
+      </case>
+      <case name="test-bus-kernel-bloom">
+        <step> /opt/tests/systemd-tests/bin/test-bus-kernel-bloom </step>
       </case>
       <case name="test-bus-marshal">
         <step> /opt/tests/systemd-tests/bin/test-bus-marshal </step>
@@ -11,14 +62,62 @@
       <case name="test-bus-match">
         <step> /opt/tests/systemd-tests/bin/test-bus-match </step>
       </case>
+      <case name="test-bus-objects">
+        <step> /opt/tests/systemd-tests/bin/test-bus-objects </step>
+      </case>
+      <case name="test-bus-policy">
+        <step> /opt/tests/systemd-tests/bin/test-bus-policy </step>
+      </case>
+      <case name="test-bus-proxy">
+        <step> /opt/tests/systemd-tests/bin/test-bus-proxy </step>
+      </case>
       <case name="test-bus-server">
         <step> /opt/tests/systemd-tests/bin/test-bus-server </step>
+      </case>
+      <case name="test-bus-signature">
+        <step> /opt/tests/systemd-tests/bin/test-bus-signature </step>
+      </case>
+      <case name="test-bus-zero-copy">
+        <step> /opt/tests/systemd-tests/bin/test-bus-zero-copy </step>
       </case>
       <case name="test-calendarspec">
         <step> /opt/tests/systemd-tests/bin/test-calendarspec </step>
       </case>
+      <case name="test-capability">
+        <step> /opt/tests/systemd-tests/bin/test-capability </step>
+      </case>
+      <case name="test-cap-list">
+        <step> /opt/tests/systemd-tests/bin/test-cap-list </step>
+      </case>
+      <case name="test-catalog">
+        <step> /opt/tests/systemd-tests/bin/test-catalog </step>
+      </case>
+      <case name="test-cgroup">
+        <step> /opt/tests/systemd-tests/bin/test-cgroup </step>
+      </case>
+      <case name="test-cgroup-mask">
+        <step> /opt/tests/systemd-tests/bin/test-cgroup-mask </step>
+      </case>
       <case name="test-cgroup-util">
         <step> /opt/tests/systemd-tests/bin/test-cgroup-util </step>
+      </case>
+      <case name="test-compress">
+        <step> /opt/tests/systemd-tests/bin/test-compress </step>
+      </case>
+      <case name="test-compress-benchmark">
+        <step> /opt/tests/systemd-tests/bin/test-compress-benchmark </step>
+      </case>
+      <case name="test-condition">
+        <step> /opt/tests/systemd-tests/bin/test-condition </step>
+      </case>
+      <case name="test-conf-files">
+        <step> /opt/tests/systemd-tests/bin/test-conf-files </step>
+      </case>
+      <case name="test-conf-parser">
+        <step> /opt/tests/systemd-tests/bin/test-conf-parser </step>
+      </case>
+      <case name="test-copy">
+        <step> /opt/tests/systemd-tests/bin/test-copy </step>
       </case>
       <case name="test-daemon">
         <step> /opt/tests/systemd-tests/bin/test-daemon </step>
@@ -29,8 +128,44 @@
       <case name="test-device-nodes">
         <step> /opt/tests/systemd-tests/bin/test-device-nodes </step>
       </case>
+      <case name="test-dhcp6-client">
+        <step> /opt/tests/systemd-tests/bin/test-dhcp6-client </step>
+      </case>
+      <case name="test-dhcp-client">
+        <step> /opt/tests/systemd-tests/bin/test-dhcp-client </step>
+      </case>
+      <case name="test-dhcp-option">
+        <step> /opt/tests/systemd-tests/bin/test-dhcp-option </step>
+      </case>
+      <case name="test-dhcp-server">
+        <step> /opt/tests/systemd-tests/bin/test-dhcp-server </step>
+      </case>
+      <case name="test-dns-domain">
+        <step> /opt/tests/systemd-tests/bin/test-dns-domain </step>
+      </case>
+      <case name="test-ellipsize">
+        <step> /opt/tests/systemd-tests/bin/test-ellipsize </step>
+      </case>
+      <case name="test-engine">
+        <step> /opt/tests/systemd-tests/bin/test-engine </step>
+      </case>
+      <case name="test-env-replace">
+        <step> /opt/tests/systemd-tests/bin/test-env-replace </step>
+      </case>
+      <case name="test-event">
+        <step> /opt/tests/systemd-tests/bin/test-event </step>
+      </case>
+      <case name="test-execute">
+        <step> /opt/tests/systemd-tests/bin/test-execute </step>
+      </case>
+      <case name="test-fdset">
+        <step> /opt/tests/systemd-tests/bin/test-fdset </step>
+      </case>
       <case name="test-fileio">
         <step> /opt/tests/systemd-tests/bin/test-fileio </step>
+      </case>
+      <case name="test-fstab-util">
+        <step> /opt/tests/systemd-tests/bin/test-fstab-util </step>
       </case>
       <case name="test-hashmap">
         <step> /opt/tests/systemd-tests/bin/test-hashmap </step>
@@ -38,11 +173,26 @@
       <case name="test-hostname">
         <step> /usr/sbin/run-blts-root /opt/tests/systemd-tests/bin/test-hostname </step>
       </case>
+      <case name="test-hostname-util">
+        <step> /opt/tests/systemd-tests/bin/test-hostname-util </step>
+      </case>
+      <case name="test-icmp6-rs">
+        <step> /opt/tests/systemd-tests/bin/test-icmp6-rs </step>
+      </case>
       <case name="test-id128">
         <step> /opt/tests/systemd-tests/bin/test-id128 </step>
       </case>
       <case name="test-inhibit">
         <step> /usr/sbin/run-blts-root /opt/tests/systemd-tests/bin/test-inhibit </step>
+      </case>
+      <case name="test-install">
+        <step> /opt/tests/systemd-tests/bin/test-install </step>
+      </case>
+      <case name="test-ipcrm">
+        <step> /opt/tests/systemd-tests/bin/test-ipcrm </step>
+      </case>
+      <case name="test-ipv4ll">
+        <step> /opt/tests/systemd-tests/bin/test-ipv4ll </step>
       </case>
       <case name="test-job-type">
         <step> /opt/tests/systemd-tests/bin/test-job-type </step>
@@ -52,6 +202,9 @@
       </case>
       <case name="test-journal-enum">
         <step> /opt/tests/systemd-tests/bin/test-journal-enum </step>
+      </case>
+      <case name="test-journal-flush">
+        <step> /opt/tests/systemd-tests/bin/test-journal-flush </step>
       </case>
       <case name="test-journal-init">
         <step> /opt/tests/systemd-tests/bin/test-journal-init </step>
@@ -65,26 +218,128 @@
       <case name="test-journal-send">
         <step> /opt/tests/systemd-tests/bin/test-journal-send </step>
       </case>
+      <case name="test-journal-stream">
+        <step> /opt/tests/systemd-tests/bin/test-journal-stream </step>
+      </case>
+      <case name="test-journal-syslog">
+        <step> /opt/tests/systemd-tests/bin/test-journal-syslog </step>
+      </case>
       <case name="test-journal-verify">
         <step> /opt/tests/systemd-tests/bin/test-journal-verify </step>
+      </case>
+      <case name="test-json">
+        <step> /opt/tests/systemd-tests/bin/test-json </step>
+      </case>
+      <case name="test-libsystemd-sym">
+        <step> /opt/tests/systemd-tests/bin/test-libsystemd-sym </step>
+      </case>
+      <case name="test-libudev">
+        <step> /opt/tests/systemd-tests/bin/test-libudev </step>
+      </case>
+      <case name="test-libudev-sym">
+        <step> /opt/tests/systemd-tests/bin/test-libudev-sym </step>
       </case>
       <case name="test-list">
         <step> /opt/tests/systemd-tests/bin/test-list </step>
       </case>
+      <case name="test-lldp">
+        <step> /opt/tests/systemd-tests/bin/test-lldp </step>
+      </case>
+      <case name="test-local-addresses">
+        <step> /opt/tests/systemd-tests/bin/test-local-addresses </step>
+      </case>
+      <case name="test-locale-util">
+        <step> /opt/tests/systemd-tests/bin/test-locale-util </step>
+      </case>
+      <case name="test-log">
+        <step> /opt/tests/systemd-tests/bin/test-log </step>
+      </case>
+      <case name="test-login">
+        <step> /opt/tests/systemd-tests/bin/test-login </step>
+      </case>
+      <case name="test-login-shared">
+        <step> /opt/tests/systemd-tests/bin/test-login-shared </step>
+      </case>
       <case name="test-login-tables">
         <step> /opt/tests/systemd-tests/bin/test-login-tables </step>
+      </case>
+      <case name="test-loopback">
+        <step> /opt/tests/systemd-tests/bin/test-loopback </step>
       </case>
       <case name="test-machine-tables">
         <step> /opt/tests/systemd-tests/bin/test-machine-tables </step>
       </case>
+      <case name="test-mmap-cache">
+        <step> /opt/tests/systemd-tests/bin/test-mmap-cache </step>
+      </case>
+      <case name="test-namespace">
+        <step> /opt/tests/systemd-tests/bin/test-namespace </step>
+      </case>
+      <case name="test-netlink">
+        <step> /opt/tests/systemd-tests/bin/test-netlink </step>
+      </case>
+      <case name="test-netlink-manual">
+        <step> /opt/tests/systemd-tests/bin/test-netlink-manual </step>
+      </case>
+      <case name="test-network">
+        <step> /opt/tests/systemd-tests/bin/test-network </step>
+      </case>
+      <case name="test-network-tables">
+        <step> /opt/tests/systemd-tests/bin/test-network-tables </step>
+      </case>
+      <case name="test-ns">
+        <step> /opt/tests/systemd-tests/bin/test-ns </step>
+      </case>
+      <case name="test-path">
+        <step> /opt/tests/systemd-tests/bin/test-path </step>
+      </case>
+      <case name="test-path-lookup">
+        <step> /opt/tests/systemd-tests/bin/test-path-lookup </step>
+      </case>
       <case name="test-path-util">
         <step> /opt/tests/systemd-tests/bin/test-path-util </step>
+      </case>
+      <case name="test-pppoe">
+        <step> /opt/tests/systemd-tests/bin/test-pppoe </step>
+      </case>
+      <case name="test-prioq">
+        <step> /opt/tests/systemd-tests/bin/test-prioq </step>
+      </case>
+      <case name="test-process-util">
+        <step> /opt/tests/systemd-tests/bin/test-process-util </step>
+      </case>
+      <case name="test-pty">
+        <step> /opt/tests/systemd-tests/bin/test-pty </step>
+      </case>
+      <case name="test-ratelimit">
+        <step> /opt/tests/systemd-tests/bin/test-ratelimit </step>
       </case>
       <case name="test-replace-var">
         <step> /opt/tests/systemd-tests/bin/test-replace-var </step>
       </case>
+      <case name="test-resolve">
+        <step> /opt/tests/systemd-tests/bin/test-resolve </step>
+      </case>
+      <case name="test-ring">
+        <step> /opt/tests/systemd-tests/bin/test-ring </step>
+      </case>
+      <case name="test-sched-prio">
+        <step> /opt/tests/systemd-tests/bin/test-sched-prio </step>
+      </case>
+      <case name="test-set">
+        <step> /opt/tests/systemd-tests/bin/test-set </step>
+      </case>
+      <case name="test-sigbus">
+        <step> /opt/tests/systemd-tests/bin/test-sigbus </step>
+      </case>
       <case name="test-sleep">
         <step> /opt/tests/systemd-tests/bin/test-sleep </step>
+      </case>
+      <case name="test-socket-util">
+        <step> /opt/tests/systemd-tests/bin/test-socket-util </step>
+      </case>
+      <case name="test-strbuf">
+        <step> /opt/tests/systemd-tests/bin/test-strbuf </step>
       </case>
       <case name="test-strip-tab-ansi">
         <step> /opt/tests/systemd-tests/bin/test-strip-tab-ansi </step>
@@ -92,11 +347,29 @@
       <case name="test-strv">
         <step> /opt/tests/systemd-tests/bin/test-strv </step>
       </case>
+      <case name="test-strxcpyx">
+        <step> /opt/tests/systemd-tests/bin/test-strxcpyx </step>
+      </case>
       <case name="test-tables">
         <step> /opt/tests/systemd-tests/bin/test-tables </step>
       </case>
+      <case name="test-terminal-util">
+        <step> /opt/tests/systemd-tests/bin/test-terminal-util </step>
+      </case>
       <case name="test-time">
         <step> /opt/tests/systemd-tests/bin/test-time </step>
+      </case>
+      <case name="test-tmpfiles">
+        <step> /opt/tests/systemd-tests/bin/test-tmpfiles </step>
+      </case>
+      <case name="test-udev">
+        <step> /opt/tests/systemd-tests/bin/test-udev </step>
+      </case>
+      <case name="test-uid-range">
+        <step> /opt/tests/systemd-tests/bin/test-uid-range </step>
+      </case>
+      <case name="test-unaligned">
+        <step> /opt/tests/systemd-tests/bin/test-unaligned </step>
       </case>
       <case name="test-unit-file">
         <step> /opt/tests/systemd-tests/bin/test-unit-file </step>
@@ -104,14 +377,23 @@
       <case name="test-unit-name">
         <step> /usr/sbin/run-blts-root /opt/tests/systemd-tests/bin/test-unit-name </step>
       </case>
+      <case name="test-utf8">
+        <step> /opt/tests/systemd-tests/bin/test-utf8 </step>
+      </case>
       <case name="test-util">
         <step> /usr/sbin/run-blts-root /opt/tests/systemd-tests/bin/test-util </step>
+      </case>
+      <case name="test-verbs">
+        <step> /opt/tests/systemd-tests/bin/test-verbs </step>
       </case>
       <case name="test-watchdog">
         <step> /usr/sbin/run-blts-root systemctl stop dsme.service </step>
         <step> /usr/sbin/run-blts-root /opt/tests/systemd-tests/bin/test-watchdog </step>
         <step> /usr/sbin/run-blts-root systemctl start dsme.service </step>
         <step> /usr/sbin/run-blts-root systemctl start mce.service </step>
+      </case>
+      <case name="test-xml">
+        <step> /opt/tests/systemd-tests/bin/test-xml </step>
       </case>
     </set>
   </suite>

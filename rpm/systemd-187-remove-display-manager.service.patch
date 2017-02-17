@@ -12,14 +12,14 @@ diff --git a/units/graphical.target b/units/graphical.target
 index 65f2521..7c6ebd4 100644
 --- a/units/graphical.target
 +++ b/units/graphical.target
-@@ -11,7 +11,6 @@ Documentation=man:systemd.special(7)
+@@ -9,7 +9,6 @@
+ Description=Graphical Interface
+ Documentation=man:systemd.special(7)
  Requires=multi-user.target
- After=multi-user.target
- Conflicts=rescue.target
 -Wants=display-manager.service
+ Conflicts=rescue.service rescue.target
+ After=multi-user.target rescue.service rescue.target display-manager.service
  AllowIsolate=yes
- 
- [Install]
 -- 
 1.7.9.5
 

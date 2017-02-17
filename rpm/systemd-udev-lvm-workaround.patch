@@ -1,0 +1,15 @@
+This patch contains workaround for JB#36605. Should be removed after proper
+UDEV events handling will be added to initramfs, so systemd will not skip
+events when volume group is activated.
+
+diff -purN systemd/units/systemd-udev-trigger.service.in systemd-izh/units/systemd-udev-trigger.service.in
+--- systemd/units/systemd-udev-trigger.service.in
++++ systemd-izh/units/systemd-udev-trigger.service.in
+@@ -18,3 +18,7 @@ ConditionPathIsReadWrite=/sys
+ Type=oneshot
+ RemainAfterExit=yes
+ ExecStart=@rootbindir@/udevadm trigger --type=subsystems --action=add ; @rootbindir@/udevadm trigger --type=devices --action=add
++# A workaround for LVM/UDEV issue when systemd considered LVM partitions'
++# devices as timed out and aborted booting. Should be removed after
++# UDEV-events handling will be added to initramfs.
++ExecStart=/usr/sbin/vgchange --refresh
