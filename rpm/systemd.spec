@@ -212,6 +212,8 @@ CONFIGURE_OPTS=(
         --disable-manpages \
         --disable-python-devel \
         --disable-libcurl \
+        --disable-timesyncd \
+        --disable-resolved \
         --enable-tests
 
 make %{?_smp_mflags} GCC_COLORS="" V=1
@@ -313,12 +315,12 @@ getent group tape >/dev/null 2>&1 || groupadd -r -g 33 tape >/dev/null 2>&1 || :
 getent group dialout >/dev/null 2>&1 || groupadd -r -g 18 dialout >/dev/null 2>&1 || :
 getent group input >/dev/null 2>&1 || groupadd -r input >/dev/null 2>&1 || :
 getent group systemd-journal >/dev/null 2>&1 || groupadd -r -g 190 systemd-journal 2>&1 || :
-getent group systemd-timesync >/dev/null 2>&1 || groupadd -r systemd-timesync 2>&1 || :
-getent passwd systemd-timesync >/dev/null 2>&1 || useradd -r -l -g systemd-timesync -d / -s /sbin/nologin -c "systemd Time Synchronization" systemd-timesync >/dev/null 2>&1 || :
+#getent group systemd-timesync >/dev/null 2>&1 || groupadd -r systemd-timesync 2>&1 || :
+#getent passwd systemd-timesync >/dev/null 2>&1 || useradd -r -l -g systemd-timesync -d / -s /sbin/nologin -c "systemd Time Synchronization" systemd-timesync >/dev/null 2>&1 || :
 getent group systemd-network >/dev/null 2>&1 || groupadd -r systemd-network 2>&1 || :
 getent passwd systemd-network >/dev/null 2>&1 || useradd -r -l -g systemd-network -d / -s /sbin/nologin -c "systemd Network Management" systemd-network >/dev/null 2>&1 || :
-getent group systemd-resolve >/dev/null 2>&1 || groupadd -r systemd-resolve 2>&1 || :
-getent passwd systemd-resolve >/dev/null 2>&1 || useradd -r -l -g systemd-resolve -d / -s /sbin/nologin -c "systemd Resolver" systemd-resolve >/dev/null 2>&1 || :
+#getent group systemd-resolve >/dev/null 2>&1 || groupadd -r systemd-resolve 2>&1 || :
+#getent passwd systemd-resolve >/dev/null 2>&1 || useradd -r -l -g systemd-resolve -d / -s /sbin/nologin -c "systemd Resolver" systemd-resolve >/dev/null 2>&1 || :
 getent group systemd-bus-proxy >/dev/null 2>&1 || groupadd -r systemd-bus-proxy 2>&1 || :
 getent passwd systemd-bus-proxy >/dev/null 2>&1 || useradd -r -l -g systemd-bus-proxy -d / -s /sbin/nologin -c "systemd Bus Proxy" systemd-bus-proxy >/dev/null 2>&1 || :
 
@@ -384,7 +386,7 @@ rm -f /.readahead > /dev/null 2>&1 || :
 %config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.locale1.conf
 %config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.timedate1.conf
 %config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.machine1.conf
-%config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.resolve1.conf
+#%config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.resolve1.conf
 %config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.network1.conf
 %config(noreplace) %{_sysconfdir}/pam.d/systemd-user
 %ghost %{_sysconfdir}/udev/hwdb.bin
@@ -470,7 +472,7 @@ rm -f /.readahead > /dev/null 2>&1 || :
 %{_datadir}/dbus-1/system-services/org.freedesktop.locale1.service
 %{_datadir}/dbus-1/system-services/org.freedesktop.timedate1.service
 %{_datadir}/dbus-1/system-services/org.freedesktop.machine1.service
-%{_datadir}/dbus-1/system-services/org.freedesktop.resolve1.service
+#%{_datadir}/dbus-1/system-services/org.freedesktop.resolve1.service
 %{_datadir}/dbus-1/system-services/org.freedesktop.network1.service
 %{_datadir}/polkit-1/actions/org.freedesktop.systemd1.policy
 %{_datadir}/polkit-1/actions/org.freedesktop.hostname1.policy
@@ -494,9 +496,9 @@ rm -f /.readahead > /dev/null 2>&1 || :
 %defattr(-,root,root,-)
 %config(noreplace) %{_sysconfdir}/systemd/journald.conf
 %config(noreplace) %{_sysconfdir}/systemd/logind.conf
-%config(noreplace) %{_sysconfdir}/systemd/resolved.conf
+#%config(noreplace) %{_sysconfdir}/systemd/resolved.conf
 %config(noreplace) %{_sysconfdir}/systemd/system.conf
-%config(noreplace) %{_sysconfdir}/systemd/timesyncd.conf
+#%config(noreplace) %{_sysconfdir}/systemd/timesyncd.conf
 %config(noreplace) %{_sysconfdir}/systemd/user.conf
 %config(noreplace) %{_sysconfdir}/udev/udev.conf
 %config(noreplace) %{_sysconfdir}/systemd/bootchart.conf
@@ -524,7 +526,7 @@ rm -f /.readahead > /dev/null 2>&1 || :
 /lib/security/pam_systemd.so
 %{_libdir}/libnss_myhostname.so.2
 %{_libdir}/libnss_mymachines.so.2
-%{_libdir}/libnss_resolve.so.2
+#%{_libdir}/libnss_resolve.so.2
 %{_libdir}/libudev.so.*
 %{_libdir}/libsystemd.so.*
 
