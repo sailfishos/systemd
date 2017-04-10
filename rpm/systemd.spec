@@ -214,6 +214,7 @@ CONFIGURE_OPTS=(
         --disable-libcurl \
         --disable-timesyncd \
         --disable-resolved \
+        --disable-rfkill \
         --enable-tests
 
 make %{?_smp_mflags} GCC_COLORS="" V=1
