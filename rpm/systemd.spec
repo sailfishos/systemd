@@ -214,6 +214,8 @@ CONFIGURE_OPTS=(
         --disable-timesyncd \
         --disable-resolved \
         --disable-rfkill \
+        --disable-machined \
+        --disable-importd \
         --disable-zlib \
         --without-python \
         --disable-xkbcommon \
@@ -414,7 +416,7 @@ rm -f /.readahead > /dev/null 2>&1 || :
 %config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.login1.conf
 #%config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.locale1.conf
 #%config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.timedate1.conf
-%config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.machine1.conf
+#%config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.machine1.conf
 #%config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.resolve1.conf
 #%config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.network1.conf
 %config(noreplace) %{_sysconfdir}/pam.d/systemd-user
@@ -432,7 +434,7 @@ rm -f /.readahead > /dev/null 2>&1 || :
 /bin/systemd-machine-id-setup
 /bin/loginctl
 /bin/journalctl
-/bin/machinectl
+#/bin/machinectl
 %config(noreplace) %{_sysconfdir}/xdg/systemd/user
 %{_sysconfdir}/systemd/system/*
 %{_libdir}/tmpfiles.d/*
@@ -500,7 +502,7 @@ rm -f /.readahead > /dev/null 2>&1 || :
 %{_datadir}/dbus-1/system-services/org.freedesktop.login1.service
 #%{_datadir}/dbus-1/system-services/org.freedesktop.locale1.service
 #%{_datadir}/dbus-1/system-services/org.freedesktop.timedate1.service
-%{_datadir}/dbus-1/system-services/org.freedesktop.machine1.service
+#%{_datadir}/dbus-1/system-services/org.freedesktop.machine1.service
 #%{_datadir}/dbus-1/system-services/org.freedesktop.resolve1.service
 #%{_datadir}/dbus-1/system-services/org.freedesktop.network1.service
 %{_datadir}/polkit-1/actions/org.freedesktop.systemd1.policy
@@ -508,7 +510,7 @@ rm -f /.readahead > /dev/null 2>&1 || :
 %{_datadir}/polkit-1/actions/org.freedesktop.login1.policy
 #%{_datadir}/polkit-1/actions/org.freedesktop.locale1.policy
 #%{_datadir}/polkit-1/actions/org.freedesktop.timedate1.policy
-%{_datadir}/polkit-1/actions/org.freedesktop.machine1.policy
+#%{_datadir}/polkit-1/actions/org.freedesktop.machine1.policy
 %dir %{_datadir}/bash-completion
 %dir %{_datadir}/bash-completion/completions
 %{_datadir}/bash-completion/completions/*
@@ -554,7 +556,7 @@ rm -f /.readahead > /dev/null 2>&1 || :
 %files libs
 /lib/security/pam_systemd.so
 #%{_libdir}/libnss_myhostname.so.2
-%{_libdir}/libnss_mymachines.so.2
+#%{_libdir}/libnss_mymachines.so.2
 #%{_libdir}/libnss_resolve.so.2
 %{_libdir}/libudev.so.*
 %{_libdir}/libsystemd.so.*
