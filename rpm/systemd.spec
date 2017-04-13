@@ -35,6 +35,7 @@ Patch23:        systemd-backport-Revert-rules-remove-firmware-loading-rules.patc
 # Workaround for JB#36605. Should be removed after implementing UDEV events
 # handling in initramfs.
 Patch24:        systemd-udev-lvm-workaround.patch
+Patch25:        systemd-225-add-pam-systemd-timeout-argument.patch
 
 BuildRequires:  libcap-devel
 BuildRequires:  libmount-devel
@@ -194,6 +195,7 @@ This package includes tests for systemd.
 %patch23 -p1
 # JB#36605 LVM/UDEV workaround.
 %patch24 -p1
+%patch25 -p1
 
 %build
 ./autogen.sh
