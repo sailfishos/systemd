@@ -36,6 +36,7 @@ Patch23:        systemd-backport-Revert-rules-remove-firmware-loading-rules.patc
 # handling in initramfs.
 Patch24:        systemd-udev-lvm-workaround.patch
 Patch25:        systemd-225-add-pam-systemd-timeout-argument.patch
+Patch26:        systemd-227-sd-event-fix-prepare-priority-queue-comparison-function.patch
 
 BuildRequires:  libcap-devel
 BuildRequires:  libmount-devel
@@ -196,6 +197,8 @@ This package includes tests for systemd.
 # JB#36605 LVM/UDEV workaround.
 %patch24 -p1
 %patch25 -p1
+# occasional boot hang fix
+%patch26 -p1
 
 %build
 ./autogen.sh
