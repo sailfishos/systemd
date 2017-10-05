@@ -37,6 +37,7 @@ Patch23:        systemd-backport-Revert-rules-remove-firmware-loading-rules.patc
 Patch24:        systemd-udev-lvm-workaround.patch
 Patch25:        systemd-225-add-pam-systemd-timeout-argument.patch
 Patch26:        systemd-227-sd-event-fix-prepare-priority-queue-comparison-function.patch
+Patch27:        systemd-233-core-downgrade-time-has-been-changed-to-debug.patch
 
 BuildRequires:  libcap-devel
 BuildRequires:  libmount-devel
@@ -199,6 +200,8 @@ This package includes tests for systemd.
 %patch25 -p1
 # occasional boot hang fix
 %patch26 -p1
+# shutup 'Time has been changed messages' in journal info
+%patch27 -p1
 
 %build
 ./autogen.sh
