@@ -69,6 +69,7 @@ BuildRequires:  xz-devel
 BuildRequires:  kmod-devel >= 15
 BuildRequires:  fdupes
 BuildRequires:  libtool
+BuildRequires:  libselinux-devel
 BuildRequires:  pkgconfig(libcryptsetup) >= 1.6.0
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
@@ -283,6 +284,7 @@ CONFIGURE_OPTS=(
         --with-zshcompletiondir=no \
         --with-ntp-servers="0.sailfishos.pool.ntp.org 1.sailfishos.pool.ntp.org 2.sailfishos.pool.ntp.org 3.sailfishos.pool.ntp.org" \
         --enable-tests \
+        --enable-selinux \
         CFLAGS=-fno-lto
 
 make %{?_smp_mflags} GCC_COLORS="" V=1
