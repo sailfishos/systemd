@@ -1,0 +1,254 @@
+commit 46c6caca8aec221fa63637c510ebec551cffe036
+Author: Marko Kenttälä <marko.kenttala@jolla.com>
+Date:   Fri Nov 2 11:49:02 2018 +0200
+
+    core: rework serialization
+
+    Backport of upstream commit d68c645bd3323ae1f0dfcb8fd74ea6b19681db8a
+    where serialization functions are reworked to ensure that strings
+    longer than LONG_LINE_MAX are not serialized.
+
+diff --git a/src/basic/time-util.c b/src/basic/time-util.c
+index e278196c9..a8492a273 100644
+--- a/src/basic/time-util.c
++++ b/src/basic/time-util.c
+@@ -27,6 +27,7 @@
+ #include "util.h"
+ #include "time-util.h"
+ #include "strv.h"
++#include "def.h"
+
+ usec_t now(clockid_t clock_id) {
+         struct timespec ts;
+@@ -410,7 +411,8 @@ char *format_timespan(char *buf, size_t l, usec_t t, usec_t accuracy) {
+ }
+
+ void dual_timestamp_serialize(FILE *f, const char *name, dual_timestamp *t) {
+-
++        char buf[LONG_LINE_MAX];
++        int r;
+         assert(f);
+         assert(name);
+         assert(t);
+@@ -418,10 +420,16 @@ void dual_timestamp_serialize(FILE *f, const char *name, dual_timestamp *t) {
+         if (!dual_timestamp_is_set(t))
+                 return;
+
+-        fprintf(f, "%s="USEC_FMT" "USEC_FMT"\n",
++        r = snprintf(buf, sizeof(buf), "%s="USEC_FMT" "USEC_FMT"\n",
+                 name,
+                 t->realtime,
+                 t->monotonic);
++        if (r < 0 || r > sizeof(buf)) {
++                log_warning("Attempted to serialize overly long item '%s', refusing.", name);
++                return;
++        }
++
++        fputs(buf, f);
+ }
+
+ int dual_timestamp_deserialize(const char *value, dual_timestamp *t) {
+diff --git a/src/core/dbus.c b/src/core/dbus.c
+index 44bf5cab2..566e6de1d 100644
+--- a/src/core/dbus.c
++++ b/src/core/dbus.c
+@@ -1136,11 +1136,18 @@ int bus_foreach_bus(
+
+ void bus_track_serialize(sd_bus_track *t, FILE *f) {
+         const char *n;
+-
++        char buf[LONG_LINE_MAX];
++        int r;
+         assert(f);
+
+-        for (n = sd_bus_track_first(t); n; n = sd_bus_track_next(t))
+-                fprintf(f, "subscribed=%s\n", n);
++        for (n = sd_bus_track_first(t); n; n = sd_bus_track_next(t)) {
++                r = snprintf(buf, sizeof(buf), "subscribed=%s\n", n);
++                if (r < 0 || r >= sizeof(buf)) {
++                        log_warning("Attempted to serialize overly long item, refusing.");
++                } else {
++                        fputs(buf, f);
++                }
++        }
+ }
+
+ int bus_track_deserialize_item(char ***l, const char *line) {
+diff --git a/src/core/job.c b/src/core/job.c
+index f818eecd9..2fca6fdec 100644
+--- a/src/core/job.c
++++ b/src/core/job.c
+@@ -958,16 +958,16 @@ char *job_dbus_path(Job *j) {
+ }
+
+ int job_serialize(Job *j, FILE *f, FDSet *fds) {
+-        fprintf(f, "job-id=%u\n", j->id);
+-        fprintf(f, "job-type=%s\n", job_type_to_string(j->type));
+-        fprintf(f, "job-state=%s\n", job_state_to_string(j->state));
+-        fprintf(f, "job-override=%s\n", yes_no(j->override));
+-        fprintf(f, "job-irreversible=%s\n", yes_no(j->irreversible));
+-        fprintf(f, "job-sent-dbus-new-signal=%s\n", yes_no(j->sent_dbus_new_signal));
+-        fprintf(f, "job-ignore-order=%s\n", yes_no(j->ignore_order));
++        unit_serialize_item_format(j->unit, f, "job-id", "%u", j->id);
++        unit_serialize_item(j->unit, f, "job-type", job_type_to_string(j->type));
++        unit_serialize_item(j->unit, f, "job-state", job_state_to_string(j->state));
++        unit_serialize_item(j->unit, f, "job-override", yes_no(j->override));
++        unit_serialize_item(j->unit, f, "job-irreversible", yes_no(j->irreversible));
++        unit_serialize_item(j->unit, f, "job-sent-dbus-new-signal", yes_no(j->sent_dbus_new_signal));
++        unit_serialize_item(j->unit, f, "job-ignore-order", yes_no(j->ignore_order));
+
+         if (j->begin_usec > 0)
+-                fprintf(f, "job-begin="USEC_FMT"\n", j->begin_usec);
++                unit_serialize_item_format(j->unit, f, "job-begin", USEC_FMT, j->begin_usec);
+
+         bus_track_serialize(j->clients, f);
+
+diff --git a/src/core/manager.c b/src/core/manager.c
+index 97e6ed90f..8bfa9d5e2 100644
+--- a/src/core/manager.c
++++ b/src/core/manager.c
+@@ -2226,10 +2226,10 @@ int manager_serialize(Manager *m, FILE *f, FDSet *fds, bool switching_root) {
+
+         m->n_reloading ++;
+
+-        fprintf(f, "current-job-id=%"PRIu32"\n", m->current_job_id);
+-        fprintf(f, "taint-usr=%s\n", yes_no(m->taint_usr));
+-        fprintf(f, "n-installed-jobs=%u\n", m->n_installed_jobs);
+-        fprintf(f, "n-failed-jobs=%u\n", m->n_failed_jobs);
++        serialize_item_format(f, "current-job-id", PRIu32, m->current_job_id);
++        serialize_item(f, "taint-usr", yes_no(m->taint_usr));
++        serialize_item_format(f, "n-installed-jobs", "%u", m->n_installed_jobs);
++        serialize_item_format(f, "n-failed-jobs", "%u", m->n_failed_jobs);
+
+         dual_timestamp_serialize(f, "firmware-timestamp", &m->firmware_timestamp);
+         dual_timestamp_serialize(f, "loader-timestamp", &m->loader_timestamp);
+@@ -2255,7 +2255,7 @@ int manager_serialize(Manager *m, FILE *f, FDSet *fds, bool switching_root) {
+                         if (!ce)
+                                 return -ENOMEM;
+
+-                        fprintf(f, "env=%s\n", *e);
++                        serialize_item(f, "env", *e);
+                 }
+         }
+
+@@ -2266,8 +2266,8 @@ int manager_serialize(Manager *m, FILE *f, FDSet *fds, bool switching_root) {
+                 if (copy < 0)
+                         return copy;
+
+-                fprintf(f, "notify-fd=%i\n", copy);
+-                fprintf(f, "notify-socket=%s\n", m->notify_socket);
++                serialize_item_format(f, "notify-fd", "%i", copy);
++                serialize_item(f, "notify-socket", m->notify_socket);
+         }
+
+         if (m->kdbus_fd >= 0) {
+@@ -2277,7 +2277,7 @@ int manager_serialize(Manager *m, FILE *f, FDSet *fds, bool switching_root) {
+                 if (copy < 0)
+                         return copy;
+
+-                fprintf(f, "kdbus-fd=%i\n", copy);
++                serialize_item_format(f, "kdbus-fd", "%i", copy);
+         }
+
+         bus_track_serialize(m->subscribed, f);
+diff --git a/src/core/unit.c b/src/core/unit.c
+index 19f014e6a..9f80d876a 100644
+--- a/src/core/unit.c
++++ b/src/core/unit.c
+@@ -2649,29 +2649,80 @@ int unit_serialize(Unit *u, FILE *f, FDSet *fds, bool serialize_jobs) {
+
+ void unit_serialize_item_format(Unit *u, FILE *f, const char *key, const char *format, ...) {
+         va_list ap;
++        char buf[LONG_LINE_MAX];
++        int r;
+
+         assert(u);
+         assert(f);
+         assert(key);
+         assert(format);
+
++        va_start(ap, format);
++        r = vsnprintf(buf, sizeof(buf), format, ap);
++        va_end(ap);
++        if (r < 0 || r >= (sizeof(buf) - strlen(key) - 2)) {
++                log_warning("Attempted to serialize overly long item '%s', refusing.", key);
++                return;
++        }
++
+         fputs(key, f);
+         fputc('=', f);
++        fputs(buf, f);
++        fputc('\n', f);
++}
++
++void serialize_item_format(FILE *f, const char *key, const char *format, ...) {
++        va_list ap;
++        char buf[LONG_LINE_MAX];
++        int r;
++
++        assert(f);
++        assert(key);
++        assert(format);
+
+         va_start(ap, format);
+-        vfprintf(f, format, ap);
++        r = vsnprintf(buf, sizeof(buf), format, ap);
+         va_end(ap);
++        if (r < 0 || r >= (sizeof(buf) - strlen(key) - 2)) {
++                log_warning("Attempted to serialize overly long item '%s', refusing.", key);
++                return;
++        }
+
++        fputs(key, f);
++        fputc('=', f);
++        fputs(buf, f);
+         fputc('\n', f);
+ }
+
+ void unit_serialize_item(Unit *u, FILE *f, const char *key, const char *value) {
++        char buf[LONG_LINE_MAX];
++        int r;
+         assert(u);
+         assert(f);
+         assert(key);
+         assert(value);
+
+-        fprintf(f, "%s=%s\n", key, value);
++        r = snprintf(buf, sizeof(buf), "%s=%s\n", key, value);
++        if (r < 0 || r >= sizeof(buf)) {
++            log_warning("Attempted to serialize overly long item '%s', refusing.", key);
++        }
++
++        fputs(buf, f);
++}
++
++void serialize_item(FILE *f, const char *key, const char *value) {
++        char buf[LONG_LINE_MAX];
++        int r;
++        assert(f);
++        assert(key);
++        assert(value);
++
++        r = snprintf(buf, sizeof(buf), "%s=%s\n", key, value);
++        if (r < 0 || r >= sizeof(buf)) {
++            log_warning("Attempted to serialize overly long item '%s', refusing.", key);
++        }
++
++        fputs(buf, f);
+ }
+
+ static int unit_set_cgroup_path(Unit *u, const char *path) {
+diff --git a/src/core/unit.h b/src/core/unit.h
+index 9df5a7e6f..1c1ab2c7a 100644
+--- a/src/core/unit.h
++++ b/src/core/unit.h
+@@ -543,6 +543,9 @@ void unit_serialize_item_format(Unit *u, FILE *f, const char *key, const char *v
+ void unit_serialize_item(Unit *u, FILE *f, const char *key, const char *value);
+ int unit_deserialize(Unit *u, FILE *f, FDSet *fds);
+
++void serialize_item_format(FILE *f, const char *key, const char *value, ...);
++void serialize_item(FILE *f, const char *key, const char *value);
++
+ int unit_add_node_link(Unit *u, const char *what, bool wants);
+
+ int unit_coldplug(Unit *u);
