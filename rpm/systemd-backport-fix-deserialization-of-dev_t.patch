@@ -1,0 +1,31 @@
+commit a2a444440f0c3090c375a81a038adfc7cc70ff40
+Author: Lennart Poettering <lennart@poettering.net>
+Date:   Wed Oct 17 20:15:26 2018 +0200
+
+    automount: fix deserialization of dev_t
+
+    let's prefer "unsigned long" rather than "unsigned", in case there are
+    archs that have 32bit int, but 64bit dev_t.
+
+    (Also one cast was wrong anyway.)
+
+diff --git a/src/core/automount.c b/src/core/automount.c
+index 70232f358..eebcc3b20 100644
+--- a/src/core/automount.c
++++ b/src/core/automount.c
+@@ -882,12 +882,13 @@ static int automount_deserialize_item(Unit *u, const char *key, const char *valu
+                         a->result = f;
+
+         } else if (streq(key, "dev-id")) {
+-                unsigned d;
++                unsigned long d;
+
+-                if (safe_atou(value, &d) < 0)
++                if (safe_atolu(value, &d) < 0)
+                         log_unit_debug(u, "Failed to parse dev-id value: %s", value);
+                 else
+-                        a->dev_id = (unsigned) d;
++                        a->dev_id = (dev_t) d;
++
+         } else if (streq(key, "token")) {
+                 unsigned token;

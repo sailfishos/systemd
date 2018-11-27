@@ -38,6 +38,10 @@ Patch24:        systemd-udev-lvm-workaround.patch
 Patch25:        systemd-225-add-pam-systemd-timeout-argument.patch
 Patch26:        systemd-227-sd-event-fix-prepare-priority-queue-comparison-function.patch
 Patch27:        systemd-233-core-downgrade-time-has-been-changed-to-debug.patch
+Patch28:        systemd-backport-when-deserializing-always-use-read_line.patch
+Patch29:        systemd-backport-enforce-a-limit-on-status-texts-recvd-from-services.patch
+Patch30:        systemd-backport-fix-deserialization-of-dev_t.patch
+Patch31:        systemd-backport-rework-serialization.patch
 
 BuildRequires:  libcap-devel
 BuildRequires:  libmount-devel
@@ -202,6 +206,10 @@ This package includes tests for systemd.
 %patch26 -p1
 # shutup 'Time has been changed messages' in journal info
 %patch27 -p1
+%patch28 -p1
+%patch29 -p1
+%patch30 -p1
+%patch31 -p1
 
 %build
 ./autogen.sh
