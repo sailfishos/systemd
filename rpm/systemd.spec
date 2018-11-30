@@ -374,7 +374,7 @@ getent passwd systemd-bus-proxy >/dev/null 2>&1 || useradd -r -l -g systemd-bus-
 systemctl stop systemd-udevd-control.socket systemd-udevd-kernel.socket systemd-udevd.service >/dev/null 2>&1 || :
 
 %post
-systemd-machine-id-setup >/dev/null 2>&1 || :
+touch /etc/machine-id || :
 /usr/lib/systemd/systemd-random-seed save >/dev/null 2>&1 || :
 systemctl daemon-reexec >/dev/null 2>&1 || :
 systemctl start systemd-udevd.service >/dev/null 2>&1 || :
