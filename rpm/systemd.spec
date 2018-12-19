@@ -261,7 +261,8 @@ CONFIGURE_OPTS=(
         --disable-hibernate \
         --with-zshcompletiondir=no \
         --with-ntp-servers="0.sailfishos.pool.ntp.org 1.sailfishos.pool.ntp.org 2.sailfishos.pool.ntp.org 3.sailfishos.pool.ntp.org" \
-        --enable-tests
+        --enable-tests \
+        CFLAGS=-fno-lto
 
 make %{?_smp_mflags} GCC_COLORS="" V=1
 
