@@ -42,6 +42,7 @@ Patch28:        systemd-backport-when-deserializing-always-use-read_line.patch
 Patch29:        systemd-backport-enforce-a-limit-on-status-texts-recvd-from-services.patch
 Patch30:        systemd-backport-fix-deserialization-of-dev_t.patch
 Patch31:        systemd-backport-rework-serialization.patch
+Patch32:        systemd-239-dhcp6-client-CVE-2018-15688-fix.patch
 
 BuildRequires:  libcap-devel
 BuildRequires:  libmount-devel
@@ -210,6 +211,8 @@ This package includes tests for systemd.
 %patch29 -p1
 %patch30 -p1
 %patch31 -p1
+# DHCP6 client CVE-2018-15688 fix
+%patch32 -p1
 
 %build
 ./autogen.sh
