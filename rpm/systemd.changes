@@ -45,7 +45,7 @@
 * Mon Aug 27 2012 Marko Saukko <marko.saukko@jollamobile.com> - 187
 - Fix tty1 autostart by excluding the file in /etc/systemd/system/getty.target.wants/
 
-* Tue Aug 23 2012 Carsten Munk <carsten.munk@jollamobile.com> - 187
+* Thu Aug 23 2012 Carsten Munk <carsten.munk@jollamobile.com> - 187
 - Prep for user sessions:
   - make sure video owns tty and input devices, for xorg startup
   - don't start tty1 automatically

@@ -77,8 +77,6 @@ Provides:       udev = %{version}
 Obsoletes:      udev < 184
 Provides:       systemd-sysv = %{version}
 Obsoletes:      systemd-sysv < %{version}
-Provides:       systemd-sysv-docs = %{version}
-Obsoletes:      systemd-sysv-docs < %{version}
 
 Provides:       systemd-console-ttyMFD2 = %{version}
 Obsoletes:      systemd-console-ttyMFD2 <= 187
@@ -166,13 +164,14 @@ Obsoletes:      libudev-devel < %{version}
 Development headers and auxiliary files for developing applications linking
 to libudev or libsystemd.
 
-%package docs
-Summary:   System and session manager man pages
+%package doc
+Summary:   System and session manager documentation
 Group:     Development/Libraries
 Requires:  %{name} = %{version}-%{release}
+Obsoletes: %{name}-docs
 
-%description docs
-This package includes the man pages for systemd.
+%description doc
+%{summary}.
 
 %package tests
 Summary:   Systemd tests
@@ -250,7 +249,6 @@ CONFIGURE_OPTS=(
         --disable-libcurl \
         --disable-libidn \
         --disable-libiptc \
-        --disable-manpages \
         --disable-libcryptsetup \
         --disable-quotacheck \
         --disable-firstboot \
@@ -323,8 +321,7 @@ mkdir -p %{buildroot}%{_sysconfdir}/sysctl.d
 mkdir -p %{buildroot}%{_sysconfdir}/modules-load.d
 mkdir -p %{buildroot}%{_sysconfdir}/binfmt.d
 
-# Don't ship documentation in the wrong place
-rm %{buildroot}/%{_docdir}/systemd/*
+mv %{buildroot}/%{_docdir}/systemd{,-%{version}}/
 
 mkdir -p %{buildroot}/etc/systemd/system/basic.target.wants
 
@@ -444,7 +441,6 @@ rm -f /.readahead > /dev/null 2>&1 || :
 #%dir %{_sysconfdir}/init.d
 %{_rpmconfigdir}/macros.d/macros.systemd
 %dir %{_sysconfdir}/xdg/systemd
-#%{_sysconfdir}/init.d/README
 %{_sysconfdir}/rpm/macros.systemd
 /bin/systemctl
 /bin/systemd-notify
@@ -517,7 +513,6 @@ rm -f /.readahead > /dev/null 2>&1 || :
 #%{_datadir}/systemd/language-fallback-map
 /%{_lib}/systemd
 %{_datadir}/dbus-1/*/org.freedesktop.systemd1.*
-%{_defaultdocdir}/systemd
 %{_datadir}/dbus-1/system-services/org.freedesktop.hostname1.service
 %{_datadir}/dbus-1/system-services/org.freedesktop.login1.service
 #%{_datadir}/dbus-1/system-services/org.freedesktop.locale1.service
@@ -558,9 +553,9 @@ rm -f /.readahead > /dev/null 2>&1 || :
 /lib/systemd/system/default.target
 /lib/systemd/system/user@.service
 
-%files docs
+%files doc
 %defattr(-,root,root,-)
-#%doc %{_mandir}/man?/*
+%{_docdir}/%{name}-%{version}
 
 %files tests
 %defattr(-,root,root,-)
