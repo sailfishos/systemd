@@ -60,6 +60,7 @@ BuildRequires:  xz-devel
 BuildRequires:  kmod-devel >= 15
 BuildRequires:  fdupes
 BuildRequires:  libtool
+BuildRequires:  pkgconfig(libcryptsetup) >= 1.6.0
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
 Requires:       dbus
@@ -249,7 +250,6 @@ CONFIGURE_OPTS=(
         --disable-libcurl \
         --disable-libidn \
         --disable-libiptc \
-        --disable-libcryptsetup \
         --disable-quotacheck \
         --disable-firstboot \
         --disable-backlight \
