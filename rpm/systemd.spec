@@ -274,6 +274,10 @@ make %{?_smp_mflags} GCC_COLORS="" V=1
 mkdir -p %{buildroot}/%{_sbindir}
 ln -sf ../bin/udevadm %{buildroot}%{_sbindir}/udevadm
 
+# Compatiblity and documentation files
+touch %{buildroot}/etc/crypttab
+chmod 600 %{buildroot}/etc/crypttab
+
 # Create SysV compatibility symlinks. systemctl/systemd are smart
 # enough to detect in which way they are called.
 mkdir -p %{buildroot}/sbin
@@ -452,6 +456,7 @@ rm -f /.readahead > /dev/null 2>&1 || :
 /bin/journalctl
 #/bin/machinectl
 %config(noreplace) %{_sysconfdir}/xdg/systemd/user
+%{_sysconfdir}/crypttab
 %{_sysconfdir}/systemd/system/*
 %{_libdir}/tmpfiles.d/*
 %{_libdir}/sysctl.d/50-default.conf
