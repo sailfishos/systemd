@@ -60,6 +60,7 @@ BuildRequires:  xz-devel
 BuildRequires:  kmod-devel >= 15
 BuildRequires:  fdupes
 BuildRequires:  libtool
+BuildRequires:  pkgconfig(libcryptsetup) >= 1.6.0
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
 Requires:       dbus
@@ -249,7 +250,6 @@ CONFIGURE_OPTS=(
         --disable-libcurl \
         --disable-libidn \
         --disable-libiptc \
-        --disable-libcryptsetup \
         --disable-quotacheck \
         --disable-firstboot \
         --disable-backlight \
@@ -273,6 +273,10 @@ make %{?_smp_mflags} GCC_COLORS="" V=1
 # udev links
 mkdir -p %{buildroot}/%{_sbindir}
 ln -sf ../bin/udevadm %{buildroot}%{_sbindir}/udevadm
+
+# Compatiblity and documentation files
+touch %{buildroot}/etc/crypttab
+chmod 600 %{buildroot}/etc/crypttab
 
 # Create SysV compatibility symlinks. systemctl/systemd are smart
 # enough to detect in which way they are called.
@@ -417,28 +421,18 @@ rm -f /.readahead > /dev/null 2>&1 || :
 %dir %{_prefix}/lib/sysctl.d
 %dir %{_prefix}/lib/modules-load.d
 %dir %{_prefix}/lib/binfmt.d
-#%dir %{_datadir}/systemd
-#%dir %{_datadir}/zsh
-#%dir %{_datadir}/zsh/site-functions
 %dir %{_localstatedir}/log/journal
 %dir %{_localstatedir}/lib/systemd
 %dir %{_localstatedir}/lib/systemd/catalog
 %dir %{_localstatedir}/lib/systemd/coredump
 %ghost %{_localstatedir}/lib/systemd/random-seed
 %ghost %{_localstatedir}/lib/systemd/catalog/database
-#%{_localstatedir}/log/README
 %dir %{_sysconfdir}/dbus-1/system.d
 %config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.systemd1.conf
 %config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.hostname1.conf
 %config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.login1.conf
-#%config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.locale1.conf
-#%config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.timedate1.conf
-#%config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.machine1.conf
-#%config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.resolve1.conf
-#%config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.network1.conf
 %config(noreplace) %{_sysconfdir}/pam.d/systemd-user
 %ghost %{_sysconfdir}/udev/hwdb.bin
-#%dir %{_sysconfdir}/init.d
 %{_rpmconfigdir}/macros.d/macros.systemd
 %dir %{_sysconfdir}/xdg/systemd
 %{_sysconfdir}/rpm/macros.systemd
@@ -450,8 +444,8 @@ rm -f /.readahead > /dev/null 2>&1 || :
 /bin/systemd-machine-id-setup
 /bin/loginctl
 /bin/journalctl
-#/bin/machinectl
 %config(noreplace) %{_sysconfdir}/xdg/systemd/user
+%{_sysconfdir}/crypttab
 %{_sysconfdir}/systemd/system/*
 %{_libdir}/tmpfiles.d/*
 %{_libdir}/sysctl.d/50-default.conf
@@ -462,7 +456,6 @@ rm -f /.readahead > /dev/null 2>&1 || :
 /lib/udev/*
 /bin/systemctl-user
 %{_bindir}/busctl
-#/bin/networkctl
 /bin/systemd-tmpfiles
 %{_bindir}/kernel-install
 %{_bindir}/systemd-nspawn
@@ -476,16 +469,12 @@ rm -f /.readahead > /dev/null 2>&1 || :
 /bin/systemd-inhibit
 %{_bindir}/systemd-path
 /bin/systemd-sysusers
-#/bin/systemd-firstboot
 /bin/systemd-hwdb
 %{_bindir}/hostnamectl
-#%{_bindir}/localectl
-#%{_bindir}/timedatectl
 %{_bindir}/bootctl
 %{_prefix}/lib/tmpfiles.d/systemd.conf
 %{_prefix}/lib/tmpfiles.d/systemd-nologin.conf
 %{_prefix}/lib/tmpfiles.d/x11.conf
-#%{_prefix}/lib/tmpfiles.d/legacy.conf
 %{_prefix}/lib/tmpfiles.d/tmp.conf
 %{_prefix}/lib/tmpfiles.d/var.conf
 %{_prefix}/lib/tmpfiles.d/etc.conf
@@ -509,27 +498,16 @@ rm -f /.readahead > /dev/null 2>&1 || :
 %{_datadir}/factory/etc/nsswitch.conf
 %{_datadir}/factory/etc/pam.d/other
 %{_datadir}/factory/etc/pam.d/system-auth
-#%{_datadir}/systemd/kbd-model-map
-#%{_datadir}/systemd/language-fallback-map
 /%{_lib}/systemd
 %{_datadir}/dbus-1/*/org.freedesktop.systemd1.*
 %{_datadir}/dbus-1/system-services/org.freedesktop.hostname1.service
 %{_datadir}/dbus-1/system-services/org.freedesktop.login1.service
-#%{_datadir}/dbus-1/system-services/org.freedesktop.locale1.service
-#%{_datadir}/dbus-1/system-services/org.freedesktop.timedate1.service
-#%{_datadir}/dbus-1/system-services/org.freedesktop.machine1.service
-#%{_datadir}/dbus-1/system-services/org.freedesktop.resolve1.service
-#%{_datadir}/dbus-1/system-services/org.freedesktop.network1.service
 %{_datadir}/polkit-1/actions/org.freedesktop.systemd1.policy
 %{_datadir}/polkit-1/actions/org.freedesktop.hostname1.policy
 %{_datadir}/polkit-1/actions/org.freedesktop.login1.policy
-#%{_datadir}/polkit-1/actions/org.freedesktop.locale1.policy
-#%{_datadir}/polkit-1/actions/org.freedesktop.timedate1.policy
-#%{_datadir}/polkit-1/actions/org.freedesktop.machine1.policy
 %dir %{_datadir}/bash-completion
 %dir %{_datadir}/bash-completion/completions
 %{_datadir}/bash-completion/completions/*
-#%{_datadir}/zsh/site-functions/*
 %{pkgdir}/catalog/systemd.*.catalog
 
 # Just make sure we don't package these by default
@@ -542,9 +520,7 @@ rm -f /.readahead > /dev/null 2>&1 || :
 %defattr(-,root,root,-)
 %config(noreplace) %{_sysconfdir}/systemd/journald.conf
 %config(noreplace) %{_sysconfdir}/systemd/logind.conf
-#%config(noreplace) %{_sysconfdir}/systemd/resolved.conf
 %config(noreplace) %{_sysconfdir}/systemd/system.conf
-#%config(noreplace) %{_sysconfdir}/systemd/timesyncd.conf
 %config(noreplace) %{_sysconfdir}/systemd/user.conf
 %config(noreplace) %{_sysconfdir}/udev/udev.conf
 %config(noreplace) %{_sysconfdir}/systemd/bootchart.conf
@@ -570,9 +546,6 @@ rm -f /.readahead > /dev/null 2>&1 || :
 
 %files libs
 /lib/security/pam_systemd.so
-#%{_libdir}/libnss_myhostname.so.2
-#%{_libdir}/libnss_mymachines.so.2
-#%{_libdir}/libnss_resolve.so.2
 %{_libdir}/libudev.so.*
 %{_libdir}/libsystemd.so.*
 
