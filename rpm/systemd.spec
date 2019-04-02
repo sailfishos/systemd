@@ -53,6 +53,7 @@ Patch39:        systemd-backport-pam-systemd-use-secure_getenv-rather-than-geten
 
 Patch99:        systemd-225_fix_build_with_glibc228.patch
 
+BuildRequires:  audit-libs-devel
 BuildRequires:  libcap-devel
 BuildRequires:  libmount-devel
 BuildRequires:  pam-devel
@@ -263,7 +264,7 @@ CONFIGURE_OPTS=(
         --disable-apparmor \
         --enable-pam \
         --enable-acl \
-        --disable-audit \
+        --enable-audit \
         --disable-elfutils \
         --disable-qrencode \
         --disable-microhttpd \
