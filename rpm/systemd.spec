@@ -44,6 +44,8 @@ Patch30:        systemd-backport-fix-deserialization-of-dev_t.patch
 Patch31:        systemd-backport-rework-serialization.patch
 Patch32:        systemd-239-dhcp6-client-CVE-2018-15688-fix.patch
 
+Patch99:        systemd-225_fix_build_with_glibc228.patch
+
 BuildRequires:  libcap-devel
 BuildRequires:  libmount-devel
 BuildRequires:  pam-devel
@@ -213,6 +215,8 @@ This package includes tests for systemd.
 %patch31 -p1
 # DHCP6 client CVE-2018-15688 fix
 %patch32 -p1
+#systemd-225_fix_build_with_glibc228.patch
+%patch99 -p1
 
 %build
 ./autogen.sh
