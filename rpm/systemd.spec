@@ -43,6 +43,7 @@ Patch29:        systemd-backport-enforce-a-limit-on-status-texts-recvd-from-serv
 Patch30:        systemd-backport-fix-deserialization-of-dev_t.patch
 Patch31:        systemd-backport-rework-serialization.patch
 Patch32:        systemd-239-dhcp6-client-CVE-2018-15688-fix.patch
+Patch33:        systemd-235-Remove-extra-BindsTo.patch
 
 Patch99:        systemd-225_fix_build_with_glibc228.patch
 
@@ -215,6 +216,7 @@ This package includes tests for systemd.
 %patch31 -p1
 # DHCP6 client CVE-2018-15688 fix
 %patch32 -p1
+%patch33 -p1
 #systemd-225_fix_build_with_glibc228.patch
 %patch99 -p1
 

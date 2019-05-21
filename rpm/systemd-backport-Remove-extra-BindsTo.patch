@@ -1,0 +1,30 @@
+From c88ae15f4f44f531f729dff39f77285c6b446ef1 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Tomi=20Lepp=C3=A4nen?= <tomi.leppanen@jolla.com>
+Date: Mon, 20 May 2019 15:56:36 +0300
+Subject: [PATCH] Remove extra BindsTo
+
+Remove extra BindsTo clause. Otherwise it will cause problems when
+booting home-encrypted device.
+
+This is a backport of upstream commit
+e9ea4526a3a3b41eced29b8d742498cc36750424.
+
+---
+ src/cryptsetup/cryptsetup-generator.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/src/cryptsetup/cryptsetup-generator.c b/src/cryptsetup/cryptsetup-generator.c
+index 6fad8ad80..6c7afeb9f 100644
+--- a/src/cryptsetup/cryptsetup-generator.c
++++ b/src/cryptsetup/cryptsetup-generator.c
+@@ -106,7 +106,6 @@ static int create_disk(
+                 "SourcePath=/etc/crypttab\n"
+                 "DefaultDependencies=no\n"
+                 "Conflicts=umount.target\n"
+-                "BindsTo=dev-mapper-%i.device\n"
+                 "IgnoreOnIsolate=true\n"
+                 "After=cryptsetup-pre.target\n",
+                 f);
+-- 
+2.21.0
+
