@@ -43,7 +43,7 @@ Patch29:        systemd-backport-enforce-a-limit-on-status-texts-recvd-from-serv
 Patch30:        systemd-backport-fix-deserialization-of-dev_t.patch
 Patch31:        systemd-backport-rework-serialization.patch
 Patch32:        systemd-239-dhcp6-client-CVE-2018-15688-fix.patch
-Patch33:        systemd-235-Remove-extra-BindsTo.patch
+Patch33:        systemd-backport-Remove-extra-BindsTo.patch
 Patch34:        systemd-234-udev-fix-some-incorrect-usages-of-CLOCK_BOOTTIME-619.patch
 
 Patch99:        systemd-225_fix_build_with_glibc228.patch
