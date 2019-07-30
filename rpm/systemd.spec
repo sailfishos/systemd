@@ -72,6 +72,7 @@ Requires:       filesystem >= 3
 Requires:       systemd-config
 # fsck with -l option was introduced in 2.21.2 packaging
 Requires:       util-linux >= 2.21.2
+Requires:       which
 # pidof command
 Requires:       psmisc
 # For vgchange tool and LVM udev rules. Workaround for JB#36605.
