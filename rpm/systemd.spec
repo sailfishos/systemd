@@ -46,6 +46,7 @@ Patch32:        systemd-239-dhcp6-client-CVE-2018-15688-fix.patch
 Patch33:        systemd-backport-Remove-extra-BindsTo.patch
 Patch34:        systemd-234-udev-fix-some-incorrect-usages-of-CLOCK_BOOTTIME-619.patch
 Patch35:        systemd-backport-journald-set-a-limit-on-the-number-of-fields-1k.patch
+Patch36:        systemd-backport-fuzz-decrease-DATA_SIZE_MAX.patch
 
 Patch99:        systemd-225_fix_build_with_glibc228.patch
 
@@ -223,6 +224,7 @@ This package includes tests for systemd.
 %patch33 -p1
 %patch34 -p1
 %patch35 -p1
+%patch36 -p1
 #systemd-225_fix_build_with_glibc228.patch
 %patch99 -p1
 
