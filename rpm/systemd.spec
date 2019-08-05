@@ -49,6 +49,7 @@ Patch35:        systemd-backport-journald-set-a-limit-on-the-number-of-fields-1k
 Patch36:        systemd-backport-fuzz-decrease-DATA_SIZE_MAX.patch
 Patch37:        systemd-backport-journal-fix-syslog_parse_identifier.patch
 Patch38:        systemd-backport-If-the-notification-message-length-is-0-ignore-the-m.patch
+Patch39:        systemd-backport-pam-systemd-use-secure_getenv-rather-than-getenv.patch
 
 Patch99:        systemd-225_fix_build_with_glibc228.patch
 
@@ -229,6 +230,7 @@ This package includes tests for systemd.
 %patch36 -p1
 %patch37 -p1
 %patch38 -p1
+%patch39 -p1
 #systemd-225_fix_build_with_glibc228.patch
 %patch99 -p1
 
