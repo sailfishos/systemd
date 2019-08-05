@@ -1,0 +1,47 @@
+This is the backport of the upstream commit
+https://github.com/systemd/systemd/commit/052c57f132f04a3cf4148f87561618da1a6908b4
+It is fixed it v241.
+
+From 052c57f132f04a3cf4148f87561618da1a6908b4 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Zbigniew=20J=C4=99drzejewski-Szmek?= <zbyszek@in.waw.pl>
+Date: Wed, 5 Dec 2018 22:45:02 +0100
+Subject: [PATCH] journald: set a limit on the number of fields (1k)
+
+We allocate a iovec entry for each field, so with many short entries,
+our memory usage and processing time can be large, even with a relatively
+small message size. Let's refuse overly long entries.
+
+CVE-2018-16865
+https://bugzilla.redhat.com/show_bug.cgi?id=1653861
+
+What from I can see, the problem is not from an alloca, despite what the CVE
+description says, but from the attack multiplication that comes from creating
+many very small iovecs: (void* + size_t) for each three bytes of input message.
+
+diff -purN systemd/src/journal/journald-native.c systemd-izh/src/journal/journald-native.c
+--- systemd/src/journal/journald-native.c	2019-08-05 05:38:44.083368462 -0400
++++ systemd-izh/src/journal/journald-native.c	2019-08-05 05:56:53.357060530 -0400
+@@ -133,6 +133,10 @@ void server_process_native_message(
+                 }
+ 
+                 /* A property follows */
++                if (n > ENTRY_FIELD_COUNT_MAX) {
++                        log_debug("Received an entry that has more than " STRINGIFY(ENTRY_FIELD_COUNT_MAX) " fields, ignoring entry.");
++                        goto finish;
++                }
+ 
+                 /* n existing properties, 1 new, +1 for _TRANSPORT */
+                 if (!GREEDY_REALLOC(iovec, m, n + 2 + N_IOVEC_META_FIELDS + N_IOVEC_OBJECT_FIELDS)) {
+diff -purN systemd/src/journal/journald-native.h systemd-izh/src/journal/journald-native.h
+--- systemd/src/journal/journald-native.h	2019-08-05 05:38:44.083368462 -0400
++++ systemd-izh/src/journal/journald-native.h	2019-08-05 06:00:28.253422314 -0400
+@@ -28,6 +28,9 @@
+ #define ENTRY_SIZE_MAX (1024*1024*770u)
+ #define DATA_SIZE_MAX (1024*1024*768u)
+ 
++/* The maximum number of fields in an entry */
++#define ENTRY_FIELD_COUNT_MAX 1024
++
+ bool valid_user_field(const char *p, size_t l, bool allow_protected);
+ 
+ void server_process_native_message(Server *s, const void *buffer, size_t buffer_size, const struct ucred *ucred, const struct timeval *tv, const char *label, size_t label_len);
