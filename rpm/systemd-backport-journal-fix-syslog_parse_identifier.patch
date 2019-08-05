@@ -1,0 +1,87 @@
+This is the backport of the upstream commits
+https://github.com/systemd/systemd/commit/a6aadf4ae0bae185dc4c414d492a4a781c80ffe5
+https://github.com/systemd/systemd/commit/8595102d3ddde6d25c282f965573a6de34ab4421
+
+It fixes CVE-2018-16866.
+
+From a6aadf4ae0bae185dc4c414d492a4a781c80ffe5 Mon Sep 17 00:00:00 2001
+From: Yu Watanabe <watanabe.yu+github@gmail.com>
+Date: Wed, 8 Aug 2018 15:06:36 +0900
+Subject: [PATCH] journal: fix syslog_parse_identifier()
+
+Fixes #9829.
+
+From 8595102d3ddde6d25c282f965573a6de34ab4421 Mon Sep 17 00:00:00 2001
+From: Yu Watanabe <watanabe.yu+github@gmail.com>
+Date: Fri, 10 Aug 2018 11:07:54 +0900
+Subject: [PATCH] journal: do not remove multiple spaces after identifier in syslog message
+
+Single space is used as separator.
+C.f. discussions in #156.
+
+Fixes #9839 introduced by a6aadf4ae0bae185dc4c414d492a4a781c80ffe5.
+
+diff -purN systemd/src/journal/journald-syslog.c systemd-izh/src/journal/journald-syslog.c
+--- systemd/src/journal/journald-syslog.c	2019-08-02 18:21:22.892939591 +0300
++++ systemd-izh/src/journal/journald-syslog.c	2019-08-05 16:54:03.176668148 +0300
+@@ -209,7 +209,7 @@ size_t syslog_parse_identifier(const cha
+         e = l;
+         l--;
+ 
+-        if (p[l-1] == ']') {
++        if (l > 0 && p[l-1] == ']') {
+                 size_t k = l-1;
+ 
+                 for (;;) {
+@@ -234,8 +234,10 @@ size_t syslog_parse_identifier(const cha
+         if (t)
+                 *identifier = t;
+ 
+-        if (strchr(WHITESPACE, p[e]))
++        /* Single space is used as separator */
++        if (p[e] != '\0' && strchr(WHITESPACE, p[e]))
+                 e++;
++
+         *buf = p + e;
+         return e;
+ }
+diff -purN systemd/src/journal/test-journal-syslog.c systemd-izh/src/journal/test-journal-syslog.c
+--- systemd/src/journal/test-journal-syslog.c	2019-08-02 18:21:22.892939591 +0300
++++ systemd-izh/src/journal/test-journal-syslog.c	2019-08-05 16:54:03.176668148 +0300
+@@ -22,8 +22,8 @@
+ #include "journald-syslog.h"
+ #include "macro.h"
+ 
+-static void test_syslog_parse_identifier(const char* str,
+-                                         const char *ident, const char*pid, int ret) {
++static void test_syslog_parse_identifier(const char *str,
++                                         const char *ident, const char *pid, const char *rest, int ret) {
+         const char *buf = str;
+         _cleanup_free_ char *ident2 = NULL, *pid2 = NULL;
+         int ret2;
+@@ -33,12 +33,22 @@ static void test_syslog_parse_identifier
+         assert_se(ret == ret2);
+         assert_se(ident == ident2 || streq_ptr(ident, ident2));
+         assert_se(pid == pid2 || streq_ptr(pid, pid2));
++        assert_se(streq(buf, rest));
+ }
+ 
+ int main(void) {
+-        test_syslog_parse_identifier("pidu[111]: xxx", "pidu", "111", 11);
+-        test_syslog_parse_identifier("pidu: xxx", "pidu", NULL, 6);
+-        test_syslog_parse_identifier("pidu xxx", NULL, NULL, 0);
++        test_syslog_parse_identifier("pidu[111]: xxx", "pidu", "111", "xxx", 11);
++        test_syslog_parse_identifier("pidu: xxx", "pidu", NULL, "xxx", 6);
++        test_syslog_parse_identifier("pidu:  xxx", "pidu", NULL, " xxx", 6);
++        test_syslog_parse_identifier("pidu xxx", NULL, NULL, "pidu xxx", 0);
++        test_syslog_parse_identifier("   pidu xxx", NULL, NULL, "   pidu xxx", 0);
++        test_syslog_parse_identifier("", NULL, NULL, "", 0);
++        test_syslog_parse_identifier("  ", NULL, NULL, "  ", 0);
++        test_syslog_parse_identifier(":", "", NULL, "", 1);
++        test_syslog_parse_identifier(":  ", "", NULL, " ", 2);
++        test_syslog_parse_identifier("pidu:", "pidu", NULL, "", 5);
++        test_syslog_parse_identifier("pidu: ", "pidu", NULL, "", 6);
++        test_syslog_parse_identifier("pidu : ", NULL, NULL, "pidu : ", 0);
+ 
+         return 0;
+ }
