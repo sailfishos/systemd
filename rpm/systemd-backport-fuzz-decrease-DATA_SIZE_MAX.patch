@@ -1,0 +1,39 @@
+This is the backport of the upstream commit
+https://github.com/systemd/systemd/commit/25cad95c82f4c45d6d7c872c39bbd72bc4946edb
+
+It fixes CVE-2013-4391.
+
+From 25cad95c82f4c45d6d7c872c39bbd72bc4946edb Mon Sep 17 00:00:00 2001
+From: Yu Watanabe <watanabe.yu+github@gmail.com>
+Date: Mon, 12 Nov 2018 18:08:45 +0900
+Subject: [PATCH] fuzz: decrease DATA_SIZE_MAX
+
+Fixes oss-fuzz#8658.
+
+diff -purN systemd/src/journal/coredump.c systemd-izh/src/journal/coredump.c
+--- systemd/src/journal/coredump.c	2019-08-05 05:38:44.075368451 -0400
++++ systemd-izh/src/journal/coredump.c	2019-08-05 09:23:47.773816172 -0400
+@@ -59,7 +59,8 @@
+ 
+ /* The maximum size up to which we store the coredump in the
+  * journal */
+-#define JOURNAL_SIZE_MAX ((size_t) (767LU*1024LU*1024LU))
++/* oss-fuzz limits memory usage. */
++#define JOURNAL_SIZE_MAX ((size_t) (10LU*1024LU*1024LU))
+ 
+ /* Make sure to not make this larger than the maximum journal entry
+  * size. See DATA_SIZE_MAX in journald-native.c. */
+diff -purN systemd/src/journal/journald-native.h systemd-izh/src/journal/journald-native.h
+--- systemd/src/journal/journald-native.h	2019-08-05 08:19:55.982711293 -0400
++++ systemd-izh/src/journal/journald-native.h	2019-08-05 09:09:23.164321075 -0400
+@@ -25,8 +25,8 @@
+ 
+ /* Make sure not to make this smaller than the maximum coredump
+  * size. See COREDUMP_MAX in coredump.c */
+-#define ENTRY_SIZE_MAX (1024*1024*770u)
+-#define DATA_SIZE_MAX (1024*1024*768u)
++#define ENTRY_SIZE_MAX (1024*1024*13u)
++#define DATA_SIZE_MAX (1024*1024*11u)
+ 
+ bool valid_user_field(const char *p, size_t l, bool allow_protected);
+ 

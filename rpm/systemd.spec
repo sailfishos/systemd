@@ -45,6 +45,11 @@ Patch31:        systemd-backport-rework-serialization.patch
 Patch32:        systemd-239-dhcp6-client-CVE-2018-15688-fix.patch
 Patch33:        systemd-backport-Remove-extra-BindsTo.patch
 Patch34:        systemd-234-udev-fix-some-incorrect-usages-of-CLOCK_BOOTTIME-619.patch
+Patch35:        systemd-backport-journald-set-a-limit-on-the-number-of-fields-1k.patch
+Patch36:        systemd-backport-fuzz-decrease-DATA_SIZE_MAX.patch
+Patch37:        systemd-backport-journal-fix-syslog_parse_identifier.patch
+Patch38:        systemd-backport-If-the-notification-message-length-is-0-ignore-the-m.patch
+Patch39:        systemd-backport-pam-systemd-use-secure_getenv-rather-than-getenv.patch
 
 Patch99:        systemd-225_fix_build_with_glibc228.patch
 
@@ -221,6 +226,11 @@ This package includes tests for systemd.
 # home encryption related patches
 %patch33 -p1
 %patch34 -p1
+%patch35 -p1
+%patch36 -p1
+%patch37 -p1
+%patch38 -p1
+%patch39 -p1
 #systemd-225_fix_build_with_glibc228.patch
 %patch99 -p1
 
