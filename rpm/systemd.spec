@@ -54,24 +54,24 @@ Patch39:        systemd-backport-pam-systemd-use-secure_getenv-rather-than-geten
 Patch99:        systemd-225_fix_build_with_glibc228.patch
 
 BuildRequires:  audit-libs-devel
+BuildRequires:  fdupes
+BuildRequires:  glib2-devel
+BuildRequires:  gperf
+BuildRequires:  intltool >= 0.40.0
+BuildRequires:  kmod-devel >= 15
+BuildRequires:  libacl-devel
 BuildRequires:  libcap-devel
+BuildRequires:  libgcrypt-devel
 BuildRequires:  libmount-devel
+BuildRequires:  libselinux-devel
+BuildRequires:  libtool
+BuildRequires:  libxslt
 BuildRequires:  pam-devel
+BuildRequires:  pkgconfig(blkid) >= 2.20
 BuildRequires:  pkgconfig(dbus-1) >= 1.3.2
 BuildRequires:  pkgconfig(dbus-glib-1)
-BuildRequires:  libxslt
-BuildRequires:  libacl-devel
-BuildRequires:  glib2-devel
-BuildRequires:  libgcrypt-devel
-BuildRequires:  pkgconfig(blkid) >= 2.20
-BuildRequires:  intltool >= 0.40.0
-BuildRequires:  gperf
-BuildRequires:  xz-devel
-BuildRequires:  kmod-devel >= 15
-BuildRequires:  fdupes
-BuildRequires:  libtool
-BuildRequires:  libselinux-devel
 BuildRequires:  pkgconfig(libcryptsetup) >= 1.6.0
+BuildRequires:  xz-devel
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
 Requires:       dbus
