@@ -1,5 +1,5 @@
 %global pkgdir %{_prefix}/lib/systemd
-%global system_unit_dir /%{_lib}/systemd/system
+%global system_unit_dir /%{_libdir}/systemd/system
 
 Name:           systemd
 Url:            http://www.freedesktop.org/wiki/Software/systemd
@@ -85,6 +85,8 @@ Requires:       psmisc
 # For vgchange tool and LVM udev rules. Workaround for JB#36605.
 # Should be removed after implementing UDEV events handling in initramfs.
 Requires:       lvm2
+
+Requires:	filesystem >= 3.2
 
 Provides:       udev = %{version}
 Obsoletes:      udev < 184
@@ -246,10 +248,11 @@ CONFIGURE_OPTS=(
 %configure \
         "${CONFIGURE_OPTS[@]}" \
         --enable-compat-libs \
-        --with-rootprefix= \
+        --with-rootprefix=%{_prefix} \
+	--with-rootlibdir=%{_prefix}/lib \
         --disable-coredump \
         --disable-static \
-        --with-firmware-path=/lib/firmware/updates:/lib/firmware:/system/etc/firmware:/etc/firmware:/vendor/firmware:/firmware/image \
+        --with-firmware-path=/usr/lib/firmware/updates:/usr/lib/firmware:/system/etc/firmware:/etc/firmware:/vendor/firmware:/firmware/image \
         --disable-manpages \
         --disable-libcurl \
         --disable-timesyncd \
@@ -295,7 +298,7 @@ make %{?_smp_mflags} GCC_COLORS="" V=1
 
 # udev links
 mkdir -p %{buildroot}/%{_sbindir}
-ln -sf ../bin/udevadm %{buildroot}%{_sbindir}/udevadm
+ln -sf %{_bindir}/udevadm %{buildroot}%{_sbindir}/udevadm
 
 # Compatiblity and documentation files
 touch %{buildroot}/%{_sysconfdir}/crypttab
@@ -304,13 +307,13 @@ chmod 600 %{buildroot}/%{_sysconfdir}/crypttab
 # Create SysV compatibility symlinks. systemctl/systemd are smart
 # enough to detect in which way they are called.
 mkdir -p %{buildroot}/sbin
-ln -s ../lib/systemd/systemd %{buildroot}/sbin/init
-ln -s ../../bin/systemctl %{buildroot}%{_sbindir}/reboot
-ln -s ../../bin/systemctl %{buildroot}%{_sbindir}/halt
-ln -s ../../bin/systemctl %{buildroot}%{_sbindir}/poweroff
-ln -s ../../bin/systemctl %{buildroot}%{_sbindir}/shutdown
-ln -s ../../bin/systemctl %{buildroot}%{_sbindir}/telinit
-ln -s ../../bin/systemctl %{buildroot}%{_sbindir}/runlevel
+ln -s %{_libdir}/systemd/systemd %{buildroot}%{_sbindir}/init
+ln -s %{_bindir}/systemctl %{buildroot}%{_sbindir}/reboot
+ln -s %{_bindir}/systemctl %{buildroot}%{_sbindir}/halt
+ln -s %{_bindir}/systemctl %{buildroot}%{_sbindir}/poweroff
+ln -s %{_bindir}/systemctl %{buildroot}%{_sbindir}/shutdown
+ln -s %{_bindir}/systemctl %{buildroot}%{_sbindir}/telinit
+ln -s %{_bindir}/systemctl %{buildroot}%{_sbindir}/runlevel
 
 # Make sure these directories are properly owned
 mkdir -p %{buildroot}%{system_unit_dir}/basic.target.wants
@@ -322,8 +325,8 @@ mkdir -p %{buildroot}%{system_unit_dir}/graphical.target.wants
 mkdir -p %{buildroot}%{system_unit_dir}/network.target.wants
 
 # Require network to be enabled with multi-user.target
-mkdir -p %{buildroot}/lib/systemd/system/multi-user.target.wants/
-ln -s ../network.target %{buildroot}/lib/systemd/system/multi-user.target.wants/network.target
+mkdir -p %{buildroot}%{_libdir}/systemd/system/multi-user.target.wants/
+ln -s ../network.target %{buildroot}%{_libdir}/systemd/system/multi-user.target.wants/network.target
 
 # Install Fedora default preset policy
 mkdir -p %{buildroot}%{_prefix}/lib/systemd/system-preset/
@@ -353,16 +356,13 @@ mv %{buildroot}/%{_docdir}/systemd{,-%{version}}/
 mkdir -p %{buildroot}/etc/systemd/system/basic.target.wants
 
 # Add systemctl-user helper script
-install -D -m 754 %{SOURCE3} %{buildroot}/bin/systemctl-user
+install -D -m 754 %{SOURCE3} %{buildroot}%{_bindir}/systemctl-user
 
 %fdupes  %{buildroot}/%{_datadir}/man/
 
 # Install tests.xml
 install -d -m 755 %{buildroot}/opt/tests/systemd-tests
 install -m 644 %{SOURCE2} %{buildroot}/opt/tests/systemd-tests
-
-mkdir -p %{buildroot}/lib/security/
-mv %{buildroot}%{_libdir}/security/pam_systemd.so %{buildroot}/lib/security/pam_systemd.so
 
 # systemd macros
 # Old rpm versions assume macros in /etc/rpm/
@@ -459,14 +459,14 @@ rm -f /.readahead > /dev/null 2>&1 || :
 %{_rpmconfigdir}/macros.d/macros.systemd
 %dir %{_sysconfdir}/xdg/systemd
 %{_sysconfdir}/rpm/macros.systemd
-/bin/systemctl
-/bin/systemd-notify
-/bin/systemd-escape
-/bin/systemd-ask-password
-/bin/systemd-tty-ask-password-agent
-/bin/systemd-machine-id-setup
-/bin/loginctl
-/bin/journalctl
+%{_bindir}/systemctl
+%{_bindir}/systemd-notify
+%{_bindir}/systemd-escape
+%{_bindir}/systemd-ask-password
+%{_bindir}/systemd-tty-ask-password-agent
+%{_bindir}/systemd-machine-id-setup
+%{_bindir}/loginctl
+%{_bindir}/journalctl
 %config(noreplace) %{_sysconfdir}/xdg/systemd/user
 %ghost %{_sysconfdir}/crypttab
 %{_sysconfdir}/systemd/system/*
@@ -475,11 +475,10 @@ rm -f /.readahead > /dev/null 2>&1 || :
 %dir %{_libdir}/systemd/user
 %{_libdir}/systemd/user/*
 %{_libdir}/systemd/user-generators/systemd-dbus1-generator
-%dir /lib/udev/
-/lib/udev/*
-/bin/systemctl-user
+%{_libdir}/udev/
+%{_bindir}/systemctl-user
 %{_bindir}/busctl
-/bin/systemd-tmpfiles
+%{_bindir}/systemd-tmpfiles
 %{_bindir}/kernel-install
 %{_bindir}/systemd-nspawn
 %{_bindir}/systemd-stdio-bridge
@@ -489,10 +488,10 @@ rm -f /.readahead > /dev/null 2>&1 || :
 %{_bindir}/systemd-delta
 %{_bindir}/systemd-run
 %{_bindir}/systemd-detect-virt
-/bin/systemd-inhibit
+%{_bindir}/systemd-inhibit
 %{_bindir}/systemd-path
-/bin/systemd-sysusers
-/bin/systemd-hwdb
+%{_bindir}/systemd-sysusers
+%{_bindir}/systemd-hwdb
 %{_bindir}/hostnamectl
 %{_bindir}/bootctl
 %{_prefix}/lib/tmpfiles.d/systemd.conf
@@ -505,12 +504,12 @@ rm -f /.readahead > /dev/null 2>&1 || :
 %{_prefix}/lib/tmpfiles.d/systemd-nspawn.conf
 %{_prefix}/lib/tmpfiles.d/journal-nocow.conf
 %{pkgdir}/catalog/systemd.catalog
-/bin/udevadm
+%{_bindir}/udevadm
 %dir %{_prefix}/lib/kernel
 %dir %{_prefix}/lib/kernel/install.d
 %{_prefix}/lib/kernel/install.d/50-depmod.install
 %{_prefix}/lib/kernel/install.d/90-loaderentry.install
-/sbin/init
+%{_sbindir}/init
 %{_sbindir}/reboot
 %{_sbindir}/halt
 %{_sbindir}/poweroff
@@ -521,7 +520,7 @@ rm -f /.readahead > /dev/null 2>&1 || :
 %{_datadir}/factory/etc/nsswitch.conf
 %{_datadir}/factory/etc/pam.d/other
 %{_datadir}/factory/etc/pam.d/system-auth
-/%{_lib}/systemd
+%{_libdir}/systemd
 %{_datadir}/dbus-1/*/org.freedesktop.systemd1.*
 %{_datadir}/dbus-1/system-services/org.freedesktop.hostname1.service
 %{_datadir}/dbus-1/system-services/org.freedesktop.login1.service
@@ -534,10 +533,10 @@ rm -f /.readahead > /dev/null 2>&1 || :
 %{pkgdir}/catalog/systemd.*.catalog
 
 # Just make sure we don't package these by default
-%exclude /lib/systemd/system/default.target
+%exclude %{_libdir}/systemd/system/default.target
 %exclude %{_libdir}/systemd/user/default.target
 %exclude %{_sysconfdir}/systemd/system/multi-user.target.wants/remote-fs.target
-%exclude /lib/systemd/system/user@.service
+%exclude %{_libdir}/systemd/system/user@.service
 
 %files config-mer
 %defattr(-,root,root,-)
@@ -549,8 +548,8 @@ rm -f /.readahead > /dev/null 2>&1 || :
 %config(noreplace) %{_sysconfdir}/systemd/bootchart.conf
 %config(noreplace) %{_libdir}/sysusers.d/basic.conf
 %config(noreplace) %{_libdir}/sysusers.d/systemd.conf
-/lib/systemd/system/default.target
-/lib/systemd/system/user@.service
+%{_libdir}/systemd/system/default.target
+%{_libdir}/systemd/system/user@.service
 
 %files doc
 %defattr(-,root,root,-)
@@ -568,7 +567,7 @@ rm -f /.readahead > /dev/null 2>&1 || :
 %{_bindir}/systemd-analyze
 
 %files libs
-/lib/security/pam_systemd.so
+%{_libdir}/security/pam_systemd.so
 %{_libdir}/libudev.so.*
 %{_libdir}/libsystemd.so.*
 
