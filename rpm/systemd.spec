@@ -451,10 +451,10 @@ rm -f /.readahead > /dev/null 2>&1 || :
 %ghost %{_localstatedir}/lib/systemd/random-seed
 %ghost %{_localstatedir}/lib/systemd/catalog/database
 %dir %{_sysconfdir}/dbus-1/system.d
-%config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.systemd1.conf
-%config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.hostname1.conf
-%config(noreplace) %{_sysconfdir}/dbus-1/system.d/org.freedesktop.login1.conf
-%config(noreplace) %{_sysconfdir}/pam.d/systemd-user
+%config %{_sysconfdir}/dbus-1/system.d/org.freedesktop.systemd1.conf
+%config %{_sysconfdir}/dbus-1/system.d/org.freedesktop.hostname1.conf
+%config %{_sysconfdir}/dbus-1/system.d/org.freedesktop.login1.conf
+%config %{_sysconfdir}/pam.d/systemd-user
 %ghost %{_sysconfdir}/udev/hwdb.bin
 %{_rpmconfigdir}/macros.d/macros.systemd
 %dir %{_sysconfdir}/xdg/systemd
@@ -467,7 +467,7 @@ rm -f /.readahead > /dev/null 2>&1 || :
 /bin/systemd-machine-id-setup
 /bin/loginctl
 /bin/journalctl
-%config(noreplace) %{_sysconfdir}/xdg/systemd/user
+%config %{_sysconfdir}/xdg/systemd/user
 %ghost %{_sysconfdir}/crypttab
 %{_sysconfdir}/systemd/system/*
 %{_libdir}/tmpfiles.d/*
@@ -541,14 +541,14 @@ rm -f /.readahead > /dev/null 2>&1 || :
 
 %files config-mer
 %defattr(-,root,root,-)
-%config(noreplace) %{_sysconfdir}/systemd/journald.conf
-%config(noreplace) %{_sysconfdir}/systemd/logind.conf
-%config(noreplace) %{_sysconfdir}/systemd/system.conf
-%config(noreplace) %{_sysconfdir}/systemd/user.conf
-%config(noreplace) %{_sysconfdir}/udev/udev.conf
-%config(noreplace) %{_sysconfdir}/systemd/bootchart.conf
-%config(noreplace) %{_libdir}/sysusers.d/basic.conf
-%config(noreplace) %{_libdir}/sysusers.d/systemd.conf
+%config %{_sysconfdir}/systemd/journald.conf
+%config %{_sysconfdir}/systemd/logind.conf
+%config %{_sysconfdir}/systemd/system.conf
+%config %{_sysconfdir}/systemd/user.conf
+%config %{_sysconfdir}/udev/udev.conf
+%config %{_sysconfdir}/systemd/bootchart.conf
+%config %{_libdir}/sysusers.d/basic.conf
+%config %{_libdir}/sysusers.d/systemd.conf
 /lib/systemd/system/default.target
 /lib/systemd/system/user@.service
 
