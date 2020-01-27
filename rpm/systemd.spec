@@ -129,8 +129,6 @@ This package provides default configuration for systemd
 %package analyze
 Summary:    Analyze systemd startup timing
 Group:      Development/Tools
-Requires:   dbus-python
-Requires:   python-cairo
 Requires:   %{name} = %{version}-%{release}
 Provides:   %{name}-tools = %{version}
 Obsoletes:  %{name}-tools <= 187
