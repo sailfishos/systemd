@@ -144,6 +144,7 @@ Provides:       libudev = %{version}
 Obsoletes:      libudev < %{version}
 Obsoletes:      systemd <= 187
 Conflicts:      systemd <= 187
+Requires:       pam >= 1.3.1
 
 %description libs
 Libraries for systemd and udev, as well as the systemd PAM module.
@@ -359,9 +360,6 @@ install -D -m 754 %{SOURCE3} %{buildroot}/bin/systemctl-user
 install -d -m 755 %{buildroot}/opt/tests/systemd-tests
 install -m 644 %{SOURCE2} %{buildroot}/opt/tests/systemd-tests
 
-mkdir -p %{buildroot}/lib/security/
-mv %{buildroot}%{_libdir}/security/pam_systemd.so %{buildroot}/lib/security/pam_systemd.so
-
 # systemd macros
 # Old rpm versions assume macros in /etc/rpm/
 # New ones support /usr/lib/rpm/macros.d/
@@ -566,7 +564,7 @@ rm -f /.readahead > /dev/null 2>&1 || :
 %{_bindir}/systemd-analyze
 
 %files libs
-/lib/security/pam_systemd.so
+%{_libdir}/security/pam_systemd.so
 %{_libdir}/libudev.so.*
 %{_libdir}/libsystemd.so.*
 
