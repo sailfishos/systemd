@@ -50,6 +50,7 @@ Patch36:        systemd-backport-fuzz-decrease-DATA_SIZE_MAX.patch
 Patch37:        systemd-backport-journal-fix-syslog_parse_identifier.patch
 Patch38:        systemd-backport-If-the-notification-message-length-is-0-ignore-the-m.patch
 Patch39:        systemd-backport-pam-systemd-use-secure_getenv-rather-than-getenv.patch
+Patch40:        systemd-234-sd-login-read-list-of-uids-of-sessions-from-UIDS-not.patch
 
 Patch99:        systemd-225_fix_build_with_glibc228.patch
 
@@ -232,6 +233,8 @@ This package includes tests for systemd.
 %patch37 -p1
 %patch38 -p1
 %patch39 -p1
+# multiuser fixes
+%patch40 -p1
 #systemd-225_fix_build_with_glibc228.patch
 %patch99 -p1
 
