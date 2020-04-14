@@ -75,6 +75,7 @@ BuildRequires:  pkgconfig(libcryptsetup) >= 1.6.0
 BuildRequires:  xz-devel
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
+Requires:       %{name}-libs = %{version}-%{release}
 Requires:       dbus
 Requires:       filesystem >= 3
 Requires:       systemd-config
