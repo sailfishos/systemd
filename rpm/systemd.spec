@@ -1,5 +1,6 @@
 %global pkgdir %{_prefix}/lib/systemd
-%global system_unit_dir /%{_lib}/systemd/system
+%global system_unit_dir %{pkgdir}/system
+%global user_unit_dir %{pkgdir}/user
 
 Name:           systemd
 Url:            http://www.freedesktop.org/wiki/Software/systemd
@@ -7,7 +8,6 @@ Version:        225
 Release:        1
 # For a breakdown of the licensing, see README
 License:        LGPLv2+ and MIT and GPLv2+
-Group:          System/System Control
 Summary:        A System and Service Manager
 
 Source0:        https://github.com/systemd/systemd/archive/v%{version}.tar.gz#/%{name}-%{version}.tar.gz
@@ -51,7 +51,10 @@ Patch37:        systemd-backport-journal-fix-syslog_parse_identifier.patch
 Patch38:        systemd-backport-If-the-notification-message-length-is-0-ignore-the-m.patch
 Patch39:        systemd-backport-pam-systemd-use-secure_getenv-rather-than-getenv.patch
 Patch40:        systemd-234-sd-login-read-list-of-uids-of-sessions-from-UIDS-not.patch
-
+# JB#49681 related patches
+Patch41:        0001-aarch64-Force-udev-path.-Contributes-to-JB-49681.patch
+Patch42:	0002-We-do-not-have-a-clean-environment-where-HAVE_SPIT_U.patch
+# end
 Patch99:        systemd-225_fix_build_with_glibc228.patch
 
 BuildRequires:  audit-libs-devel
@@ -121,7 +124,6 @@ work as a drop-in replacement for sysvinit.
 
 %package config-mer
 Summary:    Default configuration for systemd
-Group:      System/System Control
 Requires:   %{name} = %{version}-%{release}
 Provides:   systemd-config
 
@@ -130,7 +132,6 @@ This package provides default configuration for systemd
 
 %package analyze
 Summary:    Analyze systemd startup timing
-Group:      Development/Tools
 Requires:   %{name} = %{version}-%{release}
 Provides:   %{name}-tools = %{version}
 Obsoletes:  %{name}-tools <= 187
@@ -163,7 +164,6 @@ Compatibility libraries for systemd. If your package requires this
 package, you need to update your link options and build.
 
 %package devel
-Group:          System Environment/Base
 Summary:        Development headers for systemd
 License:        LGPLv2+ and MIT
 # We need both libsystemd and libsystemd-<compat> libraries
@@ -180,7 +180,6 @@ to libudev or libsystemd.
 
 %package doc
 Summary:   System and session manager documentation
-Group:     Development/Libraries
 Requires:  %{name} = %{version}-%{release}
 Obsoletes: %{name}-docs
 
@@ -189,7 +188,6 @@ Obsoletes: %{name}-docs
 
 %package tests
 Summary:   Systemd tests
-Group:     System/System Control
 Requires:  %{name} = %{version}-%{release}
 Requires:  blts-tools
 
@@ -236,6 +234,9 @@ This package includes tests for systemd.
 %patch39 -p1
 # multiuser fixes
 %patch40 -p1
+# udev path temporary fix
+%patch41 -p1
+%patch42 -p1
 #systemd-225_fix_build_with_glibc228.patch
 %patch99 -p1
 
@@ -249,7 +250,7 @@ CONFIGURE_OPTS=(
 %configure \
         "${CONFIGURE_OPTS[@]}" \
         --enable-compat-libs \
-        --with-rootprefix= \
+        --with-rootprefix=/usr \
         --disable-coredump \
         --disable-static \
         --with-firmware-path=/lib/firmware/updates:/lib/firmware:/system/etc/firmware:/etc/firmware:/vendor/firmware:/firmware/image \
@@ -296,9 +297,20 @@ make %{?_smp_mflags} GCC_COLORS="" V=1
 %install
 %make_install
 
+# Temporary symlink for systemd unit dir as we are switching from
+# /lib/systemd/system to %%{_unitdir} which defaults to /usr/lib/systemd/system
+# This can be removed when no package installs to /lib/systemd/system anymore
+# Bug JB#49681
+mkdir -p %{buildroot}/lib
+ln -sf ..%{pkgdir} %{buildroot}/lib
+
+
 # udev links
 mkdir -p %{buildroot}/%{_sbindir}
-ln -sf ../bin/udevadm %{buildroot}%{_sbindir}/udevadm
+ln -sf ..%{_bindir}/udevadm %{buildroot}%{_sbindir}/udevadm
+# legacy link to keep things working while we move to bindir
+mkdir -p %{buildroot}/bin
+ln -sf ..%{_bindir}/udevadm %{buildroot}/bin/udevadm
 
 # Compatiblity and documentation files
 touch %{buildroot}/%{_sysconfdir}/crypttab
@@ -307,13 +319,13 @@ chmod 600 %{buildroot}/%{_sysconfdir}/crypttab
 # Create SysV compatibility symlinks. systemctl/systemd are smart
 # enough to detect in which way they are called.
 mkdir -p %{buildroot}/sbin
-ln -s ../lib/systemd/systemd %{buildroot}/sbin/init
-ln -s ../../bin/systemctl %{buildroot}%{_sbindir}/reboot
-ln -s ../../bin/systemctl %{buildroot}%{_sbindir}/halt
-ln -s ../../bin/systemctl %{buildroot}%{_sbindir}/poweroff
-ln -s ../../bin/systemctl %{buildroot}%{_sbindir}/shutdown
-ln -s ../../bin/systemctl %{buildroot}%{_sbindir}/telinit
-ln -s ../../bin/systemctl %{buildroot}%{_sbindir}/runlevel
+ln -s ..%{system_unit_dir} %{buildroot}/sbin/init
+ln -s ../..%{_bindir}/systemctl %{buildroot}%{_sbindir}/reboot
+ln -s ../..%{_bindir}/systemctl %{buildroot}%{_sbindir}/halt
+ln -s ../..%{_bindir}/systemctl %{buildroot}%{_sbindir}/poweroff
+ln -s ../..%{_bindir}/systemctl %{buildroot}%{_sbindir}/shutdown
+ln -s ../..%{_bindir}/systemctl %{buildroot}%{_sbindir}/telinit
+ln -s ../..%{_bindir}/systemctl %{buildroot}%{_sbindir}/runlevel
 
 # Make sure these directories are properly owned
 mkdir -p %{buildroot}%{system_unit_dir}/basic.target.wants
@@ -325,19 +337,19 @@ mkdir -p %{buildroot}%{system_unit_dir}/graphical.target.wants
 mkdir -p %{buildroot}%{system_unit_dir}/network.target.wants
 
 # Require network to be enabled with multi-user.target
-mkdir -p %{buildroot}/lib/systemd/system/multi-user.target.wants/
-ln -s ../network.target %{buildroot}/lib/systemd/system/multi-user.target.wants/network.target
+mkdir -p %{buildroot}%{system_unit_dir}/multi-user.target.wants/
+ln -s ../network.target %{buildroot}%{system_unit_dir}/multi-user.target.wants/network.target
 
 # Install Fedora default preset policy
-mkdir -p %{buildroot}%{_prefix}/lib/systemd/system-preset/
-mkdir -p %{buildroot}%{_prefix}/lib/systemd/user-preset/
+mkdir -p %{buildroot}%{pkgdir}/system-preset/
+mkdir -p %{buildroot}%{pkgdir}/user-preset/
 
 # Make sure the shutdown/sleep drop-in dirs exist
 mkdir -p %{buildroot}%{pkgdir}/system-shutdown/
 mkdir -p %{buildroot}%{pkgdir}/system-sleep/
 
 # Make sure the NTP units dir exists
-mkdir -p %{buildroot}%{_prefix}/lib/systemd/ntp-units.d/
+mkdir -p %{buildroot}%{pkgdir}/ntp-units.d/
 
 # Make sure directories in /var exist
 mkdir -p %{buildroot}%{_localstatedir}/lib/systemd/coredump
@@ -356,7 +368,7 @@ mv %{buildroot}/%{_docdir}/systemd{,-%{version}}/
 mkdir -p %{buildroot}/etc/systemd/system/basic.target.wants
 
 # Add systemctl-user helper script
-install -D -m 754 %{SOURCE3} %{buildroot}/bin/systemctl-user
+install -D -m 754 %{SOURCE3} %{buildroot}%{_bindir}/systemctl-user
 
 %fdupes  %{buildroot}/%{_datadir}/man/
 
@@ -383,6 +395,40 @@ rm %{buildroot}%{_sysconfdir}/X11/xinit/xinitrc.d/50-systemd-user.sh
 # Check for botched translations (https://bugzilla.redhat.com/show_bug.cgi?id=1226566)
 test -z "$(grep -L xml:lang %{buildroot}%{_datadir}/polkit-1/actions/org.freedesktop.*.policy)"
 
+# Temporary symlink for systemd unit dir as we are switching from
+# /lib/systemd/system to %%{_unitdir} which defaults to /usr/lib/systemd/system
+# This can be removed when no package installs to /lib/systemd/system anymore
+# Bug JB#49681
+
+%pretrans -p <lua>
+os.execute('ls -sla /lib')
+os.execute('ls -sla /lib/systemd/system')
+
+-- Define the path to directory being replaced below.
+-- DO NOT add a trailing slash at the end.
+path = "/lib/systemd"
+path_dest = "/usr/lib/systemd"
+st = posix.stat(path)
+if st and st.type == "directory" then
+  status = os.rename(path, path_dest)
+  if not status then
+    print("Dir move failed, copying instead")
+    os.execute("cp -af /lib/systemd/* /usr/lib/systemd/")
+    os.execute("rm -rf /lib/systemd")
+  end
+end
+
+st = posix.stat(path)
+if not st then
+  os.execute("ln -sf /usr/lib/systemd /lib/")
+end
+
+os.execute('ls -sla /lib')
+os.execute('ls -sla /usr/lib')
+os.execute('ls -sla /usr/lib/systemd')
+os.execute('ls -sla /usr/lib/systemd/system')
+
+
 %pre
 getent group cdrom >/dev/null 2>&1 || groupadd -r -g 11 cdrom >/dev/null 2>&1 || :
 getent group utmp >/dev/null 2>&1 || groupadd -r -g 22 utmp >/dev/null 2>&1 || :
@@ -401,9 +447,29 @@ getent passwd systemd-bus-proxy >/dev/null 2>&1 || useradd -r -l -g systemd-bus-
 
 systemctl stop systemd-udevd-control.socket systemd-udevd-kernel.socket systemd-udevd.service >/dev/null 2>&1 || :
 
+# Temporary symlink for systemd unit dir as we are switching from
+# /lib/systemd/system to %%{_unitdir} which defaults to /usr/lib/systemd/system
+# This can be removed when no package installs to /lib/systemd/system anymore
+# Bug JB#49681
+if [ -d "/lib/systemd" ]
+then
+  echo "/lib/systemd is a directory, migrating .."
+  cp -fa /lib/systemd/* /usr/lib/systemd/
+  rm -rf /lib/systemd
+  ln -sf ../usr/lib/systemd /lib/
+else
+  if [ -L "/lib/systemd" ]
+  then
+    echo "/lib/systemd is a symlink, proceeding"
+  else
+    echo "/lib/systemd is not a symlink, this should not happen!"
+  fi
+fi
+
+
 %post
 touch /etc/machine-id || :
-/usr/lib/systemd/systemd-random-seed save >/dev/null 2>&1 || :
+%{pkgdir}/systemd-random-seed save >/dev/null 2>&1 || :
 systemctl daemon-reexec >/dev/null 2>&1 || :
 systemctl start systemd-udevd.service >/dev/null 2>&1 || :
 udevadm hwdb --update >/dev/null 2>&1 || :
@@ -419,6 +485,12 @@ setfacl -Rnm g:wheel:rx,d:g:wheel:rx,g:adm:rx,d:g:adm:rx /var/log/journal/ >/dev
 
 # remove obsolete systemd-readahead file
 rm -f /.readahead > /dev/null 2>&1 || :
+
+ls -sla /lib
+ls -sla /usr/lib
+ls -sla /usr/lib/systemd
+ls -sla /usr/lib/systemd/system
+
 
 %post libs -p /sbin/ldconfig
 %postun libs -p /sbin/ldconfig
@@ -438,8 +510,11 @@ rm -f /.readahead > /dev/null 2>&1 || :
 %dir %{_sysconfdir}/binfmt.d
 %dir %{_sysconfdir}/udev
 %dir %{_sysconfdir}/udev/rules.d
-%dir %{_prefix}/lib/systemd
+%dir %{pkgdir}
 %dir %{pkgdir}/catalog
+%dir %{system_unit_dir}
+# own the symlink for now JB#49681
+/lib/systemd
 %dir %{_prefix}/lib/tmpfiles.d
 %dir %{_prefix}/lib/sysctl.d
 %dir %{_prefix}/lib/modules-load.d
@@ -459,27 +534,28 @@ rm -f /.readahead > /dev/null 2>&1 || :
 %{_rpmconfigdir}/macros.d/macros.systemd
 %dir %{_sysconfdir}/xdg/systemd
 %{_sysconfdir}/rpm/macros.systemd
-/bin/systemctl
-/bin/systemd-notify
-/bin/systemd-escape
-/bin/systemd-ask-password
-/bin/systemd-tty-ask-password-agent
-/bin/systemd-machine-id-setup
-/bin/loginctl
-/bin/journalctl
+%{_bindir}/systemctl
+%{_bindir}/systemd-notify
+%{_bindir}/systemd-escape
+%{_bindir}/systemd-ask-password
+%{_bindir}/systemd-tty-ask-password-agent
+%{_bindir}/systemd-machine-id-setup
+%{_bindir}/loginctl
+%{_bindir}/journalctl
 %config %{_sysconfdir}/xdg/systemd/user
 %ghost %{_sysconfdir}/crypttab
 %{_sysconfdir}/systemd/system/*
-%{_libdir}/tmpfiles.d/*
-%{_libdir}/sysctl.d/50-default.conf
-%dir %{_libdir}/systemd/user
-%{_libdir}/systemd/user/*
-%{_libdir}/systemd/user-generators/systemd-dbus1-generator
+# Do we really need this? We're including individual files below
+#%%{_prefix}/lib/tmpfiles.d/*
+%{_prefix}/lib/sysctl.d/50-default.conf
+%dir %{user_unit_dir}
+%{user_unit_dir}/*
+%{pkgdir}/user-generators/systemd-dbus1-generator
 %dir /lib/udev/
 /lib/udev/*
-/bin/systemctl-user
+%{_bindir}/systemctl-user
 %{_bindir}/busctl
-/bin/systemd-tmpfiles
+%{_bindir}/systemd-tmpfiles
 %{_bindir}/kernel-install
 %{_bindir}/systemd-nspawn
 %{_bindir}/systemd-stdio-bridge
@@ -489,10 +565,10 @@ rm -f /.readahead > /dev/null 2>&1 || :
 %{_bindir}/systemd-delta
 %{_bindir}/systemd-run
 %{_bindir}/systemd-detect-virt
-/bin/systemd-inhibit
+%{_bindir}/systemd-inhibit
 %{_bindir}/systemd-path
-/bin/systemd-sysusers
-/bin/systemd-hwdb
+%{_bindir}/systemd-sysusers
+%{_bindir}/systemd-hwdb
 %{_bindir}/hostnamectl
 %{_bindir}/bootctl
 %{_prefix}/lib/tmpfiles.d/systemd.conf
@@ -505,6 +581,8 @@ rm -f /.readahead > /dev/null 2>&1 || :
 %{_prefix}/lib/tmpfiles.d/systemd-nspawn.conf
 %{_prefix}/lib/tmpfiles.d/journal-nocow.conf
 %{pkgdir}/catalog/systemd.catalog
+%{_bindir}/udevadm
+# legacy symlink
 /bin/udevadm
 %dir %{_prefix}/lib/kernel
 %dir %{_prefix}/lib/kernel/install.d
@@ -521,7 +599,7 @@ rm -f /.readahead > /dev/null 2>&1 || :
 %{_datadir}/factory/etc/nsswitch.conf
 %{_datadir}/factory/etc/pam.d/other
 %{_datadir}/factory/etc/pam.d/system-auth
-/%{_lib}/systemd
+%{_prefix}/lib/systemd
 %{_datadir}/dbus-1/*/org.freedesktop.systemd1.*
 %{_datadir}/dbus-1/system-services/org.freedesktop.hostname1.service
 %{_datadir}/dbus-1/system-services/org.freedesktop.login1.service
@@ -532,12 +610,14 @@ rm -f /.readahead > /dev/null 2>&1 || :
 %dir %{_datadir}/bash-completion/completions
 %{_datadir}/bash-completion/completions/*
 %{pkgdir}/catalog/systemd.*.catalog
+# Temporary symlink, remove when transition is done
+# /lib/systemd
 
 # Just make sure we don't package these by default
-%exclude /lib/systemd/system/default.target
-%exclude %{_libdir}/systemd/user/default.target
+%exclude %{_prefix}/lib/systemd/system/default.target
+%exclude %{user_unit_dir}/default.target
 %exclude %{_sysconfdir}/systemd/system/multi-user.target.wants/remote-fs.target
-%exclude /lib/systemd/system/user@.service
+%exclude %{system_unit_dir}/user@.service
 
 %files config-mer
 %defattr(-,root,root,-)
@@ -547,10 +627,10 @@ rm -f /.readahead > /dev/null 2>&1 || :
 %config %{_sysconfdir}/systemd/user.conf
 %config %{_sysconfdir}/udev/udev.conf
 %config %{_sysconfdir}/systemd/bootchart.conf
-%config %{_libdir}/sysusers.d/basic.conf
-%config %{_libdir}/sysusers.d/systemd.conf
-/lib/systemd/system/default.target
-/lib/systemd/system/user@.service
+%config %{_prefix}/lib/sysusers.d/basic.conf
+%config %{_prefix}/lib/sysusers.d/systemd.conf
+%{system_unit_dir}/default.target
+%{system_unit_dir}/user@.service
 
 %files doc
 %defattr(-,root,root,-)
