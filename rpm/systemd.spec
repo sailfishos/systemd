@@ -319,7 +319,7 @@ chmod 600 %{buildroot}/%{_sysconfdir}/crypttab
 # Create SysV compatibility symlinks. systemctl/systemd are smart
 # enough to detect in which way they are called.
 mkdir -p %{buildroot}/sbin
-ln -s ..%{system_unit_dir} %{buildroot}/sbin/init
+ln -s ..%{pkgdir}/systemd %{buildroot}/sbin/init
 ln -s ../..%{_bindir}/systemctl %{buildroot}%{_sbindir}/reboot
 ln -s ../..%{_bindir}/systemctl %{buildroot}%{_sbindir}/halt
 ln -s ../..%{_bindir}/systemctl %{buildroot}%{_sbindir}/poweroff
