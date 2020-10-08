@@ -297,14 +297,6 @@ make %{?_smp_mflags} GCC_COLORS="" V=1
 %install
 %make_install
 
-# Temporary symlink for systemd unit dir as we are switching from
-# /lib/systemd/system to %%{_unitdir} which defaults to /usr/lib/systemd/system
-# This can be removed when no package installs to /lib/systemd/system anymore
-# Bug JB#49681
-mkdir -p %{buildroot}/lib
-ln -sf ..%{pkgdir} %{buildroot}/lib
-
-
 # udev links
 mkdir -p %{buildroot}/%{_sbindir}
 ln -sf ..%{_bindir}/udevadm %{buildroot}%{_sbindir}/udevadm
@@ -395,39 +387,6 @@ rm %{buildroot}%{_sysconfdir}/X11/xinit/xinitrc.d/50-systemd-user.sh
 # Check for botched translations (https://bugzilla.redhat.com/show_bug.cgi?id=1226566)
 test -z "$(grep -L xml:lang %{buildroot}%{_datadir}/polkit-1/actions/org.freedesktop.*.policy)"
 
-# Temporary symlink for systemd unit dir as we are switching from
-# /lib/systemd/system to %%{_unitdir} which defaults to /usr/lib/systemd/system
-# This can be removed when no package installs to /lib/systemd/system anymore
-# Bug JB#49681
-
-%pretrans -p <lua>
-os.execute('ls -sla /lib')
-os.execute('ls -sla /lib/systemd/system')
-
--- Define the path to directory being replaced below.
--- DO NOT add a trailing slash at the end.
-path = "/lib/systemd"
-path_dest = "/usr/lib/systemd"
-st = posix.stat(path)
-if st and st.type == "directory" then
-  status = os.rename(path, path_dest)
-  if not status then
-    print("Dir move failed, copying instead")
-    os.execute("cp -af /lib/systemd/* /usr/lib/systemd/")
-    os.execute("rm -rf /lib/systemd")
-  end
-end
-
-st = posix.stat(path)
-if not st then
-  os.execute("ln -sf /usr/lib/systemd /lib/")
-end
-
-os.execute('ls -sla /lib')
-os.execute('ls -sla /usr/lib')
-os.execute('ls -sla /usr/lib/systemd')
-os.execute('ls -sla /usr/lib/systemd/system')
-
 
 %pre
 getent group cdrom >/dev/null 2>&1 || groupadd -r -g 11 cdrom >/dev/null 2>&1 || :
@@ -446,25 +405,6 @@ getent group systemd-bus-proxy >/dev/null 2>&1 || groupadd -r systemd-bus-proxy 
 getent passwd systemd-bus-proxy >/dev/null 2>&1 || useradd -r -l -g systemd-bus-proxy -d / -s /sbin/nologin -c "systemd Bus Proxy" systemd-bus-proxy >/dev/null 2>&1 || :
 
 systemctl stop systemd-udevd-control.socket systemd-udevd-kernel.socket systemd-udevd.service >/dev/null 2>&1 || :
-
-# Temporary symlink for systemd unit dir as we are switching from
-# /lib/systemd/system to %%{_unitdir} which defaults to /usr/lib/systemd/system
-# This can be removed when no package installs to /lib/systemd/system anymore
-# Bug JB#49681
-if [ -d "/lib/systemd" ]
-then
-  echo "/lib/systemd is a directory, migrating .."
-  cp -fa /lib/systemd/* /usr/lib/systemd/
-  rm -rf /lib/systemd
-  ln -sf ../usr/lib/systemd /lib/
-else
-  if [ -L "/lib/systemd" ]
-  then
-    echo "/lib/systemd is a symlink, proceeding"
-  else
-    echo "/lib/systemd is not a symlink, this should not happen!"
-  fi
-fi
 
 
 %post
@@ -485,11 +425,6 @@ setfacl -Rnm g:wheel:rx,d:g:wheel:rx,g:adm:rx,d:g:adm:rx /var/log/journal/ >/dev
 
 # remove obsolete systemd-readahead file
 rm -f /.readahead > /dev/null 2>&1 || :
-
-ls -sla /lib
-ls -sla /usr/lib
-ls -sla /usr/lib/systemd
-ls -sla /usr/lib/systemd/system
 
 
 %post libs -p /sbin/ldconfig
@@ -513,8 +448,6 @@ ls -sla /usr/lib/systemd/system
 %dir %{pkgdir}
 %dir %{pkgdir}/catalog
 %dir %{system_unit_dir}
-# own the symlink for now JB#49681
-/lib/systemd
 %dir %{_prefix}/lib/tmpfiles.d
 %dir %{_prefix}/lib/sysctl.d
 %dir %{_prefix}/lib/modules-load.d
@@ -610,8 +543,6 @@ ls -sla /usr/lib/systemd/system
 %dir %{_datadir}/bash-completion/completions
 %{_datadir}/bash-completion/completions/*
 %{pkgdir}/catalog/systemd.*.catalog
-# Temporary symlink, remove when transition is done
-# /lib/systemd
 
 # Just make sure we don't package these by default
 %exclude %{_prefix}/lib/systemd/system/default.target
