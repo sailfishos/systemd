@@ -426,6 +426,12 @@ setfacl -Rnm g:wheel:rx,d:g:wheel:rx,g:adm:rx,d:g:adm:rx /var/log/journal/ >/dev
 # remove obsolete systemd-readahead file
 rm -f /.readahead > /dev/null 2>&1 || :
 
+# Make sure all symlinks in /etc/systemd/system point to the new units in
+# /usr/lib/systemd/system and not in /lib/systemd/system
+# This will find all broken symlinks and disable and enable each service
+# JB#51560
+for a in `find /etc/systemd/system -type l ! -exec test -e {} \; -print`; do stat -t -c%N $a | sed "s/'//g" | awk -F "/" '{print $NF" "$NF}' | xargs printf "systemctl disable %s; systemctl enable %s;\n" | sh; done || :
+
 
 %post libs -p /sbin/ldconfig
 %postun libs -p /sbin/ldconfig
