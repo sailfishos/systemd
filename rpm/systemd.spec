@@ -55,6 +55,7 @@ Patch40:        systemd-234-sd-login-read-list-of-uids-of-sessions-from-UIDS-not
 Patch41:        0001-aarch64-Force-udev-path.-Contributes-to-JB-49681.patch
 Patch42:	0002-We-do-not-have-a-clean-environment-where-HAVE_SPIT_U.patch
 # end
+Patch43:        systemd-backport-build-sys-add-check-for-gperf-lookup-function-signat.patch
 Patch99:        systemd-225_fix_build_with_glibc228.patch
 
 BuildRequires:  audit-libs-devel
@@ -237,6 +238,8 @@ This package includes tests for systemd.
 # udev path temporary fix
 %patch41 -p1
 %patch42 -p1
+# gperf 3.1 compatibility fix
+%patch43 -p1
 #systemd-225_fix_build_with_glibc228.patch
 %patch99 -p1
 
