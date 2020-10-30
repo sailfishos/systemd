@@ -21,20 +21,22 @@ diff --git a/src/basic/def.h b/src/basic/def.h
 index 5aaba1fe8..14383dacd 100644
 --- a/src/basic/def.h
 +++ b/src/basic/def.h
-@@ -78,3 +78,4 @@
-
+@@ -65,6 +65,7 @@
+ 
  #define NOTIFY_FD_MAX 768
  #define NOTIFY_BUFFER_MAX PIPE_BUF
 +#define LONG_LINE_MAX (1U*1024U*1024U)
+ 
+ #if HAVE_SPLIT_USR
+ #  define _CONF_PATHS_SPLIT_USR(n) "/lib/" n "\0"
 diff --git a/src/basic/fileio.c b/src/basic/fileio.c
 index 4a9105f42..c3920f8b0 100644
 --- a/src/basic/fileio.c
 +++ b/src/basic/fileio.c
-@@ -821,3 +821,83 @@ int get_status_field(const char *filename, const char *pattern, char **field) {
-         *field = f;
+@@ -1564,6 +1564,15 @@ int mkdtemp_malloc(const char *template,
          return 0;
  }
-+
+ 
 +/* Takes inspiration from Rusts's Option::take() method: reads and returns a pointer, but at the same time resets it to
 + * NULL. See: https://doc.rust-lang.org/std/option/enum.Option.html#method.take */
 +#define TAKE_PTR(ptr)                           \
@@ -44,108 +46,41 @@ index 4a9105f42..c3920f8b0 100644
 +                _ptr_;                          \
 +})
 +
-+DEFINE_TRIVIAL_CLEANUP_FUNC(FILE*, funlockfile);
-+
-+int read_line(FILE *f, size_t limit, char **ret) {
-+        _cleanup_free_ char *buffer = NULL;
-+        size_t n = 0, allocated = 0, count = 0;
-+
-+        assert(f);
-+
-+        /* Something like a bounded version of getline().
-+         *
-+         * Considers EOF, \n and \0 end of line delimiters, and does not include these delimiters in the string
-+         * returned.
-+         *
-+         * Returns the number of bytes read from the files (i.e. including delimiters — this hence usually differs from
-+         * the number of characters in the returned string). When EOF is hit, 0 is returned.
-+         *
-+         * The input parameter limit is the maximum numbers of characters in the returned string, i.e. excluding
-+         * delimiters. If the limit is hit we fail and return -ENOBUFS.
-+         *
-+         * If a line shall be skipped ret may be initialized as NULL. */
-+
-+        if (ret) {
-+                if (!GREEDY_REALLOC(buffer, allocated, 1))
-+                        return -ENOMEM;
-+        }
-+
-+        {
-+                _unused_ _cleanup_(funlockfilep) FILE *flocked = f;
-+                flockfile(f);
-+
-+                for (;;) {
-+                        int c;
-+
-+                        if (n >= limit)
-+                                return -ENOBUFS;
-+
-+                        errno = 0;
-+                        c = fgetc_unlocked(f);
-+                        if (c == EOF) {
-+                                /* if we read an error, and have no data to return, then propagate the error */
-+                                if (ferror_unlocked(f) && n == 0)
-+                                        return errno > 0 ? -errno : -EIO;
-+
-+                                break;
-+                        }
-+
-+                        count++;
-+
-+                        if (IN_SET(c, '\n', 0)) /* Reached a delimiter */
-+                                break;
-+
-+                        if (ret) {
-+                                if (!GREEDY_REALLOC(buffer, allocated, n + 2))
-+                                        return -ENOMEM;
-+
-+                                buffer[n] = (char) c;
-+                        }
-+
-+                        n++;
-+                }
-+        }
-+
-+        if (ret) {
-+                buffer[n] = 0;
-+
+ DEFINE_TRIVIAL_CLEANUP_FUNC(FILE*, funlockfile);
+ 
+ int read_line(FILE *f, size_t limit, char **ret) {
+@@ -1629,8 +1638,7 @@ int read_line(FILE *f, size_t limit, cha
+         if (ret) {
+                 buffer[n] = 0;
+ 
+-                *ret = buffer;
+-                buffer = NULL;
 +                *ret = TAKE_PTR(buffer);
-+        }
-+
-+        return (int) count;
-+}
-diff --git a/src/basic/fileio.h b/src/basic/fileio.h
-index 2e8148ff2..32ca7963e 100644
---- a/src/basic/fileio.h
-+++ b/src/basic/fileio.h
-@@ -49,3 +49,5 @@ int write_env_file(const char *fname, char **l);
- int executable_is_script(const char *path, char **interpreter);
-
- int get_status_field(const char *filename, const char *pattern, char **field);
-+
-+int read_line(FILE *f, size_t limit, char **ret);
+         }
+ 
+         return (int) count;
 diff --git a/src/core/job.c b/src/core/job.c
 index 15f5cc0cc..f818eecd9 100644
 --- a/src/core/job.c
 +++ b/src/core/job.c
-@@ -34,6 +34,7 @@
- #include "virt.h"
- #include "dbus.h"
+@@ -41,6 +41,7 @@
  #include "terminal-util.h"
+ #include "unit.h"
+ #include "virt.h"
 +#include "fileio.h"
-
+ 
  Job* job_new_raw(Unit *unit) {
          Job *j;
-@@ -979,20 +980,21 @@ int job_deserialize(Job *j, FILE *f, FDSet *fds) {
-         assert(j);
-
+@@ -1076,20 +1077,21 @@ int job_deserialize(Job *j, FILE *f) {
+         assert(f);
+ 
          for (;;) {
 -                char line[LINE_MAX], *l, *v;
 +                _cleanup_free_ char *line = NULL;
 +                char *l, *v;
 +                int r;
                  size_t k;
-
+ 
 -                if (!fgets(line, sizeof(line), f)) {
 -                        if (feof(f))
 -                                return 0;
@@ -155,66 +90,66 @@ index 15f5cc0cc..f818eecd9 100644
 -                }
 +                if (r == 0)
 +                        return 0;
-
+ 
 -                char_array_0(line);
                  l = strstrip(line);
-
+ 
                  /* End marker */
 -                if (l[0] == 0)
 +                if (isempty(l))
                          return 0;
-
+ 
                  k = strcspn(l, "=");
 diff --git a/src/core/manager.c b/src/core/manager.c
 index 94a1647af..97e6ed90f 100644
 --- a/src/core/manager.c
 +++ b/src/core/manager.c
-@@ -74,6 +74,7 @@
- #include "dbus-manager.h"
- #include "manager.h"
- #include "transaction.h"
+@@ -93,6 +93,7 @@
+ #include "util.h"
+ #include "virt.h"
+ #include "watchdog.h"
 +#include "fileio.h"
-
- /* Initial delay and the interval for printing status messages about running jobs */
- #define JOBS_IN_PROGRESS_WAIT_USEC (5*USEC_PER_SEC)
-@@ -2322,21 +2323,18 @@ int manager_deserialize(Manager *m, FILE *f, FDSet *fds) {
-         m->n_reloading ++;
-
+ 
+ #define NOTIFY_RCVBUF_SIZE (8*1024*1024)
+ #define CGROUPS_AGENT_RCVBUF_SIZE (8*1024*1024)
+@@ -2918,22 +2919,18 @@ int manager_deserialize(Manager *m, FILE
+         m->n_reloading++;
+ 
          for (;;) {
--                char line[LINE_MAX], *l;
--
+-                char line[LINE_MAX];
+                 const char *val, *l;
++                _cleanup_free_ char *line = NULL;
+ 
 -                if (!fgets(line, sizeof(line), f)) {
 -                        if (feof(f))
 -                                r = 0;
 -                        else
 -                                r = -errno;
-+                _cleanup_free_ char *line = NULL;
-+                const char *l;
-
+-
 +                r = read_line(f, LONG_LINE_MAX, &line);
 +                if (r < 0)
 +                        r = -errno;
 +                if (r <= 0)
                          goto finish;
 -                }
-
+ 
 -                char_array_0(line);
                  l = strstrip(line);
-
+ 
 -                if (l[0] == 0)
 +                if (isempty(l)) /* end marker */
                          break;
-
-                 if (startswith(l, "current-job-id=")) {
-@@ -2458,22 +2456,18 @@ int manager_deserialize(Manager *m, FILE *f, FDSet *fds) {
+ 
+                 if ((val = startswith(l, "current-job-id="))) {
+@@ -3082,22 +3079,18 @@ int manager_deserialize(Manager *m, FILE
          }
-
+ 
          for (;;) {
 +                _cleanup_free_ char *line = NULL;
                  Unit *u;
 -                char name[UNIT_NAME_MAX+2];
-+                const char* unit_name;
-
+                 const char* unit_name;
+ 
                  /* Start marker */
 -                if (!fgets(name, sizeof(name), f)) {
 -                        if (feof(f))
@@ -228,35 +163,35 @@ index 94a1647af..97e6ed90f 100644
 +                if (r <= 0)
                          goto finish;
 -                }
--
+ 
 -                char_array_0(name);
-
--                r = manager_load_unit(m, strstrip(name), NULL, NULL, &u);
-+                r = manager_load_unit(m, strstrip(line), NULL, NULL, &u);
-                 if (r < 0)
-                         goto finish;
-
+-                unit_name = strstrip(name);
++                unit_name = strstrip(line);
+ 
+                 r = manager_load_unit(m, unit_name, NULL, NULL, &u);
+                 if (r < 0) {
 diff --git a/src/core/unit.c b/src/core/unit.c
 index 43a5ca106..19f014e6a 100644
 --- a/src/core/unit.c
 +++ b/src/core/unit.c
-@@ -49,6 +49,7 @@
- #include "formats-util.h"
- #include "process-util.h"
- #include "bus-util.h"
+@@ -67,6 +67,7 @@
+ #include "unit.h"
+ #include "user-util.h"
+ #include "virt.h"
 +#include "fileio.h"
-
+ 
  const UnitVTable * const unit_vtable[_UNIT_TYPE_MAX] = {
          [UNIT_SERVICE] = &service_vtable,
-@@ -2721,16 +2722,16 @@ int unit_deserialize(Unit *u, FILE *f, FDSet *fds) {
-                 rt = (ExecRuntime**) ((uint8_t*) u + offset);
-
+@@ -3319,17 +3320,17 @@ int unit_deserialize(Unit *u, FILE *f, F
+         assert(fds);
+ 
          for (;;) {
 -                char line[LINE_MAX], *l, *v;
 +                _cleanup_free_ char *line = NULL;
 +                char *l, *v;
+                 CGroupIPAccountingMetric m;
                  size_t k;
-
+ 
 -                if (!fgets(line, sizeof(line), f)) {
 -                        if (feof(f))
 -                                return 0;
@@ -266,8 +201,8 @@ index 43a5ca106..19f014e6a 100644
 -                }
 +                if (r == 0) /* eof */
 +                        return 0;
-
+ 
 -                char_array_0(line);
                  l = strstrip(line);
-
+ 
                  /* End marker */

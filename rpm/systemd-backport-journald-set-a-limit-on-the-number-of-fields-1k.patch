@@ -21,7 +21,7 @@ many very small iovecs: (void* + size_t) for each three bytes of input message.
 diff -purN systemd/src/journal/journald-native.c systemd-izh/src/journal/journald-native.c
 --- systemd/src/journal/journald-native.c	2019-08-05 05:38:44.083368462 -0400
 +++ systemd-izh/src/journal/journald-native.c	2019-08-05 05:56:53.357060530 -0400
-@@ -133,6 +133,10 @@ void server_process_native_message(
+@@ -158,6 +158,10 @@ static int server_process_entry(
                  }
  
                  /* A property follows */
@@ -31,17 +31,17 @@ diff -purN systemd/src/journal/journald-native.c systemd-izh/src/journal/journal
 +                }
  
                  /* n existing properties, 1 new, +1 for _TRANSPORT */
-                 if (!GREEDY_REALLOC(iovec, m, n + 2 + N_IOVEC_META_FIELDS + N_IOVEC_OBJECT_FIELDS)) {
+                 if (!GREEDY_REALLOC(iovec, m,
 diff -purN systemd/src/journal/journald-native.h systemd-izh/src/journal/journald-native.h
 --- systemd/src/journal/journald-native.h	2019-08-05 05:38:44.083368462 -0400
 +++ systemd-izh/src/journal/journald-native.h	2019-08-05 06:00:28.253422314 -0400
-@@ -28,6 +28,9 @@
- #define ENTRY_SIZE_MAX (1024*1024*770u)
- #define DATA_SIZE_MAX (1024*1024*768u)
+@@ -22,6 +22,9 @@
+ 
+ #include "journald-server.h"
  
 +/* The maximum number of fields in an entry */
 +#define ENTRY_FIELD_COUNT_MAX 1024
 +
- bool valid_user_field(const char *p, size_t l, bool allow_protected);
- 
  void server_process_native_message(Server *s, const void *buffer, size_t buffer_size, const struct ucred *ucred, const struct timeval *tv, const char *label, size_t label_len);
+ 
+ void server_process_native_file(Server *s, int fd, const struct ucred *ucred, const struct timeval *tv, const char *label, size_t label_len);

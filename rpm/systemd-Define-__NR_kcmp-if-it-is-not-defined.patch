@@ -15,12 +15,12 @@ Signed-off-by: Igor Zhbanov <igor.zhbanov@jolla.com>
 
 diff --git a/src/basic/missing.h b/src/basic/missing.h
 index dc1f244..21ea0b4 100644
---- a/src/basic/missing.h
-+++ b/src/basic/missing.h
-@@ -1027,6 +1027,18 @@ static inline int renameat2(int oldfd, const char *oldname, int newfd, const cha
- #endif
+--- a/src/basic/missing_syscall.h
++++ b/src/basic/missing_syscall.h
+@@ -257,6 +257,18 @@ static inline int missing_renameat2(int 
+ /* ======================================================================= */
  
- #if !HAVE_DECL_KCMP
+ #if !HAVE_KCMP
 +#ifndef __NR_kcmp
 +#  if defined __x86_64__
 +#    define __NR_kcmp 349
@@ -29,13 +29,10 @@ index dc1f244..21ea0b4 100644
 +#  elif defined __i386__
 +#    define __NR_kcmp 312
 +#  else
-+#    error "__NR_kcmp unknown for your architecture"
++#    warning "__NR_kcmp unknown for your architecture"
 +#  endif
 +#endif
 +
- static inline int kcmp(pid_t pid1, pid_t pid2, int type, unsigned long idx1, unsigned long idx2) {
+ static inline int missing_kcmp(pid_t pid1, pid_t pid2, int type, unsigned long idx1, unsigned long idx2) {
+ #  ifdef __NR_kcmp
          return syscall(__NR_kcmp, pid1, pid2, type, idx1, idx2);
- }
--- 
-1.8.3-rc3
-

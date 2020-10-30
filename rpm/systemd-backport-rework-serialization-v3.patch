@@ -1,0 +1,2065 @@
+This is the backport of upstream commit
+https://github.com/systemd/systemd/commit/d68c645bd3323ae1f0dfcb8fd74ea6b19681db8a
+
+commit d68c645bd3323ae1f0dfcb8fd74ea6b19681db8a
+Author: Lennart Poettering <lennart@poettering.net>
+Date:   Wed Oct 17 20:40:09 2018 +0200
+
+    core: rework serialization
+
+    Let's be more careful with what we serialize: let's ensure we never
+    serialize strings that are longer than LONG_LINE_MAX, so that we know we
+    can read them back with read_line(…, LONG_LINE_MAX, …) safely.
+
+    In order to implement this all serialization functions are move to
+    serialize.[ch], and internally will do line size checks. We'd rather
+    skip a serialization line (with a loud warning) than write an overly
+    long line out. Of course, this is just a second level protection, after
+    all the data we serialize shouldn't be this long in the first place.
+
+    While we are at it also clean up logging: while serializing make sure to
+    always log about errors immediately. Also, (void)ify all calls we don't
+    expect errors in (or catch errors as part of the general
+    fflush_and_check() at the end.
+
+diff -purN systemd/src/basic/env-util.c systemd-izh/src/basic/env-util.c
+--- systemd/src/basic/env-util.c	2020-09-23 19:10:03.242873755 +0300
++++ systemd-izh/src/basic/env-util.c	2020-09-24 19:00:49.375426740 +0300
+@@ -771,36 +771,3 @@ int getenv_bool_secure(const char *p) {
+ 
+         return parse_boolean(e);
+ }
+-
+-int serialize_environment(FILE *f, char **environment) {
+-        char **e;
+-
+-        STRV_FOREACH(e, environment) {
+-                _cleanup_free_ char *ce;
+-
+-                ce = cescape(*e);
+-                if (!ce)
+-                        return -ENOMEM;
+-
+-                fprintf(f, "env=%s\n", ce);
+-        }
+-
+-        /* caller should call ferror() */
+-
+-        return 0;
+-}
+-
+-int deserialize_environment(char ***environment, const char *line) {
+-        char *uce;
+-        int r;
+-
+-        assert(line);
+-        assert(environment);
+-
+-        assert(startswith(line, "env="));
+-        r = cunescape(line + 4, 0, &uce);
+-        if (r < 0)
+-                return r;
+-
+-        return strv_env_replace(environment, uce);
+-}
+diff -purN systemd/src/basic/env-util.h systemd-izh/src/basic/env-util.h
+--- systemd/src/basic/env-util.h	2020-09-23 19:10:03.242873755 +0300
++++ systemd-izh/src/basic/env-util.h	2020-09-24 19:01:35.935586514 +0300
+@@ -63,6 +63,3 @@ char *strv_env_get(char **x, const char
+ 
+ int getenv_bool(const char *p);
+ int getenv_bool_secure(const char *p);
+-
+-int serialize_environment(FILE *f, char **environment);
+-int deserialize_environment(char ***environment, const char *line);
+diff -purN systemd/src/basic/exec-util.c systemd-izh/src/basic/exec-util.c
+--- systemd/src/basic/exec-util.c	2020-09-23 19:10:03.246873715 +0300
++++ systemd-izh/src/basic/exec-util.c	2020-09-24 18:18:34.230163071 +0300
+@@ -27,6 +27,7 @@
+ 
+ #include "alloc-util.h"
+ #include "conf-files.h"
++#include "def.h"
+ #include "env-util.h"
+ #include "exec-util.h"
+ #include "fd-util.h"
+@@ -34,6 +35,7 @@
+ #include "hashmap.h"
+ #include "macro.h"
+ #include "process-util.h"
++#include "serialize.h"
+ #include "set.h"
+ #include "signal-util.h"
+ #include "stat-util.h"
+@@ -294,7 +296,7 @@ static int gather_environment_collect(in
+                 return -errno;
+         }
+ 
+-        r = serialize_environment(f, *env);
++        r = serialize_strv(f, "env", *env);
+         if (r < 0)
+                 return r;
+ 
+@@ -305,29 +307,47 @@ static int gather_environment_collect(in
+ }
+ 
+ static int gather_environment_consume(int fd, void *arg) {
+-        char ***env = arg;
+         _cleanup_fclose_ FILE *f = NULL;
+-        char line[LINE_MAX];
+-        int r = 0, k;
++        char ***env = arg;
++        int r = 0;
+ 
+         /* Read a series of env=cescape(VAR=value) assignments from fd into env. */
+ 
+         assert(env);
+ 
+-        f = fdopen(fd, "r");
++        f = fdopen(fd, "re");
+         if (!f) {
+                 safe_close(fd);
+                 return -errno;
+         }
+ 
+-        FOREACH_LINE(line, f, return -EIO) {
+-                truncate_nl(line);
++        for (;;) {
++                _cleanup_free_ char *line = NULL;
++                const char *v;
++                int k;
+ 
+-                k = deserialize_environment(env, line);
++                k = read_line(f, LONG_LINE_MAX, &line);
+                 if (k < 0)
+-                        log_error_errno(k, "Invalid line \"%s\": %m", line);
+-                if (k < 0 && r == 0)
+-                        r = k;
++                        return k;
++                if (k == 0)
++                        break;
++
++                v = startswith(line, "env=");
++                if (!v) {
++                        log_debug("Serialization line \"%s\" unexpectedly didn't start with \"env=\".", line);
++                        if (r == 0)
++                                r = -EINVAL;
++
++                        continue;
++                }
++
++                k = deserialize_environment(v, env);
++                if (k < 0) {
++                        log_debug_errno(k, "Invalid serialization line \"%s\": %m", line);
++
++                        if (r == 0)
++                                r = k;
++                }
+         }
+ 
+         return r;
+diff -purN systemd/src/basic/time-util.c systemd-izh/src/basic/time-util.c
+--- systemd/src/basic/time-util.c	2020-09-23 19:10:03.262873553 +0300
++++ systemd-izh/src/basic/time-util.c	2020-09-24 19:05:29.332483887 +0300
+@@ -39,6 +39,7 @@
+ #include "parse-util.h"
+ #include "path-util.h"
+ #include "process-util.h"
++#include "serialize.h"
+ #include "string-util.h"
+ #include "strv.h"
+ #include "time-util.h"
+@@ -541,64 +542,6 @@ char *format_timespan(char *buf, size_t
+         return buf;
+ }
+ 
+-void dual_timestamp_serialize(FILE *f, const char *name, dual_timestamp *t) {
+-
+-        assert(f);
+-        assert(name);
+-        assert(t);
+-
+-        if (!dual_timestamp_is_set(t))
+-                return;
+-
+-        fprintf(f, "%s="USEC_FMT" "USEC_FMT"\n",
+-                name,
+-                t->realtime,
+-                t->monotonic);
+-}
+-
+-int dual_timestamp_deserialize(const char *value, dual_timestamp *t) {
+-        uint64_t a, b;
+-        int r, pos;
+-
+-        assert(value);
+-        assert(t);
+-
+-        pos = strspn(value, WHITESPACE);
+-        if (value[pos] == '-')
+-                return -EINVAL;
+-        pos += strspn(value + pos, DIGITS);
+-        pos += strspn(value + pos, WHITESPACE);
+-        if (value[pos] == '-')
+-                return -EINVAL;
+-
+-        r = sscanf(value, "%" PRIu64 "%" PRIu64 "%n", &a, &b, &pos);
+-        if (r != 2) {
+-                log_debug("Failed to parse dual timestamp value \"%s\".", value);
+-                return -EINVAL;
+-        }
+-
+-        if (value[pos] != '\0')
+-                /* trailing garbage */
+-                return -EINVAL;
+-
+-        t->realtime = a;
+-        t->monotonic = b;
+-
+-        return 0;
+-}
+-
+-int timestamp_deserialize(const char *value, usec_t *timestamp) {
+-        int r;
+-
+-        assert(value);
+-
+-        r = safe_atou64(value, timestamp);
+-        if (r < 0)
+-                return log_debug_errno(r, "Failed to parse timestamp value \"%s\": %m", value);
+-
+-        return r;
+-}
+-
+ static int parse_timestamp_impl(const char *t, usec_t *usec, bool with_tz) {
+         static const struct {
+                 const char *name;
+diff -purN systemd/src/basic/time-util.h systemd-izh/src/basic/time-util.h
+--- systemd/src/basic/time-util.h	2020-09-23 19:10:03.262873553 +0300
++++ systemd-izh/src/basic/time-util.h	2020-09-24 18:18:34.234163086 +0300
+@@ -127,10 +127,6 @@ char *format_timestamp_us_utc(char *buf,
+ char *format_timestamp_relative(char *buf, size_t l, usec_t t);
+ char *format_timespan(char *buf, size_t l, usec_t t, usec_t accuracy);
+ 
+-void dual_timestamp_serialize(FILE *f, const char *name, dual_timestamp *t);
+-int dual_timestamp_deserialize(const char *value, dual_timestamp *t);
+-int timestamp_deserialize(const char *value, usec_t *timestamp);
+-
+ int parse_timestamp(const char *t, usec_t *usec);
+ 
+ int parse_sec(const char *t, usec_t *usec);
+diff -purN systemd/src/core/automount.c systemd-izh/src/core/automount.c
+--- systemd/src/core/automount.c	2020-09-24 18:16:57.201795702 +0300
++++ systemd-izh/src/core/automount.c	2020-09-24 18:18:34.234163086 +0300
+@@ -44,6 +44,7 @@
+ #include "parse-util.h"
+ #include "path-util.h"
+ #include "process-util.h"
++#include "serialize.h"
+ #include "special.h"
+ #include "stdio-util.h"
+ #include "string-table.h"
+@@ -859,16 +860,16 @@ static int automount_serialize(Unit *u,
+         assert(f);
+         assert(fds);
+ 
+-        unit_serialize_item(u, f, "state", automount_state_to_string(a->state));
+-        unit_serialize_item(u, f, "result", automount_result_to_string(a->result));
+-        unit_serialize_item_format(u, f, "dev-id", "%u", (unsigned) a->dev_id);
++        (void) serialize_item(f, "state", automount_state_to_string(a->state));
++        (void) serialize_item(f, "result", automount_result_to_string(a->result));
++        (void) serialize_item_format(f, "dev-id", "%lu", (unsigned long) a->dev_id);
+ 
+         SET_FOREACH(p, a->tokens, i)
+-                unit_serialize_item_format(u, f, "token", "%u", PTR_TO_UINT(p));
++                (void) serialize_item_format(f, "token", "%u", PTR_TO_UINT(p));
+         SET_FOREACH(p, a->expire_tokens, i)
+-                unit_serialize_item_format(u, f, "expire-token", "%u", PTR_TO_UINT(p));
++                (void) serialize_item_format(f, "expire-token", "%u", PTR_TO_UINT(p));
+ 
+-        r = unit_serialize_item_fd(u, f, fds, "pipe-fd", a->pipe_fd);
++        r = serialize_fd(f, fds, "pipe-fd", a->pipe_fd);
+         if (r < 0)
+                 return r;
+ 
+diff -purN systemd/src/core/dbus.c systemd-izh/src/core/dbus.c
+--- systemd/src/core/dbus.c	2020-09-23 19:10:03.278873391 +0300
++++ systemd-izh/src/core/dbus.c	2020-09-24 18:18:34.238163101 +0300
+@@ -43,6 +43,7 @@
+ #include "mkdir.h"
+ #include "process-util.h"
+ #include "selinux-access.h"
++#include "serialize.h"
+ #include "special.h"
+ #include "string-util.h"
+ #include "strv.h"
+@@ -1229,13 +1230,8 @@ void bus_track_serialize(sd_bus_track *t
+                 int c, j;
+ 
+                 c = sd_bus_track_count_name(t, n);
+-
+-                for (j = 0; j < c; j++) {
+-                        fputs(prefix, f);
+-                        fputc('=', f);
+-                        fputs(n, f);
+-                        fputc('\n', f);
+-                }
++                for (j = 0; j < c; j++)
++                        (void) serialize_item(f, prefix, n);
+         }
+ }
+ 
+diff -purN systemd/src/core/device.c systemd-izh/src/core/device.c
+--- systemd/src/core/device.c	2020-09-23 19:10:03.282873350 +0300
++++ systemd-izh/src/core/device.c	2020-09-24 18:18:34.238163101 +0300
+@@ -29,6 +29,7 @@
+ #include "log.h"
+ #include "parse-util.h"
+ #include "path-util.h"
++#include "serialize.h"
+ #include "stat-util.h"
+ #include "string-util.h"
+ #include "swap.h"
+@@ -164,7 +165,7 @@ static int device_serialize(Unit *u, FIL
+         assert(f);
+         assert(fds);
+ 
+-        unit_serialize_item(u, f, "state", device_state_to_string(d->state));
++        (void) serialize_item(f, "state", device_state_to_string(d->state));
+ 
+         return 0;
+ }
+diff -purN systemd/src/core/dynamic-user.c systemd-izh/src/core/dynamic-user.c
+--- systemd/src/core/dynamic-user.c	2020-09-23 19:10:03.282873350 +0300
++++ systemd-izh/src/core/dynamic-user.c	2020-09-24 18:18:34.238163101 +0300
+@@ -30,6 +30,7 @@
+ #include "io-util.h"
+ #include "parse-util.h"
+ #include "random-util.h"
++#include "serialize.h"
+ #include "stdio-util.h"
+ #include "string-util.h"
+ #include "user-util.h"
+@@ -672,13 +673,13 @@ int dynamic_user_serialize(Manager *m, F
+ 
+                 copy0 = fdset_put_dup(fds, d->storage_socket[0]);
+                 if (copy0 < 0)
+-                        return copy0;
++                        return log_error_errno(copy0, "Failed to add dynamic user storage fd to serialization: %m");
+ 
+                 copy1 = fdset_put_dup(fds, d->storage_socket[1]);
+                 if (copy1 < 0)
+-                        return copy1;
++                        return log_error_errno(copy1, "Failed to add dynamic user storage fd to serialization: %m");
+ 
+-                fprintf(f, "dynamic-user=%s %i %i\n", d->name, copy0, copy1);
++                (void) serialize_item_format(f, "dynamic-user", "%s %i %i", d->name, copy0, copy1);
+         }
+ 
+         return 0;
+diff -purN systemd/src/core/job.c systemd-izh/src/core/job.c
+--- systemd/src/core/job.c	2020-09-24 17:47:56.027738043 +0300
++++ systemd-izh/src/core/job.c	2020-09-29 14:26:02.775988472 +0300
+@@ -32,6 +32,7 @@
+ #include "log.h"
+ #include "macro.h"
+ #include "parse-util.h"
++#include "serialize.h"
+ #include "set.h"
+ #include "special.h"
+ #include "stdio-util.h"
+@@ -1053,17 +1054,17 @@ int job_serialize(Job *j, FILE *f) {
+         assert(j);
+         assert(f);
+ 
+-        fprintf(f, "job-id=%u\n", j->id);
+-        fprintf(f, "job-type=%s\n", job_type_to_string(j->type));
+-        fprintf(f, "job-state=%s\n", job_state_to_string(j->state));
+-        fprintf(f, "job-irreversible=%s\n", yes_no(j->irreversible));
+-        fprintf(f, "job-sent-dbus-new-signal=%s\n", yes_no(j->sent_dbus_new_signal));
+-        fprintf(f, "job-ignore-order=%s\n", yes_no(j->ignore_order));
++        (void) serialize_item_format(f, "job-id", "%u", j->id);
++        (void) serialize_item(f, "job-type", job_type_to_string(j->type));
++        (void) serialize_item(f, "job-state", job_state_to_string(j->state));
++        (void) serialize_bool(f, "job-irreversible", j->irreversible);
++        (void) serialize_bool(f, "job-sent-dbus-new-signal", j->sent_dbus_new_signal);
++        (void) serialize_bool(f, "job-ignore-order", j->ignore_order);
+ 
+         if (j->begin_usec > 0)
+-                fprintf(f, "job-begin="USEC_FMT"\n", j->begin_usec);
++                (void) serialize_usec(f, "job-begin", j->begin_usec);
+         if (j->begin_running_usec > 0)
+-                fprintf(f, "job-begin-running="USEC_FMT"\n", j->begin_running_usec);
++                (void) serialize_usec(f, "job-begin-running", j->begin_running_usec);
+ 
+         bus_track_serialize(j->bus_track, f, "subscribed");
+ 
+@@ -1154,27 +1155,17 @@ int job_deserialize(Job *j, FILE *f) {
+                         else
+                                 j->ignore_order = j->ignore_order || b;
+ 
+-                } else if (streq(l, "job-begin")) {
+-                        unsigned long long ull;
++                } else if (streq(l, "job-begin"))
++                        (void) deserialize_usec(v, &j->begin_usec);
+ 
+-                        if (sscanf(v, "%llu", &ull) != 1)
+-                                log_debug("Failed to parse job-begin value %s", v);
+-                        else
+-                                j->begin_usec = ull;
+-
+-                } else if (streq(l, "job-begin-running")) {
+-                        unsigned long long ull;
+-
+-                        if (sscanf(v, "%llu", &ull) != 1)
+-                                log_debug("Failed to parse job-begin-running value %s", v);
+-                        else
+-                                j->begin_running_usec = ull;
+-
+-                } else if (streq(l, "subscribed")) {
++                else if (streq(l, "job-begin-running"))
++                        (void) deserialize_usec(v, &j->begin_running_usec);
+ 
++                else if (streq(l, "subscribed")) {
+                         if (strv_extend(&j->deserialized_clients, v) < 0)
+-                                log_oom();
+-                }
++                                return log_oom();
++                } else
++                        log_debug("Unknown job serialization key: %s", l);
+         }
+ }
+ 
+diff -purN systemd/src/core/main.c systemd-izh/src/core/main.c
+--- systemd/src/core/main.c	2020-09-23 19:10:03.286873309 +0300
++++ systemd-izh/src/core/main.c	2020-09-24 18:18:34.246163132 +0300
+@@ -1117,7 +1117,7 @@ static int prepare_reexecute(Manager *m,
+ 
+         r = manager_serialize(m, f, fds, switching_root);
+         if (r < 0)
+-                return log_error_errno(r, "Failed to serialize state: %m");
++                return r;
+ 
+         if (fseeko(f, 0, SEEK_SET) == (off_t) -1)
+                 return log_error_errno(errno, "Failed to rewind serialization fd: %m");
+diff -purN systemd/src/core/manager.c systemd-izh/src/core/manager.c
+--- systemd/src/core/manager.c	2020-09-24 18:03:20.114913518 +0300
++++ systemd-izh/src/core/manager.c	2020-09-29 18:13:19.161647449 +0300
+@@ -77,6 +77,7 @@
+ #include "process-util.h"
+ #include "ratelimit.h"
+ #include "rm-rf.h"
++#include "serialize.h"
+ #include "signal-util.h"
+ #include "special.h"
+ #include "stat-util.h"
+@@ -2806,13 +2807,13 @@ int manager_serialize(Manager *m, FILE *
+ 
+         m->n_reloading++;
+ 
+-        fprintf(f, "current-job-id=%"PRIu32"\n", m->current_job_id);
+-        fprintf(f, "n-installed-jobs=%u\n", m->n_installed_jobs);
+-        fprintf(f, "n-failed-jobs=%u\n", m->n_failed_jobs);
+-        fprintf(f, "taint-usr=%s\n", yes_no(m->taint_usr));
+-        fprintf(f, "ready-sent=%s\n", yes_no(m->ready_sent));
+-        fprintf(f, "taint-logged=%s\n", yes_no(m->taint_logged));
+-        fprintf(f, "service-watchdogs=%s\n", yes_no(m->service_watchdogs));
++        (void) serialize_item_format(f, "current-job-id", "%" PRIu32, m->current_job_id);
++        (void) serialize_item_format(f, "n-installed-jobs", "%u", m->n_installed_jobs);
++        (void) serialize_item_format(f, "n-failed-jobs", "%u", m->n_failed_jobs);
++        (void) serialize_bool(f, "taint-usr", m->taint_usr);
++        (void) serialize_bool(f, "ready-sent", m->ready_sent);
++        (void) serialize_bool(f, "taint-logged", m->taint_logged);
++        (void) serialize_bool(f, "service-watchdogs", m->service_watchdogs);
+ 
+         for (q = 0; q < _MANAGER_TIMESTAMP_MAX; q++) {
+                 /* The userspace and finish timestamps only apply to the host system, hence only serialize them there */
+@@ -2823,32 +2824,25 @@ int manager_serialize(Manager *m, FILE *
+                 {
+                         char field[strlen(t) + STRLEN("-timestamp") + 1];
+                         strcpy(stpcpy(field, t), "-timestamp");
+-                        dual_timestamp_serialize(f, field, m->timestamps + q);
++                        (void) serialize_dual_timestamp(f, field, m->timestamps + q);
+                 }
+         }
+ 
+         if (!switching_root)
+-                (void) serialize_environment(f, m->environment);
++                (void) serialize_strv(f, "env", m->environment);
+ 
+         if (m->notify_fd >= 0) {
+-                int copy;
+-
+-                copy = fdset_put_dup(fds, m->notify_fd);
+-                if (copy < 0)
+-                        return copy;
++                r = serialize_fd(f, fds, "notify-fd", m->notify_fd);
++                if (r < 0)
++                        return r;
+ 
+-                fprintf(f, "notify-fd=%i\n", copy);
+-                fprintf(f, "notify-socket=%s\n", m->notify_socket);
++                (void) serialize_item(f, "notify-socket", m->notify_socket);
+         }
+ 
+         if (m->cgroups_agent_fd >= 0) {
+-                int copy;
+-
+-                copy = fdset_put_dup(fds, m->cgroups_agent_fd);
+-                if (copy < 0)
+-                        return copy;
+-
+-                fprintf(f, "cgroups-agent-fd=%i\n", copy);
++                r = serialize_fd(f, fds, "cgroups-agent-fd", m->cgroups_agent_fd);
++                if (r < 0)
++                        return r;
+         }
+ 
+         if (m->user_lookup_fds[0] >= 0) {
+@@ -2856,13 +2850,13 @@ int manager_serialize(Manager *m, FILE *
+ 
+                 copy0 = fdset_put_dup(fds, m->user_lookup_fds[0]);
+                 if (copy0 < 0)
+-                        return copy0;
++                        return log_error_errno(copy0, "Failed to add user lookup fd to serialization: %m");
+ 
+                 copy1 = fdset_put_dup(fds, m->user_lookup_fds[1]);
+                 if (copy1 < 0)
+-                        return copy1;
++                        return log_error_errno(copy1, "Failed to add user lookup fd to serialization: %m");
+ 
+-                fprintf(f, "user-lookup=%i %i\n", copy0, copy1);
++                (void) serialize_item_format(f, "user-lookup", "%i %i", copy0, copy1);
+         }
+ 
+         bus_track_serialize(m->subscribed, f, "subscribed");
+@@ -2903,7 +2897,7 @@ int manager_serialize(Manager *m, FILE *
+ 
+         r = bus_fdset_add_all(m, fds);
+         if (r < 0)
+-                return r;
++                return log_error_errno(r, "Failed to add bus sockets to serialization: %m");
+ 
+         return 0;
+ }
+@@ -2994,7 +2988,7 @@ int manager_deserialize(Manager *m, FILE
+                                 m->service_watchdogs = b;
+ 
+                 } else if (startswith(l, "env=")) {
+-                        r = deserialize_environment(&m->environment, l);
++                        r = deserialize_environment(l + 4, &m->environment);
+                         if (r == -ENOMEM)
+                                 goto finish;
+                         if (r < 0)
+@@ -3072,7 +3066,7 @@ int manager_deserialize(Manager *m, FILE
+                         }
+ 
+                         if (q < _MANAGER_TIMESTAMP_MAX) /* found it */
+-                                dual_timestamp_deserialize(val, m->timestamps + q);
++                                (void) deserialize_dual_timestamp(val, m->timestamps + q);
+                         else if (!startswith(l, "kdbus-fd=")) /* ignore kdbus */
+                                 log_notice("Unknown serialization item '%s'", l);
+                 }
+@@ -4022,7 +4016,7 @@ static void manager_serialize_uid_refs_i
+                 if (!(c & DESTROY_IPC_FLAG))
+                         continue;
+ 
+-                fprintf(f, "%s=" UID_FMT "\n", field_name, uid);
++                (void) serialize_item_format(f, field_name, UID_FMT, uid);
+         }
+ }
+ 
+diff -purN systemd/src/core/mount.c systemd-izh/src/core/mount.c
+--- systemd/src/core/mount.c	2020-09-23 19:10:03.286873309 +0300
++++ systemd-izh/src/core/mount.c	2020-09-24 18:18:34.250163147 +0300
+@@ -40,6 +40,7 @@
+ #include "parse-util.h"
+ #include "path-util.h"
+ #include "process-util.h"
++#include "serialize.h"
+ #include "special.h"
+ #include "string-table.h"
+ #include "string-util.h"
+@@ -1152,15 +1153,15 @@ static int mount_serialize(Unit *u, FILE
+         assert(f);
+         assert(fds);
+ 
+-        unit_serialize_item(u, f, "state", mount_state_to_string(m->state));
+-        unit_serialize_item(u, f, "result", mount_result_to_string(m->result));
+-        unit_serialize_item(u, f, "reload-result", mount_result_to_string(m->reload_result));
++        (void) serialize_item(f, "state", mount_state_to_string(m->state));
++        (void) serialize_item(f, "result", mount_result_to_string(m->result));
++        (void) serialize_item(f, "reload-result", mount_result_to_string(m->reload_result));
+ 
+         if (m->control_pid > 0)
+-                unit_serialize_item_format(u, f, "control-pid", PID_FMT, m->control_pid);
++                (void) serialize_item_format(f, "control-pid", PID_FMT, m->control_pid);
+ 
+         if (m->control_command_id >= 0)
+-                unit_serialize_item(u, f, "control-command", mount_exec_command_to_string(m->control_command_id));
++                (void) serialize_item(f, "control-command", mount_exec_command_to_string(m->control_command_id));
+ 
+         return 0;
+ }
+diff -purN systemd/src/core/path.c systemd-izh/src/core/path.c
+--- systemd/src/core/path.c	2020-09-23 19:10:03.290873269 +0300
++++ systemd-izh/src/core/path.c	2020-09-24 18:18:34.250163147 +0300
+@@ -32,6 +32,7 @@
+ #include "macro.h"
+ #include "mkdir.h"
+ #include "path.h"
++#include "serialize.h"
+ #include "special.h"
+ #include "stat-util.h"
+ #include "string-table.h"
+@@ -618,8 +619,8 @@ static int path_serialize(Unit *u, FILE
+         assert(f);
+         assert(fds);
+ 
+-        unit_serialize_item(u, f, "state", path_state_to_string(p->state));
+-        unit_serialize_item(u, f, "result", path_result_to_string(p->result));
++        (void) serialize_item(f, "state", path_state_to_string(p->state));
++        (void) serialize_item(f, "result", path_result_to_string(p->result));
+ 
+         return 0;
+ }
+diff -purN systemd/src/core/scope.c systemd-izh/src/core/scope.c
+--- systemd/src/core/scope.c	2020-09-23 19:10:03.290873269 +0300
++++ systemd-izh/src/core/scope.c	2020-09-24 19:41:23.552240787 +0300
+@@ -26,6 +26,7 @@
+ #include "load-dropin.h"
+ #include "log.h"
+ #include "scope.h"
++#include "serialize.h"
+ #include "special.h"
+ #include "string-table.h"
+ #include "string-util.h"
+@@ -410,11 +411,11 @@ static int scope_serialize(Unit *u, FILE
+         assert(f);
+         assert(fds);
+ 
+-        unit_serialize_item(u, f, "state", scope_state_to_string(s->state));
+-        unit_serialize_item(u, f, "was-abandoned", yes_no(s->was_abandoned));
++        (void) serialize_item(f, "state", scope_state_to_string(s->state));
++        (void) serialize_bool(f, "was-abandoned", s->was_abandoned);
+ 
+         if (s->controller)
+-                unit_serialize_item(u, f, "controller", s->controller);
++                (void) serialize_item(f, "controller", s->controller);
+ 
+         return 0;
+ }
+diff -purN systemd/src/core/service.c systemd-izh/src/core/service.c
+--- systemd/src/core/service.c	2020-09-24 18:11:44.080610166 +0300
++++ systemd-izh/src/core/service.c	2020-09-29 13:28:24.670575344 +0300
+@@ -45,6 +45,7 @@
+ #include "parse-util.h"
+ #include "path-util.h"
+ #include "process-util.h"
++#include "serialize.h"
+ #include "service.h"
+ #include "signal-util.h"
+ #include "special.h"
+@@ -2421,47 +2422,47 @@ static int service_serialize(Unit *u, FI
+         assert(f);
+         assert(fds);
+ 
+-        unit_serialize_item(u, f, "state", service_state_to_string(s->state));
+-        unit_serialize_item(u, f, "result", service_result_to_string(s->result));
+-        unit_serialize_item(u, f, "reload-result", service_result_to_string(s->reload_result));
++        (void) serialize_item(f, "state", service_state_to_string(s->state));
++        (void) serialize_item(f, "result", service_result_to_string(s->result));
++        (void) serialize_item(f, "reload-result", service_result_to_string(s->reload_result));
+ 
+         if (s->control_pid > 0)
+-                unit_serialize_item_format(u, f, "control-pid", PID_FMT, s->control_pid);
++                (void) serialize_item_format(f, "control-pid", PID_FMT, s->control_pid);
+ 
+         if (s->main_pid_known && s->main_pid > 0)
+-                unit_serialize_item_format(u, f, "main-pid", PID_FMT, s->main_pid);
++                (void) serialize_item_format(f, "main-pid", PID_FMT, s->main_pid);
+ 
+-        unit_serialize_item(u, f, "main-pid-known", yes_no(s->main_pid_known));
+-        unit_serialize_item(u, f, "bus-name-good", yes_no(s->bus_name_good));
+-        unit_serialize_item(u, f, "bus-name-owner", s->bus_name_owner);
++        (void) serialize_bool(f, "main-pid-known", s->main_pid_known);
++        (void) serialize_bool(f, "bus-name-good", s->bus_name_good);
++        (void) serialize_bool(f, "bus-name-owner", s->bus_name_owner);
+ 
+-        unit_serialize_item_format(u, f, "n-restarts", "%u", s->n_restarts);
+-        unit_serialize_item(u, f, "flush-n-restarts", yes_no(s->flush_n_restarts));
++        (void) serialize_item_format(f, "n-restarts", "%u", s->n_restarts);
++        (void) serialize_bool(f, "flush-n-restarts", s->flush_n_restarts);
+ 
+-        r = unit_serialize_item_escaped(u, f, "status-text", s->status_text);
++        r = serialize_item_escaped(f, "status-text", s->status_text);
+         if (r < 0)
+                 return r;
+ 
+         service_serialize_exec_command(u, f, s->control_command);
+         service_serialize_exec_command(u, f, s->main_command);
+ 
+-        r = unit_serialize_item_fd(u, f, fds, "stdin-fd", s->stdin_fd);
++        r = serialize_fd(f, fds, "stdin-fd", s->stdin_fd);
+         if (r < 0)
+                 return r;
+-        r = unit_serialize_item_fd(u, f, fds, "stdout-fd", s->stdout_fd);
++        r = serialize_fd(f, fds, "stdout-fd", s->stdout_fd);
+         if (r < 0)
+                 return r;
+-        r = unit_serialize_item_fd(u, f, fds, "stderr-fd", s->stderr_fd);
++        r = serialize_fd(f, fds, "stderr-fd", s->stderr_fd);
+         if (r < 0)
+                 return r;
+ 
+         if (UNIT_ISSET(s->accept_socket)) {
+-                r = unit_serialize_item(u, f, "accept-socket", UNIT_DEREF(s->accept_socket)->id);
++                r = serialize_item(f, "accept-socket", UNIT_DEREF(s->accept_socket)->id);
+                 if (r < 0)
+                         return r;
+         }
+ 
+-        r = unit_serialize_item_fd(u, f, fds, "socket-fd", s->socket_fd);
++        r = serialize_fd(f, fds, "socket-fd", s->socket_fd);
+         if (r < 0)
+                 return r;
+ 
+@@ -2471,30 +2472,31 @@ static int service_serialize(Unit *u, FI
+ 
+                 copy = fdset_put_dup(fds, fs->fd);
+                 if (copy < 0)
+-                        return copy;
++                        return log_error_errno(copy, "Failed to copy file descriptor for serialization: %m");
+ 
+                 c = cescape(fs->fdname);
++                if (!c)
++                        return log_oom();
+ 
+-                unit_serialize_item_format(u, f, "fd-store-fd", "%i %s", copy, strempty(c));
++                (void) serialize_item_format(f, "fd-store-fd", "%i %s", copy, c);
+         }
+ 
+         if (s->main_exec_status.pid > 0) {
+-                unit_serialize_item_format(u, f, "main-exec-status-pid", PID_FMT, s->main_exec_status.pid);
+-                dual_timestamp_serialize(f, "main-exec-status-start", &s->main_exec_status.start_timestamp);
+-                dual_timestamp_serialize(f, "main-exec-status-exit", &s->main_exec_status.exit_timestamp);
++                (void) serialize_item_format(f, "main-exec-status-pid", PID_FMT, s->main_exec_status.pid);
++                (void) serialize_dual_timestamp(f, "main-exec-status-start", &s->main_exec_status.start_timestamp);
++                (void) serialize_dual_timestamp(f, "main-exec-status-exit", &s->main_exec_status.exit_timestamp);
+ 
+                 if (dual_timestamp_is_set(&s->main_exec_status.exit_timestamp)) {
+-                        unit_serialize_item_format(u, f, "main-exec-status-code", "%i", s->main_exec_status.code);
+-                        unit_serialize_item_format(u, f, "main-exec-status-status", "%i", s->main_exec_status.status);
++                        (void) serialize_item_format(f, "main-exec-status-code", "%i", s->main_exec_status.code);
++                        (void) serialize_item_format(f, "main-exec-status-status", "%i", s->main_exec_status.status);
+                 }
+         }
+ 
+-        dual_timestamp_serialize(f, "watchdog-timestamp", &s->watchdog_timestamp);
+-
+-        unit_serialize_item(u, f, "forbid-restart", yes_no(s->forbid_restart));
++        (void) serialize_dual_timestamp(f, "watchdog-timestamp", &s->watchdog_timestamp);
++        (void) serialize_bool(f, "forbid-restart", s->forbid_restart);
+ 
+         if (s->watchdog_override_enable)
+-               unit_serialize_item_format(u, f, "watchdog-override-usec", USEC_FMT, s->watchdog_override_usec);
++                (void) serialize_item_format(f, "watchdog-override-usec", USEC_FMT, s->watchdog_override_usec);
+ 
+         return 0;
+ }
+@@ -2746,11 +2748,11 @@ static int service_deserialize_item(Unit
+                 else
+                         s->main_exec_status.status = i;
+         } else if (streq(key, "main-exec-status-start"))
+-                dual_timestamp_deserialize(value, &s->main_exec_status.start_timestamp);
++                deserialize_dual_timestamp(value, &s->main_exec_status.start_timestamp);
+         else if (streq(key, "main-exec-status-exit"))
+-                dual_timestamp_deserialize(value, &s->main_exec_status.exit_timestamp);
++                deserialize_dual_timestamp(value, &s->main_exec_status.exit_timestamp);
+         else if (streq(key, "watchdog-timestamp"))
+-                dual_timestamp_deserialize(value, &s->watchdog_timestamp);
++                deserialize_dual_timestamp(value, &s->watchdog_timestamp);
+         else if (streq(key, "forbid-restart")) {
+                 int b;
+ 
+@@ -2790,13 +2792,10 @@ static int service_deserialize_item(Unit
+                         s->exec_context.stdio_as_fds = true;
+                 }
+         } else if (streq(key, "watchdog-override-usec")) {
+-                usec_t watchdog_override_usec;
+-                if (timestamp_deserialize(value, &watchdog_override_usec) < 0)
++                if (deserialize_usec(value, &s->watchdog_override_usec) < 0)
+                         log_unit_debug(u, "Failed to parse watchdog_override_usec value: %s", value);
+-                else {
++                else
+                         s->watchdog_override_enable = true;
+-                        s->watchdog_override_usec = watchdog_override_usec;
+-                }
+         } else if (STR_IN_SET(key, "main-command", "control-command")) {
+                 r = service_deserialize_exec_command(u, key, value);
+                 if (r < 0)
+diff -purN systemd/src/core/slice.c systemd-izh/src/core/slice.c
+--- systemd/src/core/slice.c	2020-09-23 19:10:03.294873228 +0300
++++ systemd-izh/src/core/slice.c	2020-09-24 18:18:34.254163162 +0300
+@@ -23,6 +23,7 @@
+ #include "alloc-util.h"
+ #include "dbus-slice.h"
+ #include "log.h"
++#include "serialize.h"
+ #include "slice.h"
+ #include "special.h"
+ #include "string-util.h"
+@@ -274,7 +275,8 @@ static int slice_serialize(Unit *u, FILE
+         assert(f);
+         assert(fds);
+ 
+-        unit_serialize_item(u, f, "state", slice_state_to_string(s->state));
++        (void) serialize_item(f, "state", slice_state_to_string(s->state));
++
+         return 0;
+ }
+ 
+diff -purN systemd/src/core/socket.c systemd-izh/src/core/socket.c
+--- systemd/src/core/socket.c	2020-09-23 19:10:03.294873228 +0300
++++ systemd-izh/src/core/socket.c	2020-09-24 18:18:34.258163177 +0300
+@@ -50,6 +50,7 @@
+ #include "path-util.h"
+ #include "process-util.h"
+ #include "selinux-util.h"
++#include "serialize.h"
+ #include "signal-util.h"
+ #include "smack-util.h"
+ #include "socket.h"
+@@ -2530,15 +2531,15 @@ static int socket_serialize(Unit *u, FIL
+         assert(f);
+         assert(fds);
+ 
+-        unit_serialize_item(u, f, "state", socket_state_to_string(s->state));
+-        unit_serialize_item(u, f, "result", socket_result_to_string(s->result));
+-        unit_serialize_item_format(u, f, "n-accepted", "%u", s->n_accepted);
++        (void) serialize_item(f, "state", socket_state_to_string(s->state));
++        (void) serialize_item(f, "result", socket_result_to_string(s->result));
++        (void) serialize_item_format(f, "n-accepted", "%u", s->n_accepted);
+ 
+         if (s->control_pid > 0)
+-                unit_serialize_item_format(u, f, "control-pid", PID_FMT, s->control_pid);
++                (void) serialize_item_format(f, "control-pid", PID_FMT, s->control_pid);
+ 
+         if (s->control_command_id >= 0)
+-                unit_serialize_item(u, f, "control-command", socket_exec_command_to_string(s->control_command_id));
++                (void) serialize_item(f, "control-command", socket_exec_command_to_string(s->control_command_id));
+ 
+         LIST_FOREACH(port, p, s->ports) {
+                 int copy;
+@@ -2548,29 +2549,28 @@ static int socket_serialize(Unit *u, FIL
+ 
+                 copy = fdset_put_dup(fds, p->fd);
+                 if (copy < 0)
+-                        return copy;
++                        return log_warning_errno(copy, "Failed to serialize socket fd: %m");
+ 
+                 if (p->type == SOCKET_SOCKET) {
+                         _cleanup_free_ char *t = NULL;
+ 
+                         r = socket_address_print(&p->address, &t);
+                         if (r < 0)
+-                                return r;
++                                return log_error_errno(r, "Failed to format socket address: %m");
+ 
+                         if (socket_address_family(&p->address) == AF_NETLINK)
+-                                unit_serialize_item_format(u, f, "netlink", "%i %s", copy, t);
++                                (void) serialize_item_format(f, "netlink", "%i %s", copy, t);
+                         else
+-                                unit_serialize_item_format(u, f, "socket", "%i %i %s", copy, p->address.type, t);
+-
++                                (void) serialize_item_format(f, "socket", "%i %i %s", copy, p->address.type, t);
+                 } else if (p->type == SOCKET_SPECIAL)
+-                        unit_serialize_item_format(u, f, "special", "%i %s", copy, p->path);
++                        (void) serialize_item_format(f, "special", "%i %s", copy, p->path);
+                 else if (p->type == SOCKET_MQUEUE)
+-                        unit_serialize_item_format(u, f, "mqueue", "%i %s", copy, p->path);
++                        (void) serialize_item_format(f, "mqueue", "%i %s", copy, p->path);
+                 else if (p->type == SOCKET_USB_FUNCTION)
+-                        unit_serialize_item_format(u, f, "ffs", "%i %s", copy, p->path);
++                        (void) serialize_item_format(f, "ffs", "%i %s", copy, p->path);
+                 else {
+                         assert(p->type == SOCKET_FIFO);
+-                        unit_serialize_item_format(u, f, "fifo", "%i %s", copy, p->path);
++                        (void) serialize_item_format(f, "fifo", "%i %s", copy, p->path);
+                 }
+         }
+ 
+@@ -2578,6 +2578,8 @@ static int socket_serialize(Unit *u, FIL
+ }
+ 
+ static void socket_port_take_fd(SocketPort *p, FDSet *fds, int fd) {
++        assert(p);
++
+         safe_close(p->fd);
+         p->fd = fdset_remove(fds, fd);
+ }
+diff -purN systemd/src/core/swap.c systemd-izh/src/core/swap.c
+--- systemd/src/core/swap.c	2020-09-23 19:10:03.294873228 +0300
++++ systemd-izh/src/core/swap.c	2020-09-24 18:18:34.258163177 +0300
+@@ -35,6 +35,7 @@
+ #include "parse-util.h"
+ #include "path-util.h"
+ #include "process-util.h"
++#include "serialize.h"
+ #include "special.h"
+ #include "string-table.h"
+ #include "string-util.h"
+@@ -908,14 +909,14 @@ static int swap_serialize(Unit *u, FILE
+         assert(f);
+         assert(fds);
+ 
+-        unit_serialize_item(u, f, "state", swap_state_to_string(s->state));
+-        unit_serialize_item(u, f, "result", swap_result_to_string(s->result));
++        (void) serialize_item(f, "state", swap_state_to_string(s->state));
++        (void) serialize_item(f, "result", swap_result_to_string(s->result));
+ 
+         if (s->control_pid > 0)
+-                unit_serialize_item_format(u, f, "control-pid", PID_FMT, s->control_pid);
++                (void) serialize_item_format(f, "control-pid", PID_FMT, s->control_pid);
+ 
+         if (s->control_command_id >= 0)
+-                unit_serialize_item(u, f, "control-command", swap_exec_command_to_string(s->control_command_id));
++                (void) serialize_item(f, "control-command", swap_exec_command_to_string(s->control_command_id));
+ 
+         return 0;
+ }
+diff -purN systemd/src/core/target.c systemd-izh/src/core/target.c
+--- systemd/src/core/target.c	2020-09-23 19:10:03.294873228 +0300
++++ systemd-izh/src/core/target.c	2020-09-24 18:18:34.258163177 +0300
+@@ -20,11 +20,12 @@
+ 
+ #include "dbus-target.h"
+ #include "log.h"
++#include "serialize.h"
+ #include "special.h"
+ #include "string-util.h"
++#include "target.h"
+ #include "unit-name.h"
+ #include "unit.h"
+-#include "target.h"
+ 
+ static const UnitActiveState state_translation_table[_TARGET_STATE_MAX] = {
+         [TARGET_DEAD] = UNIT_INACTIVE,
+@@ -162,7 +163,7 @@ static int target_serialize(Unit *u, FIL
+         assert(f);
+         assert(fds);
+ 
+-        unit_serialize_item(u, f, "state", target_state_to_string(s->state));
++        (void) serialize_item(f, "state", target_state_to_string(s->state));
+         return 0;
+ }
+ 
+diff -purN systemd/src/core/timer.c systemd-izh/src/core/timer.c
+--- systemd/src/core/timer.c	2020-09-23 19:10:03.294873228 +0300
++++ systemd-izh/src/core/timer.c	2020-09-24 18:18:34.258163177 +0300
+@@ -27,6 +27,7 @@
+ #include "fs-util.h"
+ #include "parse-util.h"
+ #include "random-util.h"
++#include "serialize.h"
+ #include "special.h"
+ #include "string-table.h"
+ #include "string-util.h"
+@@ -679,21 +680,20 @@ static int timer_serialize(Unit *u, FILE
+         assert(f);
+         assert(fds);
+ 
+-        unit_serialize_item(u, f, "state", timer_state_to_string(t->state));
+-        unit_serialize_item(u, f, "result", timer_result_to_string(t->result));
++        (void) serialize_item(f, "state", timer_state_to_string(t->state));
++        (void) serialize_item(f, "result", timer_result_to_string(t->result));
+ 
+         if (t->last_trigger.realtime > 0)
+-                unit_serialize_item_format(u, f, "last-trigger-realtime", "%" PRIu64, t->last_trigger.realtime);
++                (void) serialize_usec(f, "last-trigger-realtime", t->last_trigger.realtime);
+ 
+         if (t->last_trigger.monotonic > 0)
+-                unit_serialize_item_format(u, f, "last-trigger-monotonic", "%" PRIu64, t->last_trigger.monotonic);
++                (void) serialize_usec(f, "last-trigger-monotonic", t->last_trigger.monotonic);
+ 
+         return 0;
+ }
+ 
+ static int timer_deserialize_item(Unit *u, const char *key, const char *value, FDSet *fds) {
+         Timer *t = TIMER(u);
+-        int r;
+ 
+         assert(u);
+         assert(key);
+@@ -708,6 +708,7 @@ static int timer_deserialize_item(Unit *
+                         log_unit_debug(u, "Failed to parse state value: %s", value);
+                 else
+                         t->deserialized_state = state;
++
+         } else if (streq(key, "result")) {
+                 TimerResult f;
+ 
+@@ -716,19 +717,12 @@ static int timer_deserialize_item(Unit *
+                         log_unit_debug(u, "Failed to parse result value: %s", value);
+                 else if (f != TIMER_SUCCESS)
+                         t->result = f;
+-        } else if (streq(key, "last-trigger-realtime")) {
+-
+-                r = safe_atou64(value, &t->last_trigger.realtime);
+-                if (r < 0)
+-                        log_unit_debug(u, "Failed to parse last-trigger-realtime value: %s", value);
+ 
+-        } else if (streq(key, "last-trigger-monotonic")) {
+-
+-                r = safe_atou64(value, &t->last_trigger.monotonic);
+-                if (r < 0)
+-                        log_unit_debug(u, "Failed to parse last-trigger-monotonic value: %s", value);
+-
+-        } else
++        } else if (streq(key, "last-trigger-realtime"))
++                (void) deserialize_usec(value, &t->last_trigger.realtime);
++        else if (streq(key, "last-trigger-monotonic"))
++                (void) deserialize_usec(value, &t->last_trigger.monotonic);
++        else
+                 log_unit_debug(u, "Unknown serialization key: %s", key);
+ 
+         return 0;
+diff -purN systemd/src/core/unit.c systemd-izh/src/core/unit.c
+--- systemd/src/core/unit.c	2020-09-24 17:58:04.497868878 +0300
++++ systemd-izh/src/core/unit.c	2020-09-29 18:10:04.109014196 +0300
+@@ -52,6 +52,7 @@
+ #include "parse-util.h"
+ #include "path-util.h"
+ #include "process-util.h"
++#include "serialize.h"
+ #include "set.h"
+ #include "signal-util.h"
+ #include "sparse-endian.h"
+@@ -3130,23 +3131,21 @@ bool unit_can_serialize(Unit *u) {
+         return UNIT_VTABLE(u)->serialize && UNIT_VTABLE(u)->deserialize_item;
+ }
+ 
+-static int unit_serialize_cgroup_mask(FILE *f, const char *key, CGroupMask mask) {
++static int serialize_cgroup_mask(FILE *f, const char *key, CGroupMask mask) {
+         _cleanup_free_ char *s = NULL;
+-        int r = 0;
++        int r;
+ 
+         assert(f);
+         assert(key);
+ 
+-        if (mask != 0) {
+-                r = cg_mask_to_string(mask, &s);
+-                if (r >= 0) {
+-                        fputs(key, f);
+-                        fputc('=', f);
+-                        fputs(s, f);
+-                        fputc('\n', f);
+-                }
+-        }
+-        return r;
++        if (mask == 0)
++                return 0;
++
++        r = cg_mask_to_string(mask, &s);
++        if (r < 0)
++                return log_error_errno(r, "Failed to format cgroup mask: %m");
++
++        return serialize_item(f, key, s);
+ }
+ 
+ static const char *ip_accounting_metric_field[_CGROUP_IP_ACCOUNTING_METRIC_MAX] = {
+@@ -3170,46 +3169,46 @@ int unit_serialize(Unit *u, FILE *f, FDS
+                         return r;
+         }
+ 
+-        dual_timestamp_serialize(f, "state-change-timestamp", &u->state_change_timestamp);
++        (void) serialize_dual_timestamp(f, "state-change-timestamp", &u->state_change_timestamp);
+ 
+-        dual_timestamp_serialize(f, "inactive-exit-timestamp", &u->inactive_exit_timestamp);
+-        dual_timestamp_serialize(f, "active-enter-timestamp", &u->active_enter_timestamp);
+-        dual_timestamp_serialize(f, "active-exit-timestamp", &u->active_exit_timestamp);
+-        dual_timestamp_serialize(f, "inactive-enter-timestamp", &u->inactive_enter_timestamp);
++        (void) serialize_dual_timestamp(f, "inactive-exit-timestamp", &u->inactive_exit_timestamp);
++        (void) serialize_dual_timestamp(f, "active-enter-timestamp", &u->active_enter_timestamp);
++        (void) serialize_dual_timestamp(f, "active-exit-timestamp", &u->active_exit_timestamp);
++        (void) serialize_dual_timestamp(f, "inactive-enter-timestamp", &u->inactive_enter_timestamp);
+ 
+-        dual_timestamp_serialize(f, "condition-timestamp", &u->condition_timestamp);
+-        dual_timestamp_serialize(f, "assert-timestamp", &u->assert_timestamp);
++        (void) serialize_dual_timestamp(f, "condition-timestamp", &u->condition_timestamp);
++        (void) serialize_dual_timestamp(f, "assert-timestamp", &u->assert_timestamp);
+ 
+         if (dual_timestamp_is_set(&u->condition_timestamp))
+-                unit_serialize_item(u, f, "condition-result", yes_no(u->condition_result));
++                (void) serialize_bool(f, "condition-result", u->condition_result);
+ 
+         if (dual_timestamp_is_set(&u->assert_timestamp))
+-                unit_serialize_item(u, f, "assert-result", yes_no(u->assert_result));
++                (void) serialize_bool(f, "assert-result", u->assert_result);
+ 
+-        unit_serialize_item(u, f, "transient", yes_no(u->transient));
++        (void) serialize_bool(f, "transient", u->transient);
+ 
+-        unit_serialize_item(u, f, "exported-invocation-id", yes_no(u->exported_invocation_id));
+-        unit_serialize_item(u, f, "exported-log-level-max", yes_no(u->exported_log_level_max));
+-        unit_serialize_item(u, f, "exported-log-extra-fields", yes_no(u->exported_log_extra_fields));
++        (void) serialize_bool(f, "exported-invocation-id", u->exported_invocation_id);
++        (void) serialize_bool(f, "exported-log-level-max", u->exported_log_level_max);
++        (void) serialize_bool(f, "exported-log-extra-fields", u->exported_log_extra_fields);
+ 
+-        unit_serialize_item_format(u, f, "cpu-usage-base", "%" PRIu64, u->cpu_usage_base);
++        (void) serialize_item_format(f, "cpu-usage-base", "%" PRIu64, u->cpu_usage_base);
+         if (u->cpu_usage_last != NSEC_INFINITY)
+-                unit_serialize_item_format(u, f, "cpu-usage-last", "%" PRIu64, u->cpu_usage_last);
++                (void) serialize_item_format(f, "cpu-usage-last", "%" PRIu64, u->cpu_usage_last);
+ 
+         if (u->cgroup_path)
+-                unit_serialize_item(u, f, "cgroup", u->cgroup_path);
+-        unit_serialize_item(u, f, "cgroup-realized", yes_no(u->cgroup_realized));
+-        (void) unit_serialize_cgroup_mask(f, "cgroup-realized-mask", u->cgroup_realized_mask);
+-        (void) unit_serialize_cgroup_mask(f, "cgroup-enabled-mask", u->cgroup_enabled_mask);
+-        unit_serialize_item_format(u, f, "cgroup-bpf-realized", "%i", u->cgroup_bpf_state);
++                (void) serialize_item(f, "cgroup", u->cgroup_path);
++        (void) serialize_bool(f, "cgroup-realized", u->cgroup_realized);
++        (void) serialize_cgroup_mask(f, "cgroup-realized-mask", u->cgroup_realized_mask);
++        (void) serialize_cgroup_mask(f, "cgroup-enabled-mask", u->cgroup_enabled_mask);
++        (void) serialize_item_format(f, "cgroup-bpf-realized", "%i", u->cgroup_bpf_state);
+ 
+         if (uid_is_valid(u->ref_uid))
+-                unit_serialize_item_format(u, f, "ref-uid", UID_FMT, u->ref_uid);
++                (void) serialize_item_format(f, "ref-uid", UID_FMT, u->ref_uid);
+         if (gid_is_valid(u->ref_gid))
+-                unit_serialize_item_format(u, f, "ref-gid", GID_FMT, u->ref_gid);
++                (void) serialize_item_format(f, "ref-gid", GID_FMT, u->ref_gid);
+ 
+         if (!sd_id128_is_null(u->invocation_id))
+-                unit_serialize_item_format(u, f, "invocation-id", SD_ID128_FORMAT_STR, SD_ID128_FORMAT_VAL(u->invocation_id));
++                (void) serialize_item_format(f, "invocation-id", SD_ID128_FORMAT_STR, SD_ID128_FORMAT_VAL(u->invocation_id));
+ 
+         bus_track_serialize(u->bus_track, f, "ref");
+ 
+@@ -3218,17 +3217,17 @@ int unit_serialize(Unit *u, FILE *f, FDS
+ 
+                 r = unit_get_ip_accounting(u, m, &v);
+                 if (r >= 0)
+-                        unit_serialize_item_format(u, f, ip_accounting_metric_field[m], "%" PRIu64, v);
++                        (void) serialize_item_format(f, ip_accounting_metric_field[m], "%" PRIu64, v);
+         }
+ 
+         if (serialize_jobs) {
+                 if (u->job) {
+-                        fprintf(f, "job\n");
++                        fputs("job\n", f);
+                         job_serialize(u->job, f);
+                 }
+ 
+                 if (u->nop_job) {
+-                        fprintf(f, "job\n");
++                        fputs("job\n", f);
+                         job_serialize(u->nop_job, f);
+                 }
+         }
+@@ -3238,80 +3237,6 @@ int unit_serialize(Unit *u, FILE *f, FDS
+         return 0;
+ }
+ 
+-int unit_serialize_item(Unit *u, FILE *f, const char *key, const char *value) {
+-        assert(u);
+-        assert(f);
+-        assert(key);
+-
+-        if (!value)
+-                return 0;
+-
+-        fputs(key, f);
+-        fputc('=', f);
+-        fputs(value, f);
+-        fputc('\n', f);
+-
+-        return 1;
+-}
+-
+-int unit_serialize_item_escaped(Unit *u, FILE *f, const char *key, const char *value) {
+-        _cleanup_free_ char *c = NULL;
+-
+-        assert(u);
+-        assert(f);
+-        assert(key);
+-
+-        if (!value)
+-                return 0;
+-
+-        c = cescape(value);
+-        if (!c)
+-                return -ENOMEM;
+-
+-        fputs(key, f);
+-        fputc('=', f);
+-        fputs(c, f);
+-        fputc('\n', f);
+-
+-        return 1;
+-}
+-
+-int unit_serialize_item_fd(Unit *u, FILE *f, FDSet *fds, const char *key, int fd) {
+-        int copy;
+-
+-        assert(u);
+-        assert(f);
+-        assert(key);
+-
+-        if (fd < 0)
+-                return 0;
+-
+-        copy = fdset_put_dup(fds, fd);
+-        if (copy < 0)
+-                return copy;
+-
+-        fprintf(f, "%s=%i\n", key, copy);
+-        return 1;
+-}
+-
+-void unit_serialize_item_format(Unit *u, FILE *f, const char *key, const char *format, ...) {
+-        va_list ap;
+-
+-        assert(u);
+-        assert(f);
+-        assert(key);
+-        assert(format);
+-
+-        fputs(key, f);
+-        fputc('=', f);
+-
+-        va_start(ap, format);
+-        vfprintf(f, format, ap);
+-        va_end(ap);
+-
+-        fputc('\n', f);
+-}
+-
+ int unit_deserialize(Unit *u, FILE *f, FDSet *fds) {
+         int r;
+ 
+@@ -3376,25 +3301,25 @@ int unit_deserialize(Unit *u, FILE *f, F
+                                 log_unit_warning(u, "Update from too old systemd versions are unsupported, cannot deserialize job: %s", v);
+                         continue;
+                 } else if (streq(l, "state-change-timestamp")) {
+-                        dual_timestamp_deserialize(v, &u->state_change_timestamp);
++                        (void) deserialize_dual_timestamp(v, &u->state_change_timestamp);
+                         continue;
+                 } else if (streq(l, "inactive-exit-timestamp")) {
+-                        dual_timestamp_deserialize(v, &u->inactive_exit_timestamp);
++                        (void) deserialize_dual_timestamp(v, &u->inactive_exit_timestamp);
+                         continue;
+                 } else if (streq(l, "active-enter-timestamp")) {
+-                        dual_timestamp_deserialize(v, &u->active_enter_timestamp);
++                        (void) deserialize_dual_timestamp(v, &u->active_enter_timestamp);
+                         continue;
+                 } else if (streq(l, "active-exit-timestamp")) {
+-                        dual_timestamp_deserialize(v, &u->active_exit_timestamp);
++                        (void) deserialize_dual_timestamp(v, &u->active_exit_timestamp);
+                         continue;
+                 } else if (streq(l, "inactive-enter-timestamp")) {
+-                        dual_timestamp_deserialize(v, &u->inactive_enter_timestamp);
++                        (void) deserialize_dual_timestamp(v, &u->inactive_enter_timestamp);
+                         continue;
+                 } else if (streq(l, "condition-timestamp")) {
+-                        dual_timestamp_deserialize(v, &u->condition_timestamp);
++                        (void) deserialize_dual_timestamp(v, &u->condition_timestamp);
+                         continue;
+                 } else if (streq(l, "assert-timestamp")) {
+-                        dual_timestamp_deserialize(v, &u->assert_timestamp);
++                        (void) deserialize_dual_timestamp(v, &u->assert_timestamp);
+                         continue;
+                 } else if (streq(l, "condition-result")) {
+ 
+@@ -3544,7 +3469,7 @@ int unit_deserialize(Unit *u, FILE *f, F
+ 
+                         r = strv_extend(&u->deserialized_refs, v);
+                         if (r < 0)
+-                                log_oom();
++                                return log_oom();
+ 
+                         continue;
+                 } else if (streq(l, "invocation-id")) {
+diff -purN systemd/src/core/unit.h systemd-izh/src/core/unit.h
+--- systemd/src/core/unit.h	2020-09-23 19:10:03.298873188 +0300
++++ systemd-izh/src/core/unit.h	2020-09-24 19:38:34.915680775 +0300
+@@ -693,11 +693,6 @@ int unit_serialize(Unit *u, FILE *f, FDS
+ int unit_deserialize(Unit *u, FILE *f, FDSet *fds);
+ void unit_deserialize_skip(FILE *f);
+ 
+-int unit_serialize_item(Unit *u, FILE *f, const char *key, const char *value);
+-int unit_serialize_item_escaped(Unit *u, FILE *f, const char *key, const char *value);
+-int unit_serialize_item_fd(Unit *u, FILE *f, FDSet *fds, const char *key, int fd);
+-void unit_serialize_item_format(Unit *u, FILE *f, const char *key, const char *value, ...) _printf_(4,5);
+-
+ int unit_add_node_dependency(Unit *u, const char *what, bool wants, UnitDependency d, UnitDependencyMask mask);
+ 
+ int unit_coldplug(Unit *u);
+diff -purN systemd/src/login/logind-session.c systemd-izh/src/login/logind-session.c
+--- systemd/src/login/logind-session.c	2020-09-23 19:10:03.342872742 +0300
++++ systemd-izh/src/login/logind-session.c	2020-09-24 18:18:34.266163207 +0300
+@@ -42,6 +42,7 @@
+ #include "mkdir.h"
+ #include "parse-util.h"
+ #include "path-util.h"
++#include "serialize.h"
+ #include "string-table.h"
+ #include "terminal-util.h"
+ #include "user-util.h"
+@@ -500,9 +501,9 @@ int session_load(Session *s) {
+         }
+ 
+         if (realtime)
+-                timestamp_deserialize(realtime, &s->timestamp.realtime);
++                (void) deserialize_usec(realtime, &s->timestamp.realtime);
+         if (monotonic)
+-                timestamp_deserialize(monotonic, &s->timestamp.monotonic);
++                (void) deserialize_usec(monotonic, &s->timestamp.monotonic);
+ 
+         if (active) {
+                 k = parse_boolean(active);
+diff -purN systemd/src/login/logind-user.c systemd-izh/src/login/logind-user.c
+--- systemd/src/login/logind-user.c	2020-09-23 19:10:03.342872742 +0300
++++ systemd-izh/src/login/logind-user.c	2020-09-24 18:18:34.266163207 +0300
+@@ -44,6 +44,7 @@
+ #include "parse-util.h"
+ #include "path-util.h"
+ #include "rm-rf.h"
++#include "serialize.h"
+ #include "smack-util.h"
+ #include "special.h"
+ #include "stdio-util.h"
+@@ -325,9 +326,9 @@ int user_load(User *u) {
+                 u->display = s;
+ 
+         if (realtime)
+-                timestamp_deserialize(realtime, &u->timestamp.realtime);
++                (void) deserialize_usec(realtime, &u->timestamp.realtime);
+         if (monotonic)
+-                timestamp_deserialize(monotonic, &u->timestamp.monotonic);
++                (void) deserialize_usec(monotonic, &u->timestamp.monotonic);
+ 
+         return r;
+ }
+diff -purN systemd/src/machine/machine.c systemd-izh/src/machine/machine.c
+--- systemd/src/machine/machine.c	2020-09-23 19:10:03.346872702 +0300
++++ systemd-izh/src/machine/machine.c	2020-09-24 18:18:34.266163207 +0300
+@@ -39,6 +39,7 @@
+ #include "mkdir.h"
+ #include "parse-util.h"
+ #include "process-util.h"
++#include "serialize.h"
+ #include "special.h"
+ #include "stdio-util.h"
+ #include "string-table.h"
+@@ -303,9 +304,9 @@ int machine_load(Machine *m) {
+         }
+ 
+         if (realtime)
+-                timestamp_deserialize(realtime, &m->timestamp.realtime);
++                (void) deserialize_usec(realtime, &m->timestamp.realtime);
+         if (monotonic)
+-                timestamp_deserialize(monotonic, &m->timestamp.monotonic);
++                (void) deserialize_usec(monotonic, &m->timestamp.monotonic);
+ 
+         if (netif) {
+                 size_t allocated = 0, nr = 0;
+diff -purN systemd/src/shared/meson.build systemd-izh/src/shared/meson.build
+--- systemd/src/shared/meson.build	2020-09-23 19:10:03.390872256 +0300
++++ systemd-izh/src/shared/meson.build	2020-09-29 18:17:44.458508759 +0300
+@@ -91,6 +91,8 @@ shared_sources = '''
+         resolve-util.c
+         resolve-util.h
+         seccomp-util.h
++        serialize.c
++        serialize.h
+         sleep-config.c
+         sleep-config.h
+         spawn-ask-password-agent.c
+diff -purN systemd/src/shared/serialize.c systemd-izh/src/shared/serialize.c
+--- systemd/src/shared/serialize.c	1970-01-01 03:00:00.000000000 +0300
++++ systemd-izh/src/shared/serialize.c	2020-09-24 18:18:34.266163207 +0300
+@@ -0,0 +1,190 @@
++/* SPDX-License-Identifier: LGPL-2.1+ */
++
++#include "alloc-util.h"
++#include "def.h"
++#include "env-util.h"
++#include "escape.h"
++#include "parse-util.h"
++#include "serialize.h"
++#include "strv.h"
++
++int serialize_item(FILE *f, const char *key, const char *value) {
++        assert(f);
++        assert(key);
++
++        if (!value)
++                return 0;
++
++        /* Make sure that anything we serialize we can also read back again with read_line() with a maximum line size
++         * of LONG_LINE_MAX. This is a safety net only. All code calling us should filter this out earlier anyway. */
++        if (strlen(key) + 1 + strlen(value) + 1 > LONG_LINE_MAX) {
++                log_warning("Attempted to serialize overly long item '%s', refusing.", key);
++                return -EINVAL;
++        }
++
++        fputs(key, f);
++        fputc('=', f);
++        fputs(value, f);
++        fputc('\n', f);
++
++        return 1;
++}
++
++int serialize_item_escaped(FILE *f, const char *key, const char *value) {
++        _cleanup_free_ char *c = NULL;
++
++        assert(f);
++        assert(key);
++
++        if (!value)
++                return 0;
++
++        c = cescape(value);
++        if (!c)
++                return log_oom();
++
++        return serialize_item(f, key, c);
++}
++
++int serialize_item_format(FILE *f, const char *key, const char *format, ...) {
++        char buf[LONG_LINE_MAX];
++        va_list ap;
++        int k;
++
++        assert(f);
++        assert(key);
++        assert(format);
++
++        va_start(ap, format);
++        k = vsnprintf(buf, sizeof(buf), format, ap);
++        va_end(ap);
++
++        if (k < 0 || (size_t) k >= sizeof(buf) || strlen(key) + 1 + k + 1 > LONG_LINE_MAX) {
++                log_warning("Attempted to serialize overly long item '%s', refusing.", key);
++                return -EINVAL;
++        }
++
++        fputs(key, f);
++        fputc('=', f);
++        fputs(buf, f);
++        fputc('\n', f);
++
++        return 1;
++}
++
++int serialize_fd(FILE *f, FDSet *fds, const char *key, int fd) {
++        int copy;
++
++        assert(f);
++        assert(key);
++
++        if (fd < 0)
++                return 0;
++
++        copy = fdset_put_dup(fds, fd);
++        if (copy < 0)
++                return log_error_errno(copy, "Failed to add file descriptor to serialization set: %m");
++
++        return serialize_item_format(f, key, "%i", copy);
++}
++
++int serialize_usec(FILE *f, const char *key, usec_t usec) {
++        assert(f);
++        assert(key);
++
++        if (usec == USEC_INFINITY)
++                return 0;
++
++        return serialize_item_format(f, key, USEC_FMT, usec);
++}
++
++int serialize_dual_timestamp(FILE *f, const char *name, const dual_timestamp *t) {
++        assert(f);
++        assert(name);
++        assert(t);
++
++        if (!dual_timestamp_is_set(t))
++                return 0;
++
++        return serialize_item_format(f, name, USEC_FMT " " USEC_FMT, t->realtime, t->monotonic);
++}
++
++int serialize_strv(FILE *f, const char *key, char **l) {
++        int ret = 0, r;
++        char **i;
++
++        /* Returns the first error */
++
++        STRV_FOREACH(i, l) {
++                r = serialize_item_escaped(f, key, *i);
++                if ((ret >= 0 && r < 0) ||
++                    (ret == 0 && r > 0))
++                        ret = r;
++        }
++
++        return ret;
++}
++
++int deserialize_usec(const char *value, usec_t *ret) {
++        int r;
++
++        assert(value);
++
++        r = safe_atou64(value, ret);
++        if (r < 0)
++                return log_debug_errno(r, "Failed to parse usec value \"%s\": %m", value);
++
++        return 0;
++}
++
++int deserialize_dual_timestamp(const char *value, dual_timestamp *t) {
++        uint64_t a, b;
++        int r, pos;
++
++        assert(value);
++        assert(t);
++
++        pos = strspn(value, WHITESPACE);
++        if (value[pos] == '-')
++                return -EINVAL;
++        pos += strspn(value + pos, DIGITS);
++        pos += strspn(value + pos, WHITESPACE);
++        if (value[pos] == '-')
++                return -EINVAL;
++
++        r = sscanf(value, "%" PRIu64 "%" PRIu64 "%n", &a, &b, &pos);
++        if (r != 2) {
++                log_debug("Failed to parse dual timestamp value \"%s\".", value);
++                return -EINVAL;
++        }
++
++        if (value[pos] != '\0')
++                /* trailing garbage */
++                return -EINVAL;
++
++        t->realtime = a;
++        t->monotonic = b;
++
++        return 0;
++}
++
++int deserialize_environment(const char *value, char ***list) {
++        _cleanup_free_ char *unescaped = NULL;
++        int r;
++
++        assert(value);
++        assert(list);
++
++        /* Changes the *environment strv inline. */
++
++        r = cunescape(value, 0, &unescaped);
++        if (r < 0)
++                return log_error_errno(r, "Failed to unescape: %m");
++
++        r = strv_env_replace(list, unescaped);
++        if (r < 0)
++                return log_error_errno(r, "Failed to append environment variable: %m");
++
++        unescaped = NULL; /* now part of 'list' */
++        return 0;
++}
+diff -purN systemd/src/shared/serialize.h systemd-izh/src/shared/serialize.h
+--- systemd/src/shared/serialize.h	1970-01-01 03:00:00.000000000 +0300
++++ systemd-izh/src/shared/serialize.h	2020-09-24 18:18:34.266163207 +0300
+@@ -0,0 +1,23 @@
++/* SPDX-License-Identifier: LGPL-2.1+ */
++#pragma once
++
++#include <stdio.h>
++
++#include "fdset.h"
++#include "macro.h"
++
++int serialize_item(FILE *f, const char *key, const char *value);
++int serialize_item_escaped(FILE *f, const char *key, const char *value);
++int serialize_item_format(FILE *f, const char *key, const char *value, ...) _printf_(3,4);
++int serialize_fd(FILE *f, FDSet *fds, const char *key, int fd);
++int serialize_usec(FILE *f, const char *key, usec_t usec);
++int serialize_dual_timestamp(FILE *f, const char *key, const dual_timestamp *t);
++int serialize_strv(FILE *f, const char *key, char **l);
++
++static inline int serialize_bool(FILE *f, const char *key, bool b) {
++        return serialize_item(f, key, yes_no(b));
++}
++
++int deserialize_usec(const char *value, usec_t *timestamp);
++int deserialize_dual_timestamp(const char *value, dual_timestamp *t);
++int deserialize_environment(const char *value, char ***environment);
+diff -purN systemd/src/test/meson.build systemd-izh/src/test/meson.build
+--- systemd/src/test/meson.build	2020-09-23 19:10:03.402872134 +0300
++++ systemd-izh/src/test/meson.build	2020-09-29 18:18:54.774737057 +0300
+@@ -150,6 +150,10 @@ tests += [
+           libmount,
+           libblkid]],
+ 
++        [['src/test/test-serialize.c'],
++         [],
++         []],
++
+         [['src/test/test-utf8.c'],
+          [],
+          []],
+diff -purN systemd/src/test/test-env-util.c systemd-izh/src/test/test-env-util.c
+--- systemd/src/test/test-env-util.c	2020-09-23 19:10:03.406872094 +0300
++++ systemd-izh/src/test/test-env-util.c	2020-09-29 18:14:52.041949006 +0300
+@@ -21,13 +21,45 @@
+ 
+ #include <string.h>
+ 
++#include "def.h"
+ #include "env-util.h"
+ #include "fd-util.h"
+ #include "fileio.h"
++#include "fs-util.h"
++#include "serialize.h"
+ #include "string-util.h"
+ #include "strv.h"
+ #include "util.h"
+ 
++/* IZh: Backorted from d8351049a8547be4a512d29d9b4127ff1920b6cf */
++static int fmkostemp_safe(char *pattern, const char *mode, FILE **ret_f) {
++        int fd;
++        FILE *f;
++
++        fd = mkostemp_safe(pattern);
++        if (fd < 0)
++                return fd;
++
++        f = fdopen(fd, mode);
++        if (!f) {
++                safe_close(fd);
++                return -errno;
++        }
++
++        *ret_f = f;
++        return 0;
++}
++
++/* IZh: Backported from 627d2bac2477986401400127fb31af33ca0f69b0 */
++static void unlink_tempfilep(char (*p)[]) {
++        /* If the file is created with mkstemp(), it will (almost always)
++         * change the suffix. Treat this as a sign that the file was
++         * successfully created. We ignore both the rare case where the
++         * original suffix is used and unlink failures. */
++        if (!endswith(*p, ".XXXXXX"))
++                (void) unlink_noerrno(*p);
++}
++
+ static void test_strv_env_delete(void) {
+         _cleanup_strv_free_ char **a = NULL, **b = NULL, **c = NULL, **d = NULL;
+ 
+@@ -318,58 +350,62 @@ static void test_env_assignment_is_valid
+ }
+ 
+ static void test_deserialize_environment(void) {
+-        _cleanup_strv_free_ char **env = strv_new("A=1", NULL);
++        _cleanup_strv_free_ char **env;
+ 
+-        assert_se(deserialize_environment(&env, "env=B=2") >= 0);
+-        assert_se(deserialize_environment(&env, "env=FOO%%=a\\177b\\nc\\td e") >= 0);
++        log_info("/* %s */", __func__);
++
++        assert_se(env = strv_new("A=1", NULL));
++
++        assert_se(deserialize_environment("B=2", &env) >= 0);
++        assert_se(deserialize_environment("FOO%%=a\\177b\\nc\\td e", &env) >= 0);
+ 
+         assert_se(strv_equal(env, STRV_MAKE("A=1", "B=2", "FOO%%=a\177b\nc\td e")));
+ 
+-        assert_se(deserialize_environment(&env, "env=foo\\") < 0);
+-        assert_se(deserialize_environment(&env, "env=bar\\_baz") < 0);
++        assert_se(deserialize_environment("foo\\", &env) < 0);
++        assert_se(deserialize_environment("bar\\_baz", &env) < 0);
+ }
+ 
+ static void test_serialize_environment(void) {
+-        char fn[] = "/tmp/test-env-util.XXXXXXX";
+-        int fd, r;
++        _cleanup_strv_free_ char **env = NULL, **env2 = NULL;
++        _cleanup_(unlink_tempfilep) char fn[] = "/tmp/test-env-util.XXXXXXX";
+         _cleanup_fclose_ FILE *f = NULL;
++        int r;
+ 
+-        _cleanup_strv_free_ char **env = strv_new("A=1",
+-                                                  "B=2",
+-                                                  "C=ąęółń",
+-                                                  "D=D=a\\x0Ab",
+-                                                  "FOO%%=a\177b\nc\td e",
+-                                                  NULL);
+-        _cleanup_strv_free_ char **env2 = NULL;
+-
+-        fd = mkostemp_safe(fn);
+-        assert_se(fd >= 0);
++        assert_se(fmkostemp_safe(fn, "r+", &f) == 0);
++        log_info("/* %s (%s) */", __func__, fn);
+ 
+-        assert_se(f = fdopen(fd, "r+"));
++        assert_se(env = strv_new("A=1",
++                                 "B=2",
++                                 "C=ąęółń",
++                                 "D=D=a\\x0Ab",
++                                 "FOO%%=a\177b\nc\td e",
++                                 NULL));
+ 
+-        assert_se(serialize_environment(f, env) == 0);
++        assert_se(serialize_strv(f, "env", env) == 1);
+         assert_se(fflush_and_check(f) == 0);
+ 
+         rewind(f);
+ 
+         for (;;) {
+-                char line[LINE_MAX];
++                _cleanup_free_ char *line = NULL;
+                 const char *l;
+ 
+-                if (!fgets(line, sizeof line, f))
++                r = read_line(f, LONG_LINE_MAX, &line);
++                assert_se(r >= 0);
++
++                if (r == 0)
+                         break;
+ 
+-                char_array_0(line);
+                 l = strstrip(line);
+ 
+-                r = deserialize_environment(&env2, l);
+-                assert_se(r == 1);
++                assert_se(startswith(l, "env="));
++
++                r = deserialize_environment(l+4, &env2);
++                assert_se(r >= 0);
+         }
+         assert_se(feof(f));
+ 
+         assert_se(strv_equal(env, env2));
+-
+-        unlink(fn);
+ }
+ 
+ int main(int argc, char *argv[]) {
+diff -purN systemd/src/test/test-serialize.c systemd-izh/src/test/test-serialize.c
+--- systemd/src/test/test-serialize.c	1970-01-01 03:00:00.000000000 +0300
++++ systemd-izh/src/test/test-serialize.c	2020-09-24 18:22:27.051044572 +0300
+@@ -0,0 +1,238 @@
++/* SPDX-License-Identifier: LGPL-2.1+ */
++
++#include "def.h"
++#include "escape.h"
++#include "fd-util.h"
++#include "fileio.h"
++#include "fs-util.h"
++#include "log.h"
++#include "serialize.h"
++#include "strv.h"
++#include "tests.h"
++
++char long_string[LONG_LINE_MAX+1];
++
++/* IZh: Backorted from d8351049a8547be4a512d29d9b4127ff1920b6cf */
++static int fmkostemp_safe(char *pattern, const char *mode, FILE **ret_f) {
++        int fd;
++        FILE *f;
++
++        fd = mkostemp_safe(pattern);
++        if (fd < 0)
++                return fd;
++
++        f = fdopen(fd, mode);
++        if (!f) {
++                safe_close(fd);
++                return -errno;
++        }
++
++        *ret_f = f;
++        return 0;
++}
++
++/* IZh: Backported from 627d2bac2477986401400127fb31af33ca0f69b0 */
++static void unlink_tempfilep(char (*p)[]) {
++        /* If the file is created with mkstemp(), it will (almost always)
++         * change the suffix. Treat this as a sign that the file was
++         * successfully created. We ignore both the rare case where the
++         * original suffix is used and unlink failures. */
++        if (!endswith(*p, ".XXXXXX"))
++                (void) unlink_noerrno(*p);
++}
++
++static void test_serialize_item(void) {
++        _cleanup_(unlink_tempfilep) char fn[] = "/tmp/test-serialize.XXXXXX";
++        _cleanup_fclose_ FILE *f = NULL;
++        _cleanup_free_ char *line1 = NULL, *line2 = NULL, *line3 = NULL;
++
++        assert_se(fmkostemp_safe(fn, "r+", &f) == 0);
++        log_info("/* %s (%s) */", __func__, fn);
++
++        assert_se(serialize_item(f, "a", NULL) == 0);
++        assert_se(serialize_item(f, "a", "bbb") == 1);
++        assert_se(serialize_item(f, "a", "bbb") == 1);
++        assert_se(serialize_item(f, "a", long_string) == -EINVAL);
++        assert_se(serialize_item(f, long_string, "a") == -EINVAL);
++        assert_se(serialize_item(f, long_string, long_string) == -EINVAL);
++
++        rewind(f);
++
++        assert_se(read_line(f, LONG_LINE_MAX, &line1) > 0);
++        assert_se(streq(line1, "a=bbb"));
++        assert_se(read_line(f, LONG_LINE_MAX, &line2) > 0);
++        assert_se(streq(line2, "a=bbb"));
++        assert_se(read_line(f, LONG_LINE_MAX, &line3) == 0);
++        assert_se(streq(line3, ""));
++}
++
++static void test_serialize_item_escaped(void) {
++        _cleanup_(unlink_tempfilep) char fn[] = "/tmp/test-serialize.XXXXXX";
++        _cleanup_fclose_ FILE *f = NULL;
++        _cleanup_free_ char *line1 = NULL, *line2 = NULL, *line3 = NULL;
++
++        assert_se(fmkostemp_safe(fn, "r+", &f) == 0);
++        log_info("/* %s (%s) */", __func__, fn);
++
++        assert_se(serialize_item_escaped(f, "a", NULL) == 0);
++        assert_se(serialize_item_escaped(f, "a", "bbb") == 1);
++        assert_se(serialize_item_escaped(f, "a", "bbb") == 1);
++        assert_se(serialize_item_escaped(f, "a", long_string) == -EINVAL);
++        assert_se(serialize_item_escaped(f, long_string, "a") == -EINVAL);
++        assert_se(serialize_item_escaped(f, long_string, long_string) == -EINVAL);
++
++        rewind(f);
++
++        assert_se(read_line(f, LONG_LINE_MAX, &line1) > 0);
++        assert_se(streq(line1, "a=bbb"));
++        assert_se(read_line(f, LONG_LINE_MAX, &line2) > 0);
++        assert_se(streq(line2, "a=bbb"));
++        assert_se(read_line(f, LONG_LINE_MAX, &line3) == 0);
++        assert_se(streq(line3, ""));
++}
++
++static void test_serialize_usec(void) {
++        _cleanup_(unlink_tempfilep) char fn[] = "/tmp/test-serialize.XXXXXX";
++        _cleanup_fclose_ FILE *f = NULL;
++        _cleanup_free_ char *line1 = NULL, *line2 = NULL;
++        usec_t x;
++
++        assert_se(fmkostemp_safe(fn, "r+", &f) == 0);
++        log_info("/* %s (%s) */", __func__, fn);
++
++        assert_se(serialize_usec(f, "usec1", USEC_INFINITY) == 0);
++        assert_se(serialize_usec(f, "usec2", 0) == 1);
++        assert_se(serialize_usec(f, "usec3", USEC_INFINITY-1) == 1);
++
++        rewind(f);
++
++        assert_se(read_line(f, LONG_LINE_MAX, &line1) > 0);
++        assert_se(streq(line1, "usec2=0"));
++        assert_se(deserialize_usec(line1 + 6, &x) == 0);
++        assert_se(x == 0);
++
++        assert_se(read_line(f, LONG_LINE_MAX, &line2) > 0);
++        assert_se(startswith(line2, "usec3="));
++        assert_se(deserialize_usec(line2 + 6, &x) == 0);
++        assert_se(x == USEC_INFINITY-1);
++}
++
++static void test_serialize_strv(void) {
++        _cleanup_(unlink_tempfilep) char fn[] = "/tmp/test-serialize.XXXXXX";
++        _cleanup_fclose_ FILE *f = NULL;
++        _cleanup_strv_free_ char **strv2 = NULL;
++
++        char **strv = STRV_MAKE("a", "b", "foo foo",
++                                "nasty1 \"",
++                                "\"nasty2 ",
++                                "nasty3 '",
++                                "\"nasty4 \"",
++                                "nasty5\n",
++                                "\nnasty5\nfoo=bar",
++                                "\nnasty5\nfoo=bar");
++
++        assert_se(fmkostemp_safe(fn, "r+", &f) == 0);
++        log_info("/* %s (%s) */", __func__, fn);
++
++        assert_se(serialize_strv(f, "strv1", NULL) == 0);
++        assert_se(serialize_strv(f, "strv2", STRV_MAKE_EMPTY) == 0);
++        assert_se(serialize_strv(f, "strv3", strv) == 1);
++        assert_se(serialize_strv(f, "strv4", STRV_MAKE(long_string)) == -EINVAL);
++
++        rewind(f);
++
++        for (;;) {
++                _cleanup_free_ char *line = NULL;
++                int r;
++                const char *t;
++                char *un;
++
++                r = read_line(f, LONG_LINE_MAX, &line);
++                if (r == 0)
++                        break;
++                assert_se(r > 0);
++
++                t = startswith(line, "strv3=");
++                assert_se(t);
++
++                assert_se(cunescape(t, 0, &un) >= 0);
++                assert_se(strv_consume(&strv2, un) >= 0);
++        }
++
++        assert_se(strv_equal(strv, strv2));
++}
++
++static void test_deserialize_environment(void) {
++        _cleanup_strv_free_ char **env;
++
++        log_info("/* %s */", __func__);
++
++        assert_se(env = strv_new("A=1", NULL));
++
++        assert_se(deserialize_environment("B=2", &env) >= 0);
++        assert_se(deserialize_environment("FOO%%=a\\177b\\nc\\td e", &env) >= 0);
++
++        assert_se(strv_equal(env, STRV_MAKE("A=1", "B=2", "FOO%%=a\177b\nc\td e")));
++
++        assert_se(deserialize_environment("foo\\", &env) < 0);
++        assert_se(deserialize_environment("bar\\_baz", &env) < 0);
++}
++
++static void test_serialize_environment(void) {
++        _cleanup_strv_free_ char **env = NULL, **env2 = NULL;
++        _cleanup_(unlink_tempfilep) char fn[] = "/tmp/test-env-util.XXXXXXX";
++        _cleanup_fclose_ FILE *f = NULL;
++        int r;
++
++        assert_se(fmkostemp_safe(fn, "r+", &f) == 0);
++        log_info("/* %s (%s) */", __func__, fn);
++
++        assert_se(env = strv_new("A=1",
++                                 "B=2",
++                                 "C=ąęółń",
++                                 "D=D=a\\x0Ab",
++                                 "FOO%%=a\177b\nc\td e",
++                                 NULL));
++
++        assert_se(serialize_strv(f, "env", env) == 1);
++        assert_se(fflush_and_check(f) == 0);
++
++        rewind(f);
++
++        for (;;) {
++                _cleanup_free_ char *line = NULL;
++                const char *l;
++
++                r = read_line(f, LONG_LINE_MAX, &line);
++                assert_se(r >= 0);
++
++                if (r == 0)
++                        break;
++
++                l = strstrip(line);
++
++                assert_se(startswith(l, "env="));
++
++                r = deserialize_environment(l+4, &env2);
++                assert_se(r >= 0);
++        }
++        assert_se(feof(f));
++
++        assert_se(strv_equal(env, env2));
++}
++
++int main(int argc, char *argv[]) {
++        log_set_max_level(LOG_INFO);
++
++        memset(long_string, 'x', sizeof(long_string)-1);
++        char_array_0(long_string);
++
++        test_serialize_item();
++        test_serialize_item_escaped();
++        test_serialize_usec();
++        test_serialize_strv();
++        test_deserialize_environment();
++        test_serialize_environment();
++
++        return EXIT_SUCCESS;
++}
+diff -purN systemd/src/test/test-time-util.c systemd-izh/src/test/test-time-util.c
+--- systemd/src/test/test-time-util.c	2020-09-23 19:10:03.414872013 +0300
++++ systemd-izh/src/test/test-time-util.c	2020-09-29 18:05:40.432158131 +0300
+@@ -19,6 +19,7 @@
+ ***/
+ 
+ #include "random-util.h"
++#include "serialize.h"
+ #include "string-util.h"
+ #include "strv.h"
+ #include "time-util.h"
+@@ -308,38 +309,40 @@ static void test_format_timestamp_utc(vo
+         test_format_timestamp_utc_one(USEC_INFINITY, NULL);
+ }
+ 
+-static void test_dual_timestamp_deserialize(void) {
++static void test_deserialize_dual_timestamp(void) {
+         int r;
+         dual_timestamp t;
+ 
+-        r = dual_timestamp_deserialize("1234 5678", &t);
++        log_info("/* %s */", __func__);
++
++        r = deserialize_dual_timestamp("1234 5678", &t);
+         assert_se(r == 0);
+         assert_se(t.realtime == 1234);
+         assert_se(t.monotonic == 5678);
+ 
+-        r = dual_timestamp_deserialize("1234x 5678", &t);
++        r = deserialize_dual_timestamp("1234x 5678", &t);
+         assert_se(r == -EINVAL);
+ 
+-        r = dual_timestamp_deserialize("1234 5678y", &t);
++        r = deserialize_dual_timestamp("1234 5678y", &t);
+         assert_se(r == -EINVAL);
+ 
+-        r = dual_timestamp_deserialize("-1234 5678", &t);
++        r = deserialize_dual_timestamp("-1234 5678", &t);
+         assert_se(r == -EINVAL);
+ 
+-        r = dual_timestamp_deserialize("1234 -5678", &t);
++        r = deserialize_dual_timestamp("1234 -5678", &t);
+         assert_se(r == -EINVAL);
+ 
+         /* Check that output wasn't modified. */
+         assert_se(t.realtime == 1234);
+         assert_se(t.monotonic == 5678);
+ 
+-        r = dual_timestamp_deserialize("+123 567", &t);
++        r = deserialize_dual_timestamp("+123 567", &t);
+         assert_se(r == 0);
+         assert_se(t.realtime == 123);
+         assert_se(t.monotonic == 567);
+ 
+         /* Check that we get "infinity" on overflow. */
+-        r = dual_timestamp_deserialize("18446744073709551617 0", &t);
++        r = deserialize_dual_timestamp("18446744073709551617 0", &t);
+         assert_se(r == 0);
+         assert_se(t.realtime == USEC_INFINITY);
+         assert_se(t.monotonic == 0);
+@@ -423,7 +426,7 @@ int main(int argc, char *argv[]) {
+         test_usec_sub_unsigned();
+         test_format_timestamp();
+         test_format_timestamp_utc();
+-        test_dual_timestamp_deserialize();
++        test_deserialize_dual_timestamp();
+         test_usec_shift_clock();
+         test_in_utc_timezone();
+ 

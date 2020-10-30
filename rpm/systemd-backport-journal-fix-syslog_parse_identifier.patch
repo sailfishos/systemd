@@ -24,7 +24,7 @@ Fixes #9839 introduced by a6aadf4ae0bae185dc4c414d492a4a781c80ffe5.
 diff -purN systemd/src/journal/journald-syslog.c systemd-izh/src/journal/journald-syslog.c
 --- systemd/src/journal/journald-syslog.c	2019-08-02 18:21:22.892939591 +0300
 +++ systemd-izh/src/journal/journald-syslog.c	2019-08-05 16:54:03.176668148 +0300
-@@ -209,7 +209,7 @@ size_t syslog_parse_identifier(const cha
+@@ -212,7 +212,7 @@ size_t syslog_parse_identifier(const cha
          e = l;
          l--;
  
@@ -33,7 +33,7 @@ diff -purN systemd/src/journal/journald-syslog.c systemd-izh/src/journal/journal
                  size_t k = l-1;
  
                  for (;;) {
-@@ -234,8 +234,10 @@ size_t syslog_parse_identifier(const cha
+@@ -237,8 +237,10 @@ size_t syslog_parse_identifier(const cha
          if (t)
                  *identifier = t;
  
@@ -48,9 +48,9 @@ diff -purN systemd/src/journal/journald-syslog.c systemd-izh/src/journal/journal
 diff -purN systemd/src/journal/test-journal-syslog.c systemd-izh/src/journal/test-journal-syslog.c
 --- systemd/src/journal/test-journal-syslog.c	2019-08-02 18:21:22.892939591 +0300
 +++ systemd-izh/src/journal/test-journal-syslog.c	2019-08-05 16:54:03.176668148 +0300
-@@ -22,8 +22,8 @@
- #include "journald-syslog.h"
+@@ -23,8 +23,8 @@
  #include "macro.h"
+ #include "string-util.h"
  
 -static void test_syslog_parse_identifier(const char* str,
 -                                         const char *ident, const char*pid, int ret) {
@@ -59,7 +59,7 @@ diff -purN systemd/src/journal/test-journal-syslog.c systemd-izh/src/journal/tes
          const char *buf = str;
          _cleanup_free_ char *ident2 = NULL, *pid2 = NULL;
          int ret2;
-@@ -33,12 +33,22 @@ static void test_syslog_parse_identifier
+@@ -34,12 +34,22 @@ static void test_syslog_parse_identifier
          assert_se(ret == ret2);
          assert_se(ident == ident2 || streq_ptr(ident, ident2));
          assert_se(pid == pid2 || streq_ptr(pid, pid2));

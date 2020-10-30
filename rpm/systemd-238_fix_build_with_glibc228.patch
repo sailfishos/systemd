@@ -1,0 +1,1741 @@
+Fix build with glibc 2-28:
+Since glibc-2.26 makedev macros moving to sys/sysmacros
+Fix compiler warnings for possibly uninitialized wariables.
+
+diff -purN systemd/src/activate/activate.c systemd-izh/src/activate/activate.c
+--- systemd/src/activate/activate.c	2020-10-13 13:34:00.098952103 +0300
++++ systemd-izh/src/activate/activate.c	2020-10-19 23:37:02.784439175 +0300
+@@ -163,7 +163,7 @@ static int exec_process(const char* name
+ 
+                         envp[n_env++] = k;
+                 } else {
+-                        _cleanup_free_ char *p;
++                        _cleanup_free_ char *p = NULL;
+                         const char *n;
+ 
+                         p = strappend(*s, "=");
+@@ -425,7 +425,7 @@ static int parse_argv(int argc, char *ar
+                         break;
+ 
+                 case ARG_FDNAME: {
+-                        _cleanup_strv_free_ char **names;
++                        _cleanup_strv_free_ char **names = NULL;
+                         char **s;
+ 
+                         names = strv_split(optarg, ":");
+@@ -434,7 +434,7 @@ static int parse_argv(int argc, char *ar
+ 
+                         STRV_FOREACH(s, names)
+                                 if (!fdname_is_valid(*s)) {
+-                                        _cleanup_free_ char *esc;
++                                        _cleanup_free_ char *esc = NULL;
+ 
+                                         esc = cescape(*s);
+                                         log_warning("File descriptor name \"%s\" is not valid.", esc);
+diff -purN systemd/src/basic/capability-util.c systemd-izh/src/basic/capability-util.c
+--- systemd/src/basic/capability-util.c	2020-10-13 13:34:00.102952120 +0300
++++ systemd-izh/src/basic/capability-util.c	2020-10-19 23:37:02.784439175 +0300
+@@ -36,7 +36,7 @@
+ #include "util.h"
+ 
+ int have_effective_cap(int value) {
+-        _cleanup_cap_free_ cap_t cap;
++        _cleanup_cap_free_ cap_t cap = NULL;
+         cap_flag_value_t fv;
+ 
+         cap = cap_get_proc();
+diff -purN systemd/src/basic/cgroup-util.c systemd-izh/src/basic/cgroup-util.c
+--- systemd/src/basic/cgroup-util.c	2020-10-13 13:34:00.102952120 +0300
++++ systemd-izh/src/basic/cgroup-util.c	2020-10-19 23:37:02.788439128 +0300
+@@ -1001,7 +1001,7 @@ int cg_get_xattr(const char *controller,
+ int cg_pid_get_path(const char *controller, pid_t pid, char **path) {
+         _cleanup_fclose_ FILE *f = NULL;
+         char line[LINE_MAX];
+-        const char *fs, *controller_str;
++        const char *fs, *controller_str = NULL;
+         size_t cs = 0;
+         int unified;
+ 
+diff -purN systemd/src/basic/clock-util.c systemd-izh/src/basic/clock-util.c
+--- systemd/src/basic/clock-util.c	2020-10-13 13:34:00.102952120 +0300
++++ systemd-izh/src/basic/clock-util.c	2020-10-19 23:37:02.788439128 +0300
+@@ -71,7 +71,7 @@ int clock_set_hwclock(const struct tm *t
+ }
+ 
+ int clock_is_localtime(const char* adjtime_path) {
+-        _cleanup_fclose_ FILE *f;
++        _cleanup_fclose_ FILE *f = NULL;
+ 
+         if (!adjtime_path)
+                 adjtime_path = "/etc/adjtime";
+diff -purN systemd/src/basic/env-util.c systemd-izh/src/basic/env-util.c
+--- systemd/src/basic/env-util.c	2020-10-19 23:36:11.989028250 +0300
++++ systemd-izh/src/basic/env-util.c	2020-10-19 23:37:02.788439128 +0300
+@@ -531,10 +531,10 @@ char *replace_env_n(const char *format,
+                 ALTERNATE_VALUE,
+         } state = WORD;
+ 
+-        const char *e, *word = format, *test_value;
++        const char *e, *word = format, *test_value = NULL;
+         char *k;
+         _cleanup_free_ char *r = NULL;
+-        size_t i, len;
++        size_t i, len = 0;
+         int nest = 0;
+ 
+         assert(format);
+diff -purN systemd/src/basic/hashmap.c systemd-izh/src/basic/hashmap.c
+--- systemd/src/basic/hashmap.c	2020-10-13 13:34:00.114952173 +0300
++++ systemd-izh/src/basic/hashmap.c	2020-10-19 23:37:02.788439128 +0300
+@@ -23,6 +23,7 @@
+ #include <stdint.h>
+ #include <stdlib.h>
+ #include <string.h>
++#include <sys/sysmacros.h>
+ 
+ #include "alloc-util.h"
+ #include "hashmap.h"
+diff -purN systemd/src/basic/stat-util.c systemd-izh/src/basic/stat-util.c
+--- systemd/src/basic/stat-util.c	2020-10-13 13:34:00.126952225 +0300
++++ systemd-izh/src/basic/stat-util.c	2020-10-19 23:37:02.788439128 +0300
+@@ -75,7 +75,7 @@ int is_device_node(const char *path) {
+ }
+ 
+ int dir_is_empty(const char *path) {
+-        _cleanup_closedir_ DIR *d;
++        _cleanup_closedir_ DIR *d = NULL;
+         struct dirent *de;
+ 
+         d = opendir(path);
+diff -purN systemd/src/basic/terminal-util.c systemd-izh/src/basic/terminal-util.c
+--- systemd/src/basic/terminal-util.c	2020-10-13 13:34:00.130952242 +0300
++++ systemd-izh/src/basic/terminal-util.c	2020-10-19 23:37:02.788439128 +0300
+@@ -67,7 +67,7 @@ static volatile int cached_colors_enable
+ static volatile int cached_underline_enabled = -1;
+ 
+ int chvt(int vt) {
+-        _cleanup_close_ int fd;
++        _cleanup_close_ int fd = -1;
+ 
+         /* Switch to the specified vt number. If the VT is specified <= 0 switch to the VT the kernel log messages go,
+          * if that's configured. */
+@@ -537,7 +537,7 @@ int terminal_vhangup_fd(int fd) {
+ }
+ 
+ int terminal_vhangup(const char *name) {
+-        _cleanup_close_ int fd;
++        _cleanup_close_ int fd = -1;
+ 
+         fd = open_terminal(name, O_RDWR|O_NOCTTY|O_CLOEXEC|O_NONBLOCK);
+         if (fd < 0)
+diff -purN systemd/src/boot/bootctl.c systemd-izh/src/boot/bootctl.c
+--- systemd/src/boot/bootctl.c	2020-10-13 13:34:00.134952259 +0300
++++ systemd-izh/src/boot/bootctl.c	2020-10-19 23:37:02.788439128 +0300
+@@ -34,6 +34,7 @@
+ #include <sys/mman.h>
+ #include <sys/stat.h>
+ #include <sys/statfs.h>
++#include <sys/sysmacros.h>
+ #include <unistd.h>
+ 
+ #include "sd-id128.h"
+diff -purN systemd/src/busctl/busctl.c systemd-izh/src/busctl/busctl.c
+--- systemd/src/busctl/busctl.c	2020-10-13 13:34:00.138952277 +0300
++++ systemd-izh/src/busctl/busctl.c	2020-10-19 23:37:02.792439082 +0300
+@@ -197,7 +197,7 @@ static int list_bus_names(sd_bus *bus, c
+ 
+                         r = sd_bus_creds_get_unit(creds, &unit);
+                         if (r >= 0) {
+-                                _cleanup_free_ char *e;
++                                _cleanup_free_ char *e = NULL;
+ 
+                                 e = ellipsize(unit, 25, 100);
+                                 if (!e)
+@@ -700,7 +700,7 @@ static void member_set_free(Set *s) {
+ DEFINE_TRIVIAL_CLEANUP_FUNC(Set*, member_set_free);
+ 
+ static int on_interface(const char *interface, uint64_t flags, void *userdata) {
+-        _cleanup_(member_freep) Member *m;
++        _cleanup_(member_freep) Member *m = NULL;
+         Set *members = userdata;
+         int r;
+ 
+@@ -729,7 +729,7 @@ static int on_interface(const char *inte
+ }
+ 
+ static int on_method(const char *interface, const char *name, const char *signature, const char *result, uint64_t flags, void *userdata) {
+-        _cleanup_(member_freep) Member *m;
++        _cleanup_(member_freep) Member *m = NULL;
+         Set *members = userdata;
+         int r;
+ 
+@@ -770,7 +770,7 @@ static int on_method(const char *interfa
+ }
+ 
+ static int on_signal(const char *interface, const char *name, const char *signature, uint64_t flags, void *userdata) {
+-        _cleanup_(member_freep) Member *m;
++        _cleanup_(member_freep) Member *m = NULL;
+         Set *members = userdata;
+         int r;
+ 
+@@ -807,7 +807,7 @@ static int on_signal(const char *interfa
+ }
+ 
+ static int on_property(const char *interface, const char *name, const char *signature, bool writable, uint64_t flags, void *userdata) {
+-        _cleanup_(member_freep) Member *m;
++        _cleanup_(member_freep) Member *m = NULL;
+         Set *members = userdata;
+         int r;
+ 
+diff -purN systemd/src/core/automount.c systemd-izh/src/core/automount.c
+--- systemd/src/core/automount.c	2020-10-19 23:36:11.993028203 +0300
++++ systemd-izh/src/core/automount.c	2020-10-19 23:37:02.792439082 +0300
+@@ -26,6 +26,7 @@
+ #include <sys/epoll.h>
+ #include <sys/mount.h>
+ #include <sys/stat.h>
++#include <sys/sysmacros.h>
+ #include <unistd.h>
+ 
+ #include "alloc-util.h"
+diff -purN systemd/src/core/cgroup.c systemd-izh/src/core/cgroup.c
+--- systemd/src/core/cgroup.c	2020-10-13 13:34:00.138952277 +0300
++++ systemd-izh/src/core/cgroup.c	2020-10-19 23:37:02.792439082 +0300
+@@ -20,6 +20,7 @@
+ 
+ #include <fcntl.h>
+ #include <fnmatch.h>
++#include <sys/sysmacros.h>
+ 
+ #include "alloc-util.h"
+ #include "blockdev-util.h"
+diff -purN systemd/src/core/device.c systemd-izh/src/core/device.c
+--- systemd/src/core/device.c	2020-10-19 23:36:11.993028203 +0300
++++ systemd-izh/src/core/device.c	2020-10-19 23:37:02.792439082 +0300
+@@ -20,6 +20,7 @@
+ 
+ #include <errno.h>
+ #include <sys/epoll.h>
++#include <sys/sysmacros.h>
+ 
+ #include "libudev.h"
+ 
+@@ -239,7 +240,7 @@ static int device_update_description(Uni
+                         label = udev_device_get_property_value(dev, "ID_PART_ENTRY_NUMBER");
+ 
+                 if (label) {
+-                        _cleanup_free_ char *j;
++                        _cleanup_free_ char *j = NULL;
+ 
+                         j = strjoin(model, " ", label);
+                         if (j)
+diff -purN systemd/src/core/execute.c systemd-izh/src/core/execute.c
+--- systemd/src/core/execute.c	2020-10-19 23:36:12.037027693 +0300
++++ systemd-izh/src/core/execute.c	2020-10-19 23:37:02.792439082 +0300
+@@ -3406,7 +3406,7 @@ static int exec_child(
+         }
+ 
+         if (DEBUG_LOGGING) {
+-                _cleanup_free_ char *line;
++                _cleanup_free_ char *line = NULL;
+ 
+                 line = exec_command_line(final_argv);
+                 if (line) {
+@@ -3655,7 +3655,7 @@ int exec_context_destroy_runtime_directo
+                 return 0;
+ 
+         STRV_FOREACH(i, c->directories[EXEC_DIRECTORY_RUNTIME].paths) {
+-                _cleanup_free_ char *p;
++                _cleanup_free_ char *p = NULL;
+ 
+                 p = strjoin(runtime_prefix, "/", *i);
+                 if (!p)
+diff -purN systemd/src/core/job.c systemd-izh/src/core/job.c
+--- systemd/src/core/job.c	2020-10-19 23:36:11.993028203 +0300
++++ systemd-izh/src/core/job.c	2020-10-19 23:37:02.796439036 +0300
+@@ -742,7 +742,7 @@ static void job_print_status_message(Uni
+         REENABLE_WARNING;
+ 
+         if (t == JOB_START && result == JOB_FAILED) {
+-                _cleanup_free_ char *quoted;
++                _cleanup_free_ char *quoted = NULL;
+ 
+                 quoted = shell_maybe_quote(u->id, ESCAPE_BACKSLASH);
+                 manager_status_printf(u->manager, STATUS_TYPE_NORMAL, NULL, "See 'systemctl status %s' for details.", strna(quoted));
+diff -purN systemd/src/core/main.c systemd-izh/src/core/main.c
+--- systemd/src/core/main.c	2020-10-19 23:36:12.041027647 +0300
++++ systemd-izh/src/core/main.c	2020-10-19 23:37:02.796439036 +0300
+@@ -1787,7 +1787,7 @@ static void log_execution_mode(bool *ret
+                 }
+         } else {
+                 if (DEBUG_LOGGING) {
+-                        _cleanup_free_ char *t;
++                        _cleanup_free_ char *t = NULL;
+ 
+                         t = uid_to_name(getuid());
+                         log_debug(PACKAGE_STRING " running in %suser mode for user " UID_FMT "/%s. (" SYSTEMD_FEATURES ")",
+diff -purN systemd/src/core/manager.c systemd-izh/src/core/manager.c
+--- systemd/src/core/manager.c	2020-10-19 23:36:12.045027600 +0300
++++ systemd-izh/src/core/manager.c	2020-10-19 23:37:02.796439036 +0300
+@@ -252,7 +252,7 @@ static void manager_print_jobs_in_progre
+ }
+ 
+ static int have_ask_password(void) {
+-        _cleanup_closedir_ DIR *dir;
++        _cleanup_closedir_ DIR *dir = NULL;
+         struct dirent *de;
+ 
+         dir = opendir("/run/systemd/ask-password");
+diff -purN systemd/src/core/mount.c systemd-izh/src/core/mount.c
+--- systemd/src/core/mount.c	2020-10-19 23:36:12.065027368 +0300
++++ systemd-izh/src/core/mount.c	2020-10-19 23:37:02.796439036 +0300
+@@ -1545,7 +1545,7 @@ static int mount_setup_unit(
+                 bool set_flags) {
+ 
+         _cleanup_free_ char *e = NULL;
+-        MountSetupFlags flags;
++        MountSetupFlags flags = { false, false, false };
+         Unit *u;
+         int r;
+ 
+diff -purN systemd/src/core/mount-setup.c systemd-izh/src/core/mount-setup.c
+--- systemd/src/core/mount-setup.c	2020-10-13 13:34:00.154952346 +0300
++++ systemd-izh/src/core/mount-setup.c	2020-10-19 23:37:02.796439036 +0300
+@@ -296,7 +296,7 @@ int mount_cgroup_controllers(char ***joi
+                         for (i = *k, j = *k; *i; i++) {
+ 
+                                 if (!streq(*i, controller)) {
+-                                        _cleanup_free_ char *t;
++                                        _cleanup_free_ char *t = NULL;
+ 
+                                         t = set_remove(controllers, *i);
+                                         if (!t) {
+diff -purN systemd/src/core/namespace.c systemd-izh/src/core/namespace.c
+--- systemd/src/core/namespace.c	2020-10-13 13:34:00.154952346 +0300
++++ systemd-izh/src/core/namespace.c	2020-10-19 23:37:02.796439036 +0300
+@@ -618,7 +618,7 @@ static int mount_private_dev(MountEntry
+ 
+         char temporary_mount[] = "/tmp/namespace-dev-XXXXXX";
+         const char *d, *dev = NULL, *devpts = NULL, *devshm = NULL, *devhugepages = NULL, *devmqueue = NULL, *devlog = NULL, *devptmx = NULL;
+-        _cleanup_umask_ mode_t u;
++        _cleanup_umask_ mode_t u = 0;
+         int r;
+ 
+         assert(m);
+diff -purN systemd/src/core/path.c systemd-izh/src/core/path.c
+--- systemd/src/core/path.c	2020-10-19 23:36:11.997028157 +0300
++++ systemd-izh/src/core/path.c	2020-10-19 23:37:02.800438989 +0300
+@@ -87,7 +87,7 @@ int path_spec_watch(PathSpec *s, sd_even
+         for (slash = strchr(s->path, '/'); ; slash = strchr(slash+1, '/')) {
+                 char *cut = NULL;
+                 int flags;
+-                char tmp;
++                char tmp = '\0';
+ 
+                 if (slash) {
+                         cut = slash + (slash == s->path);
+diff -purN systemd/src/core/service.c systemd-izh/src/core/service.c
+--- systemd/src/core/service.c	2020-10-19 23:36:11.997028157 +0300
++++ systemd-izh/src/core/service.c	2020-10-19 23:37:02.800438989 +0300
+@@ -20,6 +20,7 @@
+ 
+ #include <errno.h>
+ #include <signal.h>
++#include <sys/sysmacros.h>
+ #include <unistd.h>
+ 
+ #include "sd-messages.h"
+@@ -3754,7 +3755,7 @@ int service_set_socket_fd(Service *s, in
+         if (getpeername_pretty(fd, true, &peer) >= 0) {
+ 
+                 if (UNIT(s)->description) {
+-                        _cleanup_free_ char *a;
++                        _cleanup_free_ char *a = NULL;
+ 
+                         a = strjoin(UNIT(s)->description, " (", peer, ")");
+                         if (!a)
+diff -purN systemd/src/core/umount.c systemd-izh/src/core/umount.c
+--- systemd/src/core/umount.c	2020-10-13 13:34:00.162952381 +0300
++++ systemd-izh/src/core/umount.c	2020-10-19 23:37:02.800438989 +0300
+@@ -24,6 +24,7 @@
+ #include <string.h>
+ #include <sys/mount.h>
+ #include <sys/swap.h>
++#include <sys/sysmacros.h>
+ 
+ #include "libudev.h"
+ 
+@@ -235,7 +236,7 @@ static int loopback_list_get(MountPoint
+         first = udev_enumerate_get_list_entry(e);
+         udev_list_entry_foreach(item, first) {
+                 MountPoint *lb;
+-                _cleanup_udev_device_unref_ struct udev_device *d;
++                _cleanup_udev_device_unref_ struct udev_device *d = NULL;
+                 char *loop;
+                 const char *dn;
+ 
+@@ -295,7 +296,7 @@ static int dm_list_get(MountPoint **head
+         first = udev_enumerate_get_list_entry(e);
+         udev_list_entry_foreach(item, first) {
+                 MountPoint *m;
+-                _cleanup_udev_device_unref_ struct udev_device *d;
++                _cleanup_udev_device_unref_ struct udev_device *d = NULL;
+                 dev_t devnum;
+                 char *node;
+                 const char *dn;
+diff -purN systemd/src/core/unit.c systemd-izh/src/core/unit.c
+--- systemd/src/core/unit.c	2020-10-19 23:36:12.053027507 +0300
++++ systemd-izh/src/core/unit.c	2020-10-19 23:37:02.800438989 +0300
+@@ -517,7 +517,7 @@ static void unit_free_requires_mounts_fo
+         assert(u);
+ 
+         for (;;) {
+-                _cleanup_free_ char *path;
++                _cleanup_free_ char *path = NULL;
+ 
+                 path = hashmap_steal_first_key(u->requires_mounts_for);
+                 if (!path)
+@@ -989,7 +989,7 @@ int unit_add_exec_dependencies(Unit *u,
+                         continue;
+ 
+                 STRV_FOREACH(dp, c->directories[dt].paths) {
+-                        _cleanup_free_ char *p;
++                        _cleanup_free_ char *p = NULL;
+ 
+                         p = strjoin(u->manager->prefix[dt], "/", *dp);
+                         if (!p)
+diff -purN systemd/src/cryptsetup/cryptsetup.c systemd-izh/src/cryptsetup/cryptsetup.c
+--- systemd/src/cryptsetup/cryptsetup.c	2020-10-13 13:34:00.166952398 +0300
++++ systemd-izh/src/cryptsetup/cryptsetup.c	2020-10-19 23:37:02.800438989 +0300
+@@ -22,6 +22,7 @@
+ #include <mntent.h>
+ #include <string.h>
+ #include <sys/mman.h>
++#include <sys/sysmacros.h>
+ 
+ #include "sd-device.h"
+ 
+diff -purN systemd/src/cryptsetup/cryptsetup-generator.c systemd-izh/src/cryptsetup/cryptsetup-generator.c
+--- systemd/src/cryptsetup/cryptsetup-generator.c	2020-10-13 13:34:00.166952398 +0300
++++ systemd-izh/src/cryptsetup/cryptsetup-generator.c	2020-10-19 23:33:27.274938440 +0300
+@@ -136,7 +136,7 @@ static int create_disk(
+                 if (STR_IN_SET(password, "/dev/urandom", "/dev/random", "/dev/hw_random"))
+                         fputs("After=systemd-random-seed.service\n", f);
+                 else if (!STR_IN_SET(password, "-", "none")) {
+-                        _cleanup_free_ char *uu;
++                        _cleanup_free_ char *uu = NULL;
+ 
+                         uu = fstab_node_to_udev_node(password);
+                         if (!uu)
+diff -purN systemd/src/fsck/fsck.c systemd-izh/src/fsck/fsck.c
+--- systemd/src/fsck/fsck.c	2020-10-13 13:34:00.170952415 +0300
++++ systemd-izh/src/fsck/fsck.c	2020-10-19 23:37:02.804438943 +0300
+@@ -26,6 +26,7 @@
+ #include <sys/file.h>
+ #include <sys/prctl.h>
+ #include <sys/stat.h>
++#include <sys/sysmacros.h>
+ #include <unistd.h>
+ 
+ #include "sd-bus.h"
+diff -purN systemd/src/fstab-generator/fstab-generator.c systemd-izh/src/fstab-generator/fstab-generator.c
+--- systemd/src/fstab-generator/fstab-generator.c	2020-10-13 13:34:00.170952415 +0300
++++ systemd-izh/src/fstab-generator/fstab-generator.c	2020-10-19 23:37:02.804438943 +0300
+@@ -414,7 +414,7 @@ static int add_mount(
+                 return r;
+ 
+         if (!isempty(fstype) && !streq(fstype, "auto")) {
+-                _cleanup_free_ char *t;
++                _cleanup_free_ char *t = NULL;
+ 
+                 t = specifier_escape(fstype);
+                 if (!t)
+diff -purN systemd/src/gpt-auto-generator/gpt-auto-generator.c systemd-izh/src/gpt-auto-generator/gpt-auto-generator.c
+--- systemd/src/gpt-auto-generator/gpt-auto-generator.c	2020-10-13 13:34:00.170952415 +0300
++++ systemd-izh/src/gpt-auto-generator/gpt-auto-generator.c	2020-10-19 23:37:02.804438943 +0300
+@@ -21,6 +21,7 @@
+ #include <blkid.h>
+ #include <stdlib.h>
+ #include <sys/statfs.h>
++#include <sys/sysmacros.h>
+ #include <unistd.h>
+ 
+ #include "libudev.h"
+diff -purN systemd/src/hibernate-resume/hibernate-resume.c systemd-izh/src/hibernate-resume/hibernate-resume.c
+--- systemd/src/hibernate-resume/hibernate-resume.c	2020-10-13 13:34:00.170952415 +0300
++++ systemd-izh/src/hibernate-resume/hibernate-resume.c	2020-10-19 23:37:02.804438943 +0300
+@@ -21,6 +21,7 @@
+ #include <errno.h>
+ #include <stdio.h>
+ #include <sys/stat.h>
++#include <sys/sysmacros.h>
+ 
+ #include "alloc-util.h"
+ #include "fileio.h"
+diff -purN systemd/src/journal/catalog.c systemd-izh/src/journal/catalog.c
+--- systemd/src/journal/catalog.c	2020-10-13 13:34:00.178952449 +0300
++++ systemd-izh/src/journal/catalog.c	2020-10-19 23:37:02.804438943 +0300
+@@ -396,7 +396,7 @@ static int64_t write_catalog(const char
+         CatalogHeader header;
+         _cleanup_fclose_ FILE *w = NULL;
+         int r;
+-        _cleanup_free_ char *d, *p = NULL;
++        _cleanup_free_ char *d = NULL, *p = NULL;
+         size_t k;
+ 
+         d = dirname_malloc(database);
+diff -purN systemd/src/journal/journalctl.c systemd-izh/src/journal/journalctl.c
+--- systemd/src/journal/journalctl.c	2020-10-13 13:34:00.182952468 +0300
++++ systemd-izh/src/journal/journalctl.c	2020-10-19 23:37:02.804438943 +0300
+@@ -32,6 +32,7 @@
+ #include <string.h>
+ #include <sys/inotify.h>
+ #include <sys/stat.h>
++#include <sys/sysmacros.h>
+ #include <unistd.h>
+ 
+ #if HAVE_PCRE2
+@@ -1463,7 +1464,7 @@ static int get_possible_units(
+                 char **patterns,
+                 Set **units) {
+ 
+-        _cleanup_set_free_free_ Set *found;
++        _cleanup_set_free_free_ Set *found = NULL;
+         const char *field;
+         int r;
+ 
+@@ -2120,7 +2121,7 @@ int main(int argc, char *argv[]) {
+         case ACTION_LIST_CATALOG:
+         case ACTION_DUMP_CATALOG:
+         case ACTION_UPDATE_CATALOG: {
+-                _cleanup_free_ char *database;
++                _cleanup_free_ char *database = NULL;
+ 
+                 database = path_join(arg_root, CATALOG_DATABASE, NULL);
+                 if (!database) {
+@@ -2361,7 +2362,7 @@ int main(int argc, char *argv[]) {
+                 goto finish;
+ 
+         if (DEBUG_LOGGING) {
+-                _cleanup_free_ char *filter;
++                _cleanup_free_ char *filter = NULL;
+ 
+                 filter = journal_make_match_string(j);
+                 if (!filter)
+diff -purN systemd/src/journal/journald-kmsg.c systemd-izh/src/journal/journald-kmsg.c
+--- systemd/src/journal/journald-kmsg.c	2020-10-13 13:34:00.182952468 +0300
++++ systemd-izh/src/journal/journald-kmsg.c	2020-10-19 23:37:02.808438896 +0300
+@@ -443,7 +443,7 @@ fail:
+ }
+ 
+ int server_open_kernel_seqnum(Server *s) {
+-        _cleanup_close_ int fd;
++        _cleanup_close_ int fd = -1;
+         uint64_t *p;
+         int r;
+ 
+diff -purN systemd/src/journal/journald-server.c systemd-izh/src/journal/journald-server.c
+--- systemd/src/journal/journald-server.c	2020-10-13 13:34:00.182952468 +0300
++++ systemd-izh/src/journal/journald-server.c	2020-10-19 23:37:02.808438896 +0300
+@@ -139,7 +139,7 @@ static void cache_space_invalidate(Journ
+ static int cache_space_refresh(Server *s, JournalStorage *storage) {
+         JournalStorageSpace *space;
+         JournalMetrics *metrics;
+-        uint64_t vfs_used, vfs_avail, avail;
++        uint64_t vfs_used = 0, vfs_avail = 0, avail;
+         usec_t ts;
+         int r;
+ 
+diff -purN systemd/src/journal/journald-stream.c systemd-izh/src/journal/journald-stream.c
+--- systemd/src/journal/journald-stream.c	2020-10-13 13:34:00.186952485 +0300
++++ systemd-izh/src/journal/journald-stream.c	2020-10-19 23:37:02.808438896 +0300
+@@ -197,7 +197,7 @@ static int stdout_stream_save(StdoutStre
+                 s->id_field + STRLEN("_STREAM_ID="));
+ 
+         if (!isempty(s->identifier)) {
+-                _cleanup_free_ char *escaped;
++                _cleanup_free_ char *escaped = NULL;
+ 
+                 escaped = cescape(s->identifier);
+                 if (!escaped) {
+@@ -209,7 +209,7 @@ static int stdout_stream_save(StdoutStre
+         }
+ 
+         if (!isempty(s->unit_id)) {
+-                _cleanup_free_ char *escaped;
++                _cleanup_free_ char *escaped = NULL;
+ 
+                 escaped = cescape(s->unit_id);
+                 if (!escaped) {
+diff -purN systemd/src/journal/journal-vacuum.c systemd-izh/src/journal/journal-vacuum.c
+--- systemd/src/journal/journal-vacuum.c	2020-10-13 13:34:00.178952449 +0300
++++ systemd-izh/src/journal/journal-vacuum.c	2020-10-19 23:37:02.808438896 +0300
+@@ -114,7 +114,7 @@ static void patch_realtime(
+ }
+ 
+ static int journal_file_empty(int dir_fd, const char *name) {
+-        _cleanup_close_ int fd;
++        _cleanup_close_ int fd = -1;
+         struct stat st;
+         le64_t n_entries;
+         ssize_t n;
+diff -purN systemd/src/journal/sd-journal.c systemd-izh/src/journal/sd-journal.c
+--- systemd/src/journal/sd-journal.c	2020-10-13 13:34:00.186952485 +0300
++++ systemd-izh/src/journal/sd-journal.c	2020-10-19 23:37:02.808438896 +0300
+@@ -1799,7 +1799,7 @@ static int add_current_paths(sd_journal
+          * treat them as fatal. */
+ 
+         ORDERED_HASHMAP_FOREACH(f, j->files, i) {
+-                _cleanup_free_ char *dir;
++                _cleanup_free_ char *dir = NULL;
+                 int r;
+ 
+                 dir = dirname_malloc(f->path);
+diff -purN systemd/src/journal/test-catalog.c systemd-izh/src/journal/test-catalog.c
+--- systemd/src/journal/test-catalog.c	2020-10-13 13:34:00.186952485 +0300
++++ systemd-izh/src/journal/test-catalog.c	2020-10-19 23:37:02.808438896 +0300
+@@ -48,7 +48,7 @@ static const char *no_catalog_dirs[] = {
+ static Hashmap * test_import(const char* contents, ssize_t size, int code) {
+         int r;
+         char name[] = "/tmp/test-catalog.XXXXXX";
+-        _cleanup_close_ int fd;
++        _cleanup_close_ int fd = -1;
+         Hashmap *h;
+ 
+         if (size < 0)
+diff -purN systemd/src/journal/test-compress-benchmark.c systemd-izh/src/journal/test-compress-benchmark.c
+--- systemd/src/journal/test-compress-benchmark.c	2020-10-13 13:34:00.186952485 +0300
++++ systemd-izh/src/journal/test-compress-benchmark.c	2020-10-19 23:34:20.346322971 +0300
+@@ -94,7 +94,7 @@ static void test_compress_decompress(con
+         usec_t n, n2 = 0;
+         float dt;
+ 
+-        _cleanup_free_ char *text, *buf;
++        _cleanup_free_ char *text = NULL, *buf = NULL;
+         _cleanup_free_ void *buf2 = NULL;
+         size_t buf2_allocated = 0;
+         size_t skipped = 0, compressed = 0, total = 0;
+diff -purN systemd/src/journal/test-journal-interleaving.c systemd-izh/src/journal/test-journal-interleaving.c
+--- systemd/src/journal/test-journal-interleaving.c	2020-10-13 13:34:00.186952485 +0300
++++ systemd-izh/src/journal/test-journal-interleaving.c	2020-10-19 23:37:02.808438896 +0300
+@@ -85,7 +85,7 @@ static void append_number(JournalFile *f
+ 
+ static void test_check_number (sd_journal *j, int n) {
+         const void *d;
+-        _cleanup_free_ char *k;
++        _cleanup_free_ char *k = NULL;
+         size_t l;
+         int x;
+ 
+diff -purN systemd/src/libsystemd/sd-bus/bus-dump.c systemd-izh/src/libsystemd/sd-bus/bus-dump.c
+--- systemd/src/libsystemd/sd-bus/bus-dump.c	2020-10-13 13:34:00.198952537 +0300
++++ systemd-izh/src/libsystemd/sd-bus/bus-dump.c	2020-10-19 23:37:02.812438850 +0300
+@@ -18,6 +18,8 @@
+   along with systemd; If not, see <http://www.gnu.org/licenses/>.
+ ***/
+ 
++#include <sys/sysmacros.h>
++
+ #include "alloc-util.h"
+ #include "bus-dump.h"
+ #include "bus-internal.h"
+diff -purN systemd/src/libsystemd/sd-bus/bus-kernel.c systemd-izh/src/libsystemd/sd-bus/bus-kernel.c
+--- systemd/src/libsystemd/sd-bus/bus-kernel.c	2020-10-13 13:34:00.198952537 +0300
++++ systemd-izh/src/libsystemd/sd-bus/bus-kernel.c	2020-10-19 23:37:02.812438850 +0300
+@@ -26,6 +26,7 @@
+ #include <malloc.h>
+ #include <sys/mman.h>
+ #include <sys/prctl.h>
++#include <sys/sysmacros.h>
+ 
+ /* When we include libgen.h because we need dirname() we immediately
+  * undefine basename() since libgen.h defines it as a macro to the POSIX
+diff -purN systemd/src/libsystemd/sd-device/device-enumerator.c systemd-izh/src/libsystemd/sd-device/device-enumerator.c
+--- systemd/src/libsystemd/sd-device/device-enumerator.c	2020-10-13 13:34:00.206952571 +0300
++++ systemd-izh/src/libsystemd/sd-device/device-enumerator.c	2020-10-19 23:37:02.812438850 +0300
+@@ -19,6 +19,8 @@
+   along with systemd; If not, see <http://www.gnu.org/licenses/>.
+ ***/
+ 
++#include <sys/sysmacros.h>
++
+ #include "sd-device.h"
+ 
+ #include "alloc-util.h"
+diff -purN systemd/src/libsystemd/sd-device/device-private.c systemd-izh/src/libsystemd/sd-device/device-private.c
+--- systemd/src/libsystemd/sd-device/device-private.c	2020-10-13 13:34:00.206952571 +0300
++++ systemd-izh/src/libsystemd/sd-device/device-private.c	2020-10-19 23:37:02.812438850 +0300
+@@ -21,6 +21,7 @@
+ 
+ #include <ctype.h>
+ #include <net/if.h>
++#include <sys/sysmacros.h>
+ #include <sys/types.h>
+ 
+ #include "sd-device.h"
+diff -purN systemd/src/libsystemd/sd-device/sd-device.c systemd-izh/src/libsystemd/sd-device/sd-device.c
+--- systemd/src/libsystemd/sd-device/sd-device.c	2020-10-13 13:34:00.206952571 +0300
++++ systemd-izh/src/libsystemd/sd-device/sd-device.c	2020-10-19 23:37:02.812438850 +0300
+@@ -21,6 +21,7 @@
+ 
+ #include <ctype.h>
+ #include <net/if.h>
++#include <sys/sysmacros.h>
+ #include <sys/types.h>
+ 
+ #include "sd-device.h"
+diff -purN systemd/src/libsystemd/sd-login/sd-login.c systemd-izh/src/libsystemd/sd-login/sd-login.c
+--- systemd/src/libsystemd/sd-login/sd-login.c	2020-10-13 13:34:00.206952571 +0300
++++ systemd-izh/src/libsystemd/sd-login/sd-login.c	2020-10-19 23:37:02.812438850 +0300
+@@ -823,7 +823,7 @@ _public_ int sd_get_sessions(char ***ses
+ }
+ 
+ _public_ int sd_get_uids(uid_t **users) {
+-        _cleanup_closedir_ DIR *d;
++        _cleanup_closedir_ DIR *d = NULL;
+         struct dirent *de;
+         int r = 0;
+         unsigned n = 0;
+diff -purN systemd/src/libsystemd-network/dhcp-identifier.c systemd-izh/src/libsystemd-network/dhcp-identifier.c
+--- systemd/src/libsystemd-network/dhcp-identifier.c	2020-10-13 13:34:00.190952501 +0300
++++ systemd-izh/src/libsystemd-network/dhcp-identifier.c	2020-10-19 23:37:02.812438850 +0300
+@@ -97,7 +97,7 @@ int dhcp_identifier_set_iaid(int ifindex
+ 
+         if (detect_container() <= 0) {
+                 /* not in a container, udev will be around */
+-                _cleanup_udev_unref_ struct udev *udev;
++                _cleanup_udev_unref_ struct udev *udev = NULL;
+                 char ifindex_str[2 + DECIMAL_STR_MAX(int)];
+ 
+                 udev = udev_new();
+diff -purN systemd/src/libsystemd-network/test-dhcp-client.c systemd-izh/src/libsystemd-network/test-dhcp-client.c
+--- systemd/src/libsystemd-network/test-dhcp-client.c	2020-10-13 13:34:00.194952519 +0300
++++ systemd-izh/src/libsystemd-network/test-dhcp-client.c	2020-10-19 23:37:02.812438850 +0300
+@@ -196,7 +196,7 @@ static int check_options(uint8_t code, u
+ 
+ int dhcp_network_send_raw_socket(int s, const union sockaddr_union *link, const void *packet, size_t len) {
+         size_t size;
+-        _cleanup_free_ DHCPPacket *discover;
++        _cleanup_free_ DHCPPacket *discover = NULL;
+         uint16_t ip_check, udp_check;
+ 
+         assert_se(s >= 0);
+diff -purN systemd/src/libudev/libudev-device.c systemd-izh/src/libudev/libudev-device.c
+--- systemd/src/libudev/libudev-device.c	2020-10-13 13:34:00.210952588 +0300
++++ systemd-izh/src/libudev/libudev-device.c	2020-10-19 23:37:02.816438804 +0300
+@@ -33,6 +33,7 @@
+ #include <sys/ioctl.h>
+ #include <sys/socket.h>
+ #include <sys/stat.h>
++#include <sys/sysmacros.h>
+ #include <unistd.h>
+ 
+ #include "libudev.h"
+diff -purN systemd/src/locale/keymap-util.c systemd-izh/src/locale/keymap-util.c
+--- systemd/src/locale/keymap-util.c	2020-10-13 13:34:00.210952588 +0300
++++ systemd-izh/src/locale/keymap-util.c	2020-10-19 23:37:02.816438804 +0300
+@@ -162,7 +162,7 @@ static int vconsole_read_data(Context *c
+ }
+ 
+ static int x11_read_data(Context *c) {
+-        _cleanup_fclose_ FILE *f;
++        _cleanup_fclose_ FILE *f = NULL;
+         char line[LINE_MAX];
+         bool in_section = false;
+         int r;
+@@ -516,7 +516,7 @@ int vconsole_convert_to_x11(Context *c)
+ 
+ int find_converted_keymap(const char *x11_layout, const char *x11_variant, char **new_keymap) {
+         const char *dir;
+-        _cleanup_free_ char *n;
++        _cleanup_free_ char *n = NULL;
+ 
+         if (x11_variant)
+                 n = strjoin(x11_layout, "-", x11_variant);
+diff -purN systemd/src/login/logind-core.c systemd-izh/src/login/logind-core.c
+--- systemd/src/login/logind-core.c	2020-10-13 13:34:00.214952605 +0300
++++ systemd-izh/src/login/logind-core.c	2020-10-19 23:37:02.816438804 +0300
+@@ -422,7 +422,7 @@ int config_parse_n_autovts(
+ static int vt_is_busy(unsigned int vtnr) {
+         struct vt_stat vt_stat;
+         int r = 0;
+-        _cleanup_close_ int fd;
++        _cleanup_close_ int fd = -1;
+ 
+         assert(vtnr >= 1);
+ 
+diff -purN systemd/src/login/logind-dbus.c systemd-izh/src/login/logind-dbus.c
+--- systemd/src/login/logind-dbus.c	2020-10-13 13:34:00.214952605 +0300
++++ systemd-izh/src/login/logind-dbus.c	2020-10-19 23:37:02.816438804 +0300
+@@ -1333,7 +1333,7 @@ static int attach_device(Manager *m, con
+ }
+ 
+ static int flush_devices(Manager *m) {
+-        _cleanup_closedir_ DIR *d;
++        _cleanup_closedir_ DIR *d = NULL;
+ 
+         assert(m);
+ 
+@@ -1974,7 +1974,7 @@ static int update_schedule_file(Manager
+                 m->scheduled_shutdown_type);
+ 
+         if (!isempty(m->wall_message)) {
+-                _cleanup_free_ char *t;
++                _cleanup_free_ char *t = NULL;
+ 
+                 t = cescape(m->wall_message);
+                 if (!t) {
+diff -purN systemd/src/login/logind-session.c systemd-izh/src/login/logind-session.c
+--- systemd/src/login/logind-session.c	2020-10-19 23:36:12.005028064 +0300
++++ systemd-izh/src/login/logind-session.c	2020-10-19 23:37:02.816438804 +0300
+@@ -230,7 +230,7 @@ int session_save(Session *s) {
+                 fprintf(f, "DISPLAY=%s\n", s->display);
+ 
+         if (s->remote_host) {
+-                _cleanup_free_ char *escaped;
++                _cleanup_free_ char *escaped = NULL;
+ 
+                 escaped = cescape(s->remote_host);
+                 if (!escaped) {
+@@ -242,7 +242,7 @@ int session_save(Session *s) {
+         }
+ 
+         if (s->remote_user) {
+-                _cleanup_free_ char *escaped;
++                _cleanup_free_ char *escaped = NULL;
+ 
+                 escaped = cescape(s->remote_user);
+                 if (!escaped) {
+@@ -254,7 +254,7 @@ int session_save(Session *s) {
+         }
+ 
+         if (s->service) {
+-                _cleanup_free_ char *escaped;
++                _cleanup_free_ char *escaped = NULL;
+ 
+                 escaped = cescape(s->service);
+                 if (!escaped) {
+@@ -266,7 +266,7 @@ int session_save(Session *s) {
+         }
+ 
+         if (s->desktop) {
+-                _cleanup_free_ char *escaped;
++                _cleanup_free_ char *escaped = NULL;
+ 
+ 
+                 escaped = cescape(s->desktop);
+diff -purN systemd/src/login/logind-session-dbus.c systemd-izh/src/login/logind-session-dbus.c
+--- systemd/src/login/logind-session-dbus.c	2020-10-13 13:34:00.214952605 +0300
++++ systemd-izh/src/login/logind-session-dbus.c	2020-10-19 23:37:02.816438804 +0300
+@@ -20,6 +20,7 @@
+ 
+ #include <errno.h>
+ #include <string.h>
++#include <sys/sysmacros.h>
+ 
+ #include "alloc-util.h"
+ #include "bus-common-errors.h"
+diff -purN systemd/src/login/logind-session-device.c systemd-izh/src/login/logind-session-device.c
+--- systemd/src/login/logind-session-device.c	2020-10-13 13:34:00.214952605 +0300
++++ systemd-izh/src/login/logind-session-device.c	2020-10-19 23:37:02.816438804 +0300
+@@ -23,6 +23,7 @@
+ #include <string.h>
+ #include <sys/ioctl.h>
+ #include <sys/types.h>
++#include <sys/sysmacros.h>
+ 
+ #include "libudev.h"
+ 
+diff -purN systemd/src/machine/machine.c systemd-izh/src/machine/machine.c
+--- systemd/src/machine/machine.c	2020-10-19 23:36:12.005028064 +0300
++++ systemd-izh/src/machine/machine.c	2020-10-19 23:37:02.820438757 +0300
+@@ -149,7 +149,7 @@ int machine_save(Machine *m) {
+                 m->name);
+ 
+         if (m->unit) {
+-                _cleanup_free_ char *escaped;
++                _cleanup_free_ char *escaped = NULL;
+ 
+                 escaped = cescape(m->unit);
+                 if (!escaped) {
+@@ -164,7 +164,7 @@ int machine_save(Machine *m) {
+                 fprintf(f, "SCOPE_JOB=%s\n", m->scope_job);
+ 
+         if (m->service) {
+-                _cleanup_free_ char *escaped;
++                _cleanup_free_ char *escaped = NULL;
+ 
+                 escaped = cescape(m->service);
+                 if (!escaped) {
+@@ -175,7 +175,7 @@ int machine_save(Machine *m) {
+         }
+ 
+         if (m->root_directory) {
+-                _cleanup_free_ char *escaped;
++                _cleanup_free_ char *escaped = NULL;
+ 
+                 escaped = cescape(m->root_directory);
+                 if (!escaped) {
+diff -purN systemd/src/mount/mount-tool.c systemd-izh/src/mount/mount-tool.c
+--- systemd/src/mount/mount-tool.c	2020-10-13 13:34:00.218952623 +0300
++++ systemd-izh/src/mount/mount-tool.c	2020-10-19 23:37:02.820438757 +0300
+@@ -1456,7 +1456,7 @@ static int list_devices(void) {
+ 
+         first = udev_enumerate_get_list_entry(e);
+         udev_list_entry_foreach(item, first) {
+-                _cleanup_udev_device_unref_ struct udev_device *d;
++                _cleanup_udev_device_unref_ struct udev_device *d = NULL;
+                 struct item *j;
+ 
+                 d = udev_device_new_from_syspath(udev, udev_list_entry_get_name(item));
+diff -purN systemd/src/nspawn/nspawn.c systemd-izh/src/nspawn/nspawn.c
+--- systemd/src/nspawn/nspawn.c	2020-10-13 13:34:00.230952675 +0300
++++ systemd-izh/src/nspawn/nspawn.c	2020-10-19 23:37:02.820438757 +0300
+@@ -38,6 +38,7 @@
+ #include <sys/mount.h>
+ #include <sys/personality.h>
+ #include <sys/prctl.h>
++#include <sys/sysmacros.h>
+ #include <sys/types.h>
+ #include <sys/wait.h>
+ #include <unistd.h>
+@@ -1629,7 +1630,7 @@ static int setup_pts(const char *dest) {
+ }
+ 
+ static int setup_dev_console(const char *dest, const char *console) {
+-        _cleanup_umask_ mode_t u;
++        _cleanup_umask_ mode_t u = 0;
+         const char *to;
+         int r;
+ 
+@@ -1677,7 +1678,7 @@ static int setup_keyring(void) {
+ 
+ static int setup_kmsg(const char *dest, int kmsg_socket) {
+         const char *from, *to;
+-        _cleanup_umask_ mode_t u;
++        _cleanup_umask_ mode_t u = 0;
+         int fd, r;
+ 
+         assert(kmsg_socket >= 0);
+diff -purN systemd/src/resolve/resolved-dns-dnssec.c systemd-izh/src/resolve/resolved-dns-dnssec.c
+--- systemd/src/resolve/resolved-dns-dnssec.c	2020-10-13 13:34:00.234952692 +0300
++++ systemd-izh/src/resolve/resolved-dns-dnssec.c	2020-10-19 23:37:02.824438711 +0300
+@@ -717,13 +717,13 @@ int dnssec_verify_rrset(
+         DnsResourceRecord **list, *rr;
+         const char *source, *name;
+         _cleanup_(gcry_md_closep) gcry_md_hd_t md = NULL;
+-        int r, md_algorithm;
++        int r, md_algorithm = -1;
+         size_t k, n = 0;
+         size_t sig_size = 0;
+         _cleanup_free_ char *sig_data = NULL;
+         _cleanup_fclose_ FILE *f = NULL;
+-        size_t hash_size;
+-        void *hash;
++        size_t hash_size = 0;
++        void *hash = NULL;
+         bool wildcard;
+ 
+         assert(key);
+diff -purN systemd/src/resolve/resolved-dns-packet.c systemd-izh/src/resolve/resolved-dns-packet.c
+--- systemd/src/resolve/resolved-dns-packet.c	2020-10-13 13:34:00.234952692 +0300
++++ systemd-izh/src/resolve/resolved-dns-packet.c	2020-10-19 23:37:02.824438711 +0300
+@@ -1326,7 +1326,7 @@ int dns_packet_read_uint32(DnsPacket *p,
+ }
+ 
+ int dns_packet_read_string(DnsPacket *p, char **ret, size_t *start) {
+-        _cleanup_(rewind_dns_packet) DnsPacketRewinder rewinder;
++        _cleanup_(rewind_dns_packet) DnsPacketRewinder rewinder = { NULL, 0 };
+         const void *d;
+         char *t;
+         uint8_t c;
+@@ -1365,7 +1365,7 @@ int dns_packet_read_string(DnsPacket *p,
+ }
+ 
+ int dns_packet_read_raw_string(DnsPacket *p, const void **ret, size_t *size, size_t *start) {
+-        _cleanup_(rewind_dns_packet) DnsPacketRewinder rewinder;
++        _cleanup_(rewind_dns_packet) DnsPacketRewinder rewinder = { NULL, 0 };
+         uint8_t c;
+         int r;
+ 
+@@ -1395,7 +1395,7 @@ int dns_packet_read_name(
+                 bool allow_compression,
+                 size_t *start) {
+ 
+-        _cleanup_(rewind_dns_packet) DnsPacketRewinder rewinder;
++        _cleanup_(rewind_dns_packet) DnsPacketRewinder rewinder = { NULL, 0 };
+         size_t after_rindex = 0, jump_barrier;
+         _cleanup_free_ char *ret = NULL;
+         size_t n = 0, allocated = 0;
+@@ -1579,7 +1579,7 @@ static int dns_packet_read_type_windows(
+ }
+ 
+ int dns_packet_read_key(DnsPacket *p, DnsResourceKey **ret, bool *ret_cache_flush, size_t *start) {
+-        _cleanup_(rewind_dns_packet) DnsPacketRewinder rewinder;
++        _cleanup_(rewind_dns_packet) DnsPacketRewinder rewinder = { NULL, 0 };
+         _cleanup_free_ char *name = NULL;
+         bool cache_flush = false;
+         uint16_t class, type;
+diff -purN systemd/src/resolve/resolved-dns-rr.c systemd-izh/src/resolve/resolved-dns-rr.c
+--- systemd/src/resolve/resolved-dns-rr.c	2020-10-13 13:34:00.242952727 +0300
++++ systemd-izh/src/resolve/resolved-dns-rr.c	2020-10-19 23:37:02.824438711 +0300
+@@ -1159,7 +1159,7 @@ const char *dns_resource_record_to_strin
+         }
+ 
+         case DNS_TYPE_CAA: {
+-                _cleanup_free_ char *value;
++                _cleanup_free_ char *value = NULL;
+ 
+                 value = octescape(rr->caa.value, rr->caa.value_size);
+                 if (!value)
+diff -purN systemd/src/shared/acl-util.c systemd-izh/src/shared/acl-util.c
+--- systemd/src/shared/acl-util.c	2020-10-13 13:34:00.246952744 +0300
++++ systemd-izh/src/shared/acl-util.c	2020-10-19 23:37:02.824438711 +0300
+@@ -227,7 +227,7 @@ int acl_search_groups(const char *path,
+ 
+ int parse_acl(const char *text, acl_t *acl_access, acl_t *acl_default, bool want_mask) {
+         _cleanup_free_ char **a = NULL, **d = NULL; /* strings are not freed */
+-        _cleanup_strv_free_ char **split;
++        _cleanup_strv_free_ char **split = NULL;
+         char **entry;
+         int r = -EINVAL;
+         _cleanup_(acl_freep) acl_t a_acl = NULL, d_acl = NULL;
+@@ -252,7 +252,7 @@ int parse_acl(const char *text, acl_t *a
+         }
+ 
+         if (!strv_isempty(a)) {
+-                _cleanup_free_ char *join;
++                _cleanup_free_ char *join = NULL;
+ 
+                 join = strv_join(a, ",");
+                 if (!join)
+@@ -270,7 +270,7 @@ int parse_acl(const char *text, acl_t *a
+         }
+ 
+         if (!strv_isempty(d)) {
+-                _cleanup_free_ char *join;
++                _cleanup_free_ char *join = NULL;
+ 
+                 join = strv_join(d, ",");
+                 if (!join)
+diff -purN systemd/src/shared/bus-unit-util.c systemd-izh/src/shared/bus-unit-util.c
+--- systemd/src/shared/bus-unit-util.c	2020-10-13 13:34:00.246952744 +0300
++++ systemd-izh/src/shared/bus-unit-util.c	2020-10-19 23:37:02.824438711 +0300
+@@ -1875,7 +1875,7 @@ static void log_job_error_with_service_r
+         service_shell_quoted = shell_maybe_quote(service, ESCAPE_BACKSLASH);
+ 
+         if (!strv_isempty((char**) extra_args)) {
+-                _cleanup_free_ char *t;
++                _cleanup_free_ char *t = NULL;
+ 
+                 t = strv_join((char**) extra_args, " ");
+                 systemctl = strjoina("systemctl ", t ? : "<args>");
+diff -purN systemd/src/shared/clean-ipc.c systemd-izh/src/shared/clean-ipc.c
+--- systemd/src/shared/clean-ipc.c	2020-10-13 13:34:00.246952744 +0300
++++ systemd-izh/src/shared/clean-ipc.c	2020-10-19 23:37:02.828438665 +0300
+@@ -256,7 +256,7 @@ static int clean_posix_shm_internal(DIR
+                 }
+ 
+                 if (S_ISDIR(st.st_mode)) {
+-                        _cleanup_closedir_ DIR *kid;
++                        _cleanup_closedir_ DIR *kid = NULL;
+ 
+                         kid = xopendirat(dirfd(dir), de->d_name, O_NOFOLLOW|O_NOATIME);
+                         if (!kid) {
+diff -purN systemd/src/shared/dissect-image.c systemd-izh/src/shared/dissect-image.c
+--- systemd/src/shared/dissect-image.c	2020-10-13 13:34:00.246952744 +0300
++++ systemd-izh/src/shared/dissect-image.c	2020-10-19 23:37:02.828438665 +0300
+@@ -113,7 +113,7 @@ int dissect_image(int fd, const void *ro
+ #if HAVE_BLKID
+         sd_id128_t root_uuid = SD_ID128_NULL, verity_uuid = SD_ID128_NULL;
+         _cleanup_udev_enumerate_unref_ struct udev_enumerate *e = NULL;
+-        bool is_gpt, is_mbr, generic_rw, multiple_generic = false;
++        bool is_gpt, is_mbr, generic_rw = false, multiple_generic = false;
+         _cleanup_udev_device_unref_ struct udev_device *d = NULL;
+         _cleanup_(dissected_image_unrefp) DissectedImage *m = NULL;
+         _cleanup_blkid_free_probe_ blkid_probe b = NULL;
+@@ -123,7 +123,7 @@ int dissect_image(int fd, const void *ro
+         const char *pttype = NULL;
+         struct udev_list_entry *first, *item;
+         blkid_partlist pl;
+-        int r, generic_nr;
++        int r, generic_nr = -1;
+         struct stat st;
+         unsigned i;
+ 
+@@ -334,7 +334,7 @@ int dissect_image(int fd, const void *ro
+ 
+         first = udev_enumerate_get_list_entry(e);
+         udev_list_entry_foreach(item, first) {
+-                _cleanup_udev_device_unref_ struct udev_device *q;
++                _cleanup_udev_device_unref_ struct udev_device *q = NULL;
+                 unsigned long long pflags;
+                 blkid_partition pp;
+                 const char *node, *sysname;
+diff -purN systemd/src/shared/install.c systemd-izh/src/shared/install.c
+--- systemd/src/shared/install.c	2020-10-13 13:34:00.250952762 +0300
++++ systemd-izh/src/shared/install.c	2020-10-19 23:37:02.828438665 +0300
+@@ -2808,7 +2808,7 @@ static int read_presets(UnitFileScope sc
+                 return r;
+ 
+         STRV_FOREACH(p, files) {
+-                _cleanup_fclose_ FILE *f;
++                _cleanup_fclose_ FILE *f = NULL;
+                 char line[LINE_MAX];
+                 int n = 0;
+ 
+diff -purN systemd/src/shared/logs-show.c systemd-izh/src/shared/logs-show.c
+--- systemd/src/shared/logs-show.c	2020-10-13 13:34:00.250952762 +0300
++++ systemd-izh/src/shared/logs-show.c	2020-10-19 23:37:02.828438665 +0300
+@@ -254,7 +254,7 @@ static bool print_multiline(
+                                         continuation * prefix, "",
+                                         color_on, len, pos, color_off);
+                         else {
+-                                _cleanup_free_ char *e;
++                                _cleanup_free_ char *e = NULL;
+ 
+                                 e = ellipsize_mem(pos, len, n_columns - prefix,
+                                                   tail_line ? 100 : 90);
+@@ -1462,7 +1462,7 @@ int show_journal_by_unit(
+                 return log_error_errno(r, "Failed to add unit matches: %m");
+ 
+         if (DEBUG_LOGGING) {
+-                _cleanup_free_ char *filter;
++                _cleanup_free_ char *filter = NULL;
+ 
+                 filter = journal_make_match_string(j);
+                 if (!filter)
+diff -purN systemd/src/shared/path-lookup.c systemd-izh/src/shared/path-lookup.c
+--- systemd/src/shared/path-lookup.c	2020-10-13 13:34:00.254952779 +0300
++++ systemd-izh/src/shared/path-lookup.c	2020-10-19 23:37:02.828438665 +0300
+@@ -268,7 +268,7 @@ static int acquire_generator_dirs(
+                 char **generator_late) {
+ 
+         _cleanup_free_ char *x = NULL, *y = NULL, *z = NULL;
+-        const char *prefix;
++        const char *prefix = NULL;
+ 
+         assert(generator);
+         assert(generator_early);
+@@ -814,7 +814,7 @@ int lookup_paths_reduce(LookupPaths *p)
+                 log_debug("Ignoring unit files.");
+                 p->search_path = strv_free(p->search_path);
+         } else {
+-                _cleanup_free_ char *t;
++                _cleanup_free_ char *t = NULL;
+ 
+                 t = strv_join(p->search_path, "\n\t");
+                 if (!t)
+diff -purN systemd/src/shared/sleep-config.c systemd-izh/src/shared/sleep-config.c
+--- systemd/src/shared/sleep-config.c	2020-10-13 13:34:00.254952779 +0300
++++ systemd-izh/src/shared/sleep-config.c	2020-10-19 23:37:02.828438665 +0300
+@@ -177,7 +177,7 @@ int can_sleep_disk(char **types) {
+ #define HIBERNATION_SWAP_THRESHOLD 0.98
+ 
+ static int hibernation_partition_size(size_t *size, size_t *used) {
+-        _cleanup_fclose_ FILE *f;
++        _cleanup_fclose_ FILE *f = NULL;
+         unsigned i;
+ 
+         assert(size);
+diff -purN systemd/src/systemctl/systemctl.c systemd-izh/src/systemctl/systemctl.c
+--- systemd/src/systemctl/systemctl.c	2020-10-13 13:34:00.258952796 +0300
++++ systemd-izh/src/systemctl/systemctl.c	2020-10-19 23:37:02.828438665 +0300
+@@ -4974,7 +4974,7 @@ static int print_property(const char *na
+ 
+                         while ((r = exec_status_info_deserialize(m, &info)) > 0) {
+                                 char timestamp1[FORMAT_TIMESTAMP_MAX], timestamp2[FORMAT_TIMESTAMP_MAX];
+-                                _cleanup_free_ char *tt;
++                                _cleanup_free_ char *tt = NULL;
+ 
+                                 tt = strv_join(info.argv, " ");
+ 
+@@ -5463,7 +5463,7 @@ static int show(int argc, char *argv[],
+                                 return log_error_errno(r, "Failed to expand names: %m");
+ 
+                         STRV_FOREACH(name, names) {
+-                                _cleanup_free_ char *path;
++                                _cleanup_free_ char *path = NULL;
+ 
+                                 path = unit_dbus_path_from_name(*name);
+                                 if (!path)
+@@ -5485,7 +5485,7 @@ static int show(int argc, char *argv[],
+ }
+ 
+ static int cat_file(const char *filename, bool newline) {
+-        _cleanup_close_ int fd;
++        _cleanup_close_ int fd = -1;
+ 
+         fd = open(filename, O_RDONLY|O_CLOEXEC|O_NOCTTY);
+         if (fd < 0)
+diff -purN systemd/src/test/test-cgroup-util.c systemd-izh/src/test/test-cgroup-util.c
+--- systemd/src/test/test-cgroup-util.c	2020-10-13 13:34:00.258952796 +0300
++++ systemd-izh/src/test/test-cgroup-util.c	2020-10-19 23:37:02.832438618 +0300
+@@ -228,7 +228,7 @@ static void test_proc(void) {
+ }
+ 
+ static void test_escape_one(const char *s, const char *r) {
+-        _cleanup_free_ char *b;
++        _cleanup_free_ char *b = NULL;
+ 
+         b = cg_escape(s);
+         assert_se(b);
+diff -purN systemd/src/test/test-copy.c systemd-izh/src/test/test-copy.c
+--- systemd/src/test/test-copy.c	2020-10-13 13:34:00.262952814 +0300
++++ systemd-izh/src/test/test-copy.c	2020-10-19 23:37:02.832438618 +0300
+@@ -106,7 +106,7 @@ static void test_copy_tree(void) {
+         (void) rm_rf(original_dir, REMOVE_ROOT|REMOVE_PHYSICAL);
+ 
+         STRV_FOREACH(p, files) {
+-                _cleanup_free_ char *f;
++                _cleanup_free_ char *f = NULL;
+ 
+                 assert_se((f = strappend(original_dir, *p)));
+ 
+@@ -115,7 +115,7 @@ static void test_copy_tree(void) {
+         }
+ 
+         STRV_FOREACH_PAIR(link, p, links) {
+-                _cleanup_free_ char *f, *l;
++                _cleanup_free_ char *f = NULL, *l = NULL;
+ 
+                 assert_se((f = strappend(original_dir, *p)));
+                 assert_se((l = strappend(original_dir, *link)));
+@@ -130,7 +130,7 @@ static void test_copy_tree(void) {
+         assert_se(copy_tree(original_dir, copy_dir, UID_INVALID, GID_INVALID, COPY_REFLINK|COPY_MERGE) == 0);
+ 
+         STRV_FOREACH(p, files) {
+-                _cleanup_free_ char *buf = NULL, *f;
++                _cleanup_free_ char *buf = NULL, *f = NULL;
+                 size_t sz = 0;
+ 
+                 assert_se((f = strappend(copy_dir, *p)));
+@@ -141,7 +141,7 @@ static void test_copy_tree(void) {
+         }
+ 
+         STRV_FOREACH_PAIR(link, p, links) {
+-                _cleanup_free_ char *target = NULL, *f, *l;
++                _cleanup_free_ char *target = NULL, *f = NULL, *l = NULL;
+ 
+                 assert_se((f = strjoin(original_dir, *p)));
+                 assert_se((l = strjoin(copy_dir, *link)));
+diff -purN systemd/src/test/test-date.c systemd-izh/src/test/test-date.c
+--- systemd/src/test/test-date.c	2020-10-13 13:34:00.262952814 +0300
++++ systemd-izh/src/test/test-date.c	2020-10-19 23:37:02.832438618 +0300
+@@ -68,7 +68,7 @@ static void test_should_fail(const char
+ }
+ 
+ static void test_one(const char *p) {
+-        _cleanup_free_ char *with_utc;
++        _cleanup_free_ char *with_utc = NULL;
+ 
+         with_utc = strjoin(p, " UTC");
+         test_should_pass(p);
+@@ -76,7 +76,7 @@ static void test_one(const char *p) {
+ }
+ 
+ static void test_one_noutc(const char *p) {
+-        _cleanup_free_ char *with_utc;
++        _cleanup_free_ char *with_utc = NULL;
+ 
+         with_utc = strjoin(p, " UTC");
+         test_should_pass(p);
+diff -purN systemd/src/test/test-ellipsize.c systemd-izh/src/test/test-ellipsize.c
+--- systemd/src/test/test-ellipsize.c	2020-10-13 13:34:00.262952814 +0300
++++ systemd-izh/src/test/test-ellipsize.c	2020-10-19 23:37:02.832438618 +0300
+@@ -27,7 +27,7 @@
+ #include "util.h"
+ 
+ static void test_one(const char *p) {
+-        _cleanup_free_ char *t;
++        _cleanup_free_ char *t = NULL;
+         t = ellipsize(p, columns(), 70);
+         puts(t);
+ }
+diff -purN systemd/src/test/test-env-util.c systemd-izh/src/test/test-env-util.c
+--- systemd/src/test/test-env-util.c	2020-10-19 23:36:12.009028018 +0300
++++ systemd-izh/src/test/test-env-util.c	2020-10-19 23:37:02.832438618 +0300
+@@ -281,7 +281,7 @@ static void test_replace_env_argv(void)
+ }
+ 
+ static void test_env_clean(void) {
+-        _cleanup_strv_free_ char **e;
++        _cleanup_strv_free_ char **e = NULL;
+ 
+         e = strv_new("FOOBAR=WALDO",
+                      "FOOBAR=WALDO",
+diff -purN systemd/src/test/test-escape.c systemd-izh/src/test/test-escape.c
+--- systemd/src/test/test-escape.c	2020-10-13 13:34:00.262952814 +0300
++++ systemd-izh/src/test/test-escape.c	2020-10-19 23:37:02.832438618 +0300
+@@ -23,14 +23,14 @@
+ #include "macro.h"
+ 
+ static void test_cescape(void) {
+-        _cleanup_free_ char *escaped;
++        _cleanup_free_ char *escaped = NULL;
+ 
+         assert_se(escaped = cescape("abc\\\"\b\f\n\r\t\v\a\003\177\234\313"));
+         assert_se(streq(escaped, "abc\\\\\\\"\\b\\f\\n\\r\\t\\v\\a\\003\\177\\234\\313"));
+ }
+ 
+ static void test_cunescape(void) {
+-        _cleanup_free_ char *unescaped;
++        _cleanup_free_ char *unescaped = NULL;
+ 
+         assert_se(cunescape("abc\\\\\\\"\\b\\f\\a\\n\\r\\t\\v\\003\\177\\234\\313\\000\\x00", 0, &unescaped) < 0);
+         assert_se(cunescape("abc\\\\\\\"\\b\\f\\a\\n\\r\\t\\v\\003\\177\\234\\313\\000\\x00", UNESCAPE_RELAX, &unescaped) >= 0);
+@@ -81,7 +81,7 @@ static void test_cunescape(void) {
+ }
+ 
+ static void test_shell_escape_one(const char *s, const char *bad, const char *expected) {
+-        _cleanup_free_ char *r;
++        _cleanup_free_ char *r = NULL;
+ 
+         assert_se(r = shell_escape(s, bad));
+         assert_se(streq_ptr(r, expected));
+diff -purN systemd/src/test/test-fileio.c systemd-izh/src/test/test-fileio.c
+--- systemd/src/test/test-fileio.c	2020-10-13 13:34:00.262952814 +0300
++++ systemd-izh/src/test/test-fileio.c	2020-10-19 23:37:02.832438618 +0300
+@@ -442,7 +442,7 @@ static void test_write_string_stream(voi
+ static void test_write_string_file(void) {
+         char fn[] = "/tmp/test-write_string_file-XXXXXX";
+         char buf[64] = {};
+-        _cleanup_close_ int fd;
++        _cleanup_close_ int fd = -1;
+ 
+         fd = mkostemp_safe(fn);
+         assert_se(fd >= 0);
+@@ -457,7 +457,7 @@ static void test_write_string_file(void)
+ 
+ static void test_write_string_file_no_create(void) {
+         char fn[] = "/tmp/test-write_string_file_no_create-XXXXXX";
+-        _cleanup_close_ int fd;
++        _cleanup_close_ int fd = -1;
+         char buf[64] = {0};
+ 
+         fd = mkostemp_safe(fn);
+diff -purN systemd/src/test/test-libudev.c systemd-izh/src/test/test-libudev.c
+--- systemd/src/test/test-libudev.c	2020-10-13 13:34:00.262952814 +0300
++++ systemd-izh/src/test/test-libudev.c	2020-10-19 23:37:02.832438618 +0300
+@@ -21,6 +21,7 @@
+ #include <getopt.h>
+ #include <stdio.h>
+ #include <sys/epoll.h>
++#include <sys/sysmacros.h>
+ #include <unistd.h>
+ 
+ #include "libudev.h"
+@@ -104,7 +105,7 @@ static void print_device(struct udev_dev
+ }
+ 
+ static void test_device(struct udev *udev, const char *syspath) {
+-        _cleanup_udev_device_unref_ struct udev_device *device;
++        _cleanup_udev_device_unref_ struct udev_device *device = NULL;
+ 
+         log_info("looking at device: %s", syspath);
+         device = udev_device_new_from_syspath(udev, syspath);
+@@ -115,7 +116,7 @@ static void test_device(struct udev *ude
+ }
+ 
+ static void test_device_parents(struct udev *udev, const char *syspath) {
+-        _cleanup_udev_device_unref_ struct udev_device *device;
++        _cleanup_udev_device_unref_ struct udev_device *device = NULL;
+         struct udev_device *device_parent;
+ 
+         log_info("looking at device: %s", syspath);
+@@ -140,7 +141,7 @@ static void test_device_parents(struct u
+ 
+ static void test_device_devnum(struct udev *udev) {
+         dev_t devnum = makedev(1, 3);
+-        _cleanup_udev_device_unref_ struct udev_device *device;
++        _cleanup_udev_device_unref_ struct udev_device *device = NULL;
+ 
+         log_info("looking up device: %u:%u", major(devnum), minor(devnum));
+         device = udev_device_new_from_devnum(udev, 'c', devnum);
+@@ -151,7 +152,7 @@ static void test_device_devnum(struct ud
+ }
+ 
+ static void test_device_subsys_name(struct udev *udev, const char *subsys, const char *dev) {
+-        _cleanup_udev_device_unref_ struct udev_device *device;
++        _cleanup_udev_device_unref_ struct udev_device *device = NULL;
+ 
+         log_info("looking up device: '%s:%s'", subsys, dev);
+         device = udev_device_new_from_subsystem_sysname(udev, subsys, dev);
+@@ -183,7 +184,7 @@ static int test_enumerate_print_list(str
+ }
+ 
+ static void test_monitor(struct udev *udev) {
+-        _cleanup_udev_monitor_unref_ struct udev_monitor *udev_monitor;
++        _cleanup_udev_monitor_unref_ struct udev_monitor *udev_monitor = NULL;
+         _cleanup_close_ int fd_ep;
+         int fd_udev;
+         struct epoll_event ep_udev = {
+diff -purN systemd/src/test/test-nss.c systemd-izh/src/test/test-nss.c
+--- systemd/src/test/test-nss.c	2020-10-13 13:34:00.266952831 +0300
++++ systemd-izh/src/test/test-nss.c	2020-10-19 23:37:02.832438618 +0300
+@@ -486,7 +486,7 @@ static int parse_argv(int argc, char **a
+                         }
+                 }
+         } else {
+-                _cleanup_free_ char *hostname;
++                _cleanup_free_ char *hostname = NULL;
+ 
+                 hostname = gethostname_malloc();
+                 if (!hostname)
+diff -purN systemd/src/test/test-path-lookup.c systemd-izh/src/test/test-path-lookup.c
+--- systemd/src/test/test-path-lookup.c	2020-10-13 13:34:00.266952831 +0300
++++ systemd-izh/src/test/test-path-lookup.c	2020-10-19 23:37:02.832438618 +0300
+@@ -83,7 +83,7 @@ static void test_user_and_global_paths(v
+ }
+ 
+ static void print_generator_binary_paths(UnitFileScope scope) {
+-        _cleanup_strv_free_ char **paths;
++        _cleanup_strv_free_ char **paths = NULL;
+         char **dir;
+ 
+         log_info("Generators dirs (%s):", scope == UNIT_FILE_SYSTEM ? "system" : "user");
+diff -purN systemd/src/test/test-string-util.c systemd-izh/src/test/test-string-util.c
+--- systemd/src/test/test-string-util.c	2020-10-13 13:34:00.266952831 +0300
++++ systemd-izh/src/test/test-string-util.c	2020-10-19 23:37:02.832438618 +0300
+@@ -138,7 +138,7 @@ static void test_strextend_with_separato
+ }
+ 
+ static void test_strrep(void) {
+-        _cleanup_free_ char *one, *three, *zero;
++        _cleanup_free_ char *one = NULL, *three = NULL, *zero = NULL;
+         one = strrep("waldo", 1);
+         three = strrep("waldo", 3);
+         zero = strrep("waldo", 0);
+@@ -150,7 +150,7 @@ static void test_strrep(void) {
+ 
+ 
+ static void test_strappend(void) {
+-        _cleanup_free_ char *t1, *t2, *t3, *t4;
++        _cleanup_free_ char *t1 = NULL, *t2 = NULL, *t3 = NULL, *t4 = NULL;
+ 
+         t1 = strappend(NULL, NULL);
+         assert_se(streq(t1, ""));
+diff -purN systemd/src/test/test-strv.c systemd-izh/src/test/test-strv.c
+--- systemd/src/test/test-strv.c	2020-10-13 13:34:00.270952848 +0300
++++ systemd-izh/src/test/test-strv.c	2020-10-19 23:37:02.832438618 +0300
+@@ -166,7 +166,7 @@ static void test_strv_join(void) {
+ 
+ static void test_strv_unquote(const char *quoted, char **list) {
+         _cleanup_strv_free_ char **s;
+-        _cleanup_free_ char *j;
++        _cleanup_free_ char *j = NULL;
+         unsigned i = 0;
+         char **t;
+         int r;
+@@ -381,7 +381,7 @@ static void test_strv_extendf(void) {
+ }
+ 
+ static void test_strv_foreach(void) {
+-        _cleanup_strv_free_ char **a;
++        _cleanup_strv_free_ char **a = NULL;
+         unsigned i = 0;
+         char **check;
+ 
+@@ -395,7 +395,7 @@ static void test_strv_foreach(void) {
+ }
+ 
+ static void test_strv_foreach_backwards(void) {
+-        _cleanup_strv_free_ char **a;
++        _cleanup_strv_free_ char **a = NULL;
+         unsigned i = 2;
+         char **check;
+ 
+diff -purN systemd/src/test/test-unit-file.c systemd-izh/src/test/test-unit-file.c
+--- systemd/src/test/test-unit-file.c	2020-10-19 23:36:12.057027461 +0300
++++ systemd-izh/src/test/test-unit-file.c	2020-10-19 23:37:02.832438618 +0300
+@@ -552,7 +552,7 @@ static void test_load_env_file_1(void) {
+         int r;
+ 
+         char name[] = "/tmp/test-load-env-file.XXXXXX";
+-        _cleanup_close_ int fd;
++        _cleanup_close_ int fd = -1;
+ 
+         fd = mkostemp_safe(name);
+         assert_se(fd >= 0);
+@@ -575,7 +575,7 @@ static void test_load_env_file_2(void) {
+         int r;
+ 
+         char name[] = "/tmp/test-load-env-file.XXXXXX";
+-        _cleanup_close_ int fd;
++        _cleanup_close_ int fd = -1;
+ 
+         fd = mkostemp_safe(name);
+         assert_se(fd >= 0);
+@@ -593,7 +593,7 @@ static void test_load_env_file_3(void) {
+         int r;
+ 
+         char name[] = "/tmp/test-load-env-file.XXXXXX";
+-        _cleanup_close_ int fd;
++        _cleanup_close_ int fd = -1;
+ 
+         fd = mkostemp_safe(name);
+         assert_se(fd >= 0);
+@@ -608,7 +608,7 @@ static void test_load_env_file_3(void) {
+ static void test_load_env_file_4(void) {
+         _cleanup_strv_free_ char **data = NULL;
+         char name[] = "/tmp/test-load-env-file.XXXXXX";
+-        _cleanup_close_ int fd;
++        _cleanup_close_ int fd = -1;
+         int r;
+ 
+         fd = mkostemp_safe(name);
+@@ -629,7 +629,7 @@ static void test_load_env_file_5(void) {
+         int r;
+ 
+         char name[] = "/tmp/test-load-env-file.XXXXXX";
+-        _cleanup_close_ int fd;
++        _cleanup_close_ int fd = -1;
+ 
+         fd = mkostemp_safe(name);
+         assert_se(fd >= 0);
+diff -purN systemd/src/test/test-unit-name.c systemd-izh/src/test/test-unit-name.c
+--- systemd/src/test/test-unit-name.c	2020-10-19 23:36:12.061027415 +0300
++++ systemd-izh/src/test/test-unit-name.c	2020-10-19 23:37:02.832438618 +0300
+@@ -422,7 +422,7 @@ static void test_unit_name_to_instance(v
+ }
+ 
+ static void test_unit_name_escape(void) {
+-        _cleanup_free_ char *r;
++        _cleanup_free_ char *r = NULL;
+ 
+         r = unit_name_escape("ab+-c.a/bc@foo.service");
+         assert_se(r);
+diff -purN systemd/src/test/test-utf8.c systemd-izh/src/test/test-utf8.c
+--- systemd/src/test/test-utf8.c	2020-10-13 13:34:00.270952848 +0300
++++ systemd-izh/src/test/test-utf8.c	2020-10-19 23:37:02.836438572 +0300
+@@ -51,7 +51,7 @@ static void test_utf8_encoded_valid_unic
+ }
+ 
+ static void test_utf8_escaping(void) {
+-        _cleanup_free_ char *p1, *p2, *p3;
++        _cleanup_free_ char *p1 = NULL, *p2 = NULL, *p3 = NULL;
+ 
+         p1 = utf8_escape_invalid("goo goo goo");
+         puts(p1);
+@@ -67,7 +67,7 @@ static void test_utf8_escaping(void) {
+ }
+ 
+ static void test_utf8_escaping_printable(void) {
+-        _cleanup_free_ char *p1, *p2, *p3, *p4, *p5, *p6;
++        _cleanup_free_ char *p1 = NULL, *p2 = NULL, *p3 = NULL, *p4 = NULL, *p5 = NULL, *p6 = NULL;
+ 
+         p1 = utf8_escape_non_printable("goo goo goo");
+         puts(p1);
+diff -purN systemd/src/tmpfiles/tmpfiles.c systemd-izh/src/tmpfiles/tmpfiles.c
+--- systemd/src/tmpfiles/tmpfiles.c	2020-10-13 13:34:00.270952848 +0300
++++ systemd-izh/src/tmpfiles/tmpfiles.c	2020-10-19 23:37:02.836438572 +0300
+@@ -32,6 +32,7 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include <sys/stat.h>
++#include <sys/sysmacros.h>
+ #include <sys/xattr.h>
+ #include <sysexits.h>
+ #include <time.h>
+@@ -599,7 +600,7 @@ static int dir_cleanup(
+                         if (maxdepth <= 0)
+                                 log_warning("Reached max depth on \"%s\".", sub_path);
+                         else {
+-                                _cleanup_closedir_ DIR *sub_dir;
++                                _cleanup_closedir_ DIR *sub_dir = NULL;
+                                 int q;
+ 
+                                 sub_dir = xopendirat_nomod(dirfd(d), dent->d_name);
+diff -purN systemd/src/tty-ask-password-agent/tty-ask-password-agent.c systemd-izh/src/tty-ask-password-agent/tty-ask-password-agent.c
+--- systemd/src/tty-ask-password-agent/tty-ask-password-agent.c	2020-10-13 13:34:00.270952848 +0300
++++ systemd-izh/src/tty-ask-password-agent/tty-ask-password-agent.c	2020-10-19 23:37:02.836438572 +0300
+@@ -31,6 +31,7 @@
+ #include <sys/prctl.h>
+ #include <sys/signalfd.h>
+ #include <sys/socket.h>
++#include <sys/sysmacros.h>
+ #include <sys/wait.h>
+ #include <sys/un.h>
+ #include <unistd.h>
+@@ -477,7 +478,7 @@ static bool wall_tty_match(const char *p
+ }
+ 
+ static int show_passwords(void) {
+-        _cleanup_closedir_ DIR *d;
++        _cleanup_closedir_ DIR *d = NULL;
+         struct dirent *de;
+         int r = 0;
+ 
+diff -purN systemd/src/udev/cdrom_id/cdrom_id.c systemd-izh/src/udev/cdrom_id/cdrom_id.c
+--- systemd/src/udev/cdrom_id/cdrom_id.c	2020-10-13 13:34:00.274952866 +0300
++++ systemd-izh/src/udev/cdrom_id/cdrom_id.c	2020-10-19 23:37:02.836438572 +0300
+@@ -30,6 +30,7 @@
+ #include <string.h>
+ #include <sys/ioctl.h>
+ #include <sys/stat.h>
++#include <sys/sysmacros.h>
+ #include <sys/time.h>
+ #include <sys/types.h>
+ #include <time.h>
+diff -purN systemd/src/udev/scsi_id/scsi_id.c systemd-izh/src/udev/scsi_id/scsi_id.c
+--- systemd/src/udev/scsi_id/scsi_id.c	2020-10-13 13:34:00.274952866 +0300
++++ systemd-izh/src/udev/scsi_id/scsi_id.c	2020-10-19 23:37:02.836438572 +0300
+@@ -165,7 +165,7 @@ static int get_file_options(struct udev
+                             int *argc, char ***newargv)
+ {
+         char *buffer;
+-        _cleanup_fclose_ FILE *f;
++        _cleanup_fclose_ FILE *f = NULL;
+         char *buf;
+         char *str1;
+         char *vendor_in, *model_in, *options_in; /* read in from file */
+@@ -572,7 +572,7 @@ out:
+ 
+ int main(int argc, char **argv)
+ {
+-        _cleanup_udev_unref_ struct udev *udev;
++        _cleanup_udev_unref_ struct udev *udev = NULL;
+         int retval = 0;
+         char maj_min_dev[MAX_PATH_LEN];
+         int newargc;
+diff -purN systemd/src/udev/scsi_id/scsi_serial.c systemd-izh/src/udev/scsi_id/scsi_serial.c
+--- systemd/src/udev/scsi_id/scsi_serial.c	2020-10-13 13:34:00.274952866 +0300
++++ systemd-izh/src/udev/scsi_id/scsi_serial.c	2020-10-19 23:37:02.836438572 +0300
+@@ -30,6 +30,7 @@
+ #include <string.h>
+ #include <sys/ioctl.h>
+ #include <sys/stat.h>
++#include <sys/sysmacros.h>
+ #include <sys/types.h>
+ #include <time.h>
+ #include <unistd.h>
+diff -purN systemd/src/udev/udevadm-info.c systemd-izh/src/udev/udevadm-info.c
+--- systemd/src/udev/udevadm-info.c	2020-10-13 13:34:00.278952883 +0300
++++ systemd-izh/src/udev/udevadm-info.c	2020-10-19 23:37:02.836438572 +0300
+@@ -24,6 +24,7 @@
+ #include <stdio.h>
+ #include <string.h>
+ #include <sys/stat.h>
++#include <sys/sysmacros.h>
+ #include <unistd.h>
+ 
+ #include "dirent-util.h"
+@@ -173,7 +174,7 @@ static int stat_device(const char *name,
+ }
+ 
+ static int export_devices(struct udev *udev) {
+-        _cleanup_udev_enumerate_unref_ struct udev_enumerate *udev_enumerate;
++        _cleanup_udev_enumerate_unref_ struct udev_enumerate *udev_enumerate = NULL;
+         struct udev_list_entry *list_entry;
+ 
+         udev_enumerate = udev_enumerate_new(udev);
+@@ -182,7 +183,7 @@ static int export_devices(struct udev *u
+ 
+         udev_enumerate_scan_devices(udev_enumerate);
+         udev_list_entry_foreach(list_entry, udev_enumerate_get_list_entry(udev_enumerate)) {
+-                _cleanup_udev_device_unref_ struct udev_device *device;
++                _cleanup_udev_device_unref_ struct udev_device *device = NULL;
+ 
+                 device = udev_device_new_from_syspath(udev, udev_list_entry_get_name(list_entry));
+                 if (device != NULL)
+@@ -208,7 +209,7 @@ static void cleanup_dir(DIR *dir, mode_t
+                 if ((stats.st_mode & mask) != 0)
+                         continue;
+                 if (S_ISDIR(stats.st_mode)) {
+-                        _cleanup_closedir_ DIR *dir2;
++                        _cleanup_closedir_ DIR *dir2 = NULL;
+ 
+                         dir2 = fdopendir(openat(dirfd(dir), dent->d_name, O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC));
+                         if (dir2 != NULL)
+diff -purN systemd/src/udev/udevadm-trigger.c systemd-izh/src/udev/udevadm-trigger.c
+--- systemd/src/udev/udevadm-trigger.c	2020-10-13 13:34:00.278952883 +0300
++++ systemd-izh/src/udev/udevadm-trigger.c	2020-10-19 23:37:02.836438572 +0300
+@@ -230,7 +230,7 @@ static int adm_trigger(struct udev *udev
+                         }
+                         break;
+                 case 'b': {
+-                        _cleanup_udev_device_unref_ struct udev_device *dev;
++                        _cleanup_udev_device_unref_ struct udev_device *dev = NULL;
+ 
+                         dev = find_device(udev, optarg, "/sys");
+                         if (!dev) {
+@@ -250,7 +250,7 @@ static int adm_trigger(struct udev *udev
+                         break;
+ 
+                 case ARG_NAME: {
+-                        _cleanup_udev_device_unref_ struct udev_device *dev;
++                        _cleanup_udev_device_unref_ struct udev_device *dev = NULL;
+ 
+                         dev = find_device(udev, optarg, "/dev/");
+                         if (!dev) {
+@@ -280,7 +280,7 @@ static int adm_trigger(struct udev *udev
+         }
+ 
+         for (; optind < argc; optind++) {
+-                _cleanup_udev_device_unref_ struct udev_device *dev;
++                _cleanup_udev_device_unref_ struct udev_device *dev = NULL;
+ 
+                 dev = find_device(udev, argv[optind], NULL);
+                 if (!dev) {
+@@ -355,7 +355,7 @@ static int adm_trigger(struct udev *udev
+ 
+                 for (i = 0; i < fdcount; i++) {
+                         if (ev[i].data.fd == fd_udev && ev[i].events & EPOLLIN) {
+-                                _cleanup_udev_device_unref_ struct udev_device *device;
++                                _cleanup_udev_device_unref_ struct udev_device *device = NULL;
+                                 const char *syspath = NULL;
+ 
+                                 device = udev_monitor_receive_device(udev_monitor);
+diff -purN systemd/src/udev/udevd.c systemd-izh/src/udev/udevd.c
+--- systemd/src/udev/udevd.c	2020-10-13 13:34:00.278952883 +0300
++++ systemd-izh/src/udev/udevd.c	2020-10-19 23:37:02.836438572 +0300
+@@ -37,6 +37,7 @@
+ #include <sys/signalfd.h>
+ #include <sys/socket.h>
+ #include <sys/stat.h>
++#include <sys/sysmacros.h>
+ #include <sys/time.h>
+ #include <sys/wait.h>
+ #include <unistd.h>
+diff -purN systemd/src/udev/udev-event.c systemd-izh/src/udev/udev-event.c
+--- systemd/src/udev/udev-event.c	2020-10-13 13:34:00.274952866 +0300
++++ systemd-izh/src/udev/udev-event.c	2020-10-19 23:37:02.836438572 +0300
+@@ -28,6 +28,7 @@
+ #include <sys/epoll.h>
+ #include <sys/prctl.h>
+ #include <sys/signalfd.h>
++#include <sys/sysmacros.h>
+ #include <sys/wait.h>
+ #include <unistd.h>
+ 
+diff -purN systemd/src/udev/udev-node.c systemd-izh/src/udev/udev-node.c
+--- systemd/src/udev/udev-node.c	2020-10-13 13:34:00.274952866 +0300
++++ systemd-izh/src/udev/udev-node.c	2020-10-19 23:37:02.836438572 +0300
+@@ -23,6 +23,7 @@
+ #include <stdio.h>
+ #include <string.h>
+ #include <sys/stat.h>
++#include <sys/sysmacros.h>
+ #include <unistd.h>
+ 
+ #include "device-nodes.h"
+diff -purN systemd/src/udev/udev-rules.c systemd-izh/src/udev/udev-rules.c
+--- systemd/src/udev/udev-rules.c	2020-10-13 13:34:00.274952866 +0300
++++ systemd-izh/src/udev/udev-rules.c	2020-10-19 23:37:02.840438525 +0300
+@@ -26,6 +26,7 @@
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
++#include <sys/sysmacros.h>
+ #include <time.h>
+ #include <unistd.h>
+ 
+@@ -1046,7 +1047,7 @@ static void add_rule(struct udev_rules *
+                          * Make a best effort to describe where the problem is. */
+                         if (!strchr(NEWLINE, *linepos)) {
+                                 char buf[2] = {*linepos};
+-                                _cleanup_free_ char *tmp;
++                                _cleanup_free_ char *tmp = NULL;
+ 
+                                 tmp = cescape(buf);
+                                 log_error("invalid key/value pair in file %s on line %u, starting at character %tu ('%s')",

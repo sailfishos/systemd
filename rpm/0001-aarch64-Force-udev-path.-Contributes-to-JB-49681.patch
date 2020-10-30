@@ -3,24 +3,16 @@ From: Niels Breet <niels.breet@jolla.com>
 Date: Mon, 6 Jul 2020 12:25:23 +0300
 Subject: [PATCH] [aarch64] Force udev path. Contributes to JB#49681
 
----
- Makefile.am | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
-
-diff --git a/Makefile.am b/Makefile.am
-index c2973c0..2a969fe 100644
---- a/Makefile.am
-+++ b/Makefile.am
-@@ -100,7 +100,8 @@ systemshutdowndir=$(rootlibexecdir)/system-shutdown
- systemsleepdir=$(rootlibexecdir)/system-sleep
- systemunitdir=$(rootprefix)/lib/systemd/system
- systempresetdir=$(rootprefix)/lib/systemd/system-preset
--udevlibexecdir=$(rootprefix)/lib/udev
-+#Force this to udevlibexecdir to /lib/udev for now, to make transition easier
-+udevlibexecdir=/lib/udev
- udevhomedir=$(udevlibexecdir)
- udevrulesdir=$(udevlibexecdir)/rules.d
- udevhwdbdir=$(udevlibexecdir)/hwdb.d
--- 
-1.9.1
-
+diff -purN systemd00/meson.build systemd-izh/meson.build
+--- systemd00/meson.build	2020-10-13 13:34:00.082952034 +0300
++++ systemd-izh/meson.build	2020-10-13 16:55:27.214675827 +0300
+@@ -143,7 +143,8 @@ systemshutdowndir = join_paths(rootlibex
+ systemsleepdir = join_paths(rootlibexecdir, 'system-sleep')
+ systemunitdir = join_paths(rootprefixdir, 'lib/systemd/system')
+ systempresetdir = join_paths(rootprefixdir, 'lib/systemd/system-preset')
+-udevlibexecdir = join_paths(rootprefixdir, 'lib/udev')
++# Force this to udevlibexecdir to /lib/udev for now, to make transition easier
++udevlibexecdir = '/lib/udev'
+ udevhomedir = udevlibexecdir
+ udevrulesdir = join_paths(udevlibexecdir, 'rules.d')
+ udevhwdbdir = join_paths(udevlibexecdir, 'hwdb.d')

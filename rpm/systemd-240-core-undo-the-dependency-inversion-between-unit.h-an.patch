@@ -1,0 +1,522 @@
+This is the backport of the upstream commit
+https://github.com/systemd/systemd/commit/57b7a260c20f58a5c5d9c1e1aacde50646863919
+from v240.
+
+From 57b7a260c20f58a5c5d9c1e1aacde50646863919 Mon Sep 17 00:00:00 2001
+From: Felipe Sateler <fsateler@debian.org>
+Date: Tue, 15 May 2018 14:17:34 -0400
+Subject: [PATCH] core: undo the dependency inversion between unit.h and all
+ unit types
+
+diff -purN systemd/src/analyze/analyze-verify.c systemd-izh/src/analyze/analyze-verify.c
+--- systemd/src/analyze/analyze-verify.c	2020-09-23 19:10:03.238873796 +0300
++++ systemd-izh/src/analyze/analyze-verify.c	2020-09-29 18:58:14.230318577 +0300
+@@ -21,6 +21,7 @@
+ #include <stdlib.h>
+ 
+ #include "alloc-util.h"
++#include "all-units.h"
+ #include "analyze-verify.h"
+ #include "bus-error.h"
+ #include "bus-util.h"
+diff -purN systemd/src/core/all-units.h systemd-izh/src/core/all-units.h
+--- systemd/src/core/all-units.h	1970-01-01 03:00:00.000000000 +0300
++++ systemd-izh/src/core/all-units.h	2020-09-29 19:09:03.712374297 +0300
+@@ -0,0 +1,14 @@
++#pragma once
++
++#include "unit.h"
++
++#include "automount.h"
++#include "device.h"
++#include "path.h"
++#include "scope.h"
++#include "service.h"
++#include "slice.h"
++#include "socket.h"
++#include "swap.h"
++#include "target.h"
++#include "timer.h"
+diff -purN systemd/src/core/automount.h systemd-izh/src/core/automount.h
+--- systemd/src/core/automount.h	2020-09-23 19:10:03.274873431 +0300
++++ systemd-izh/src/core/automount.h	2020-09-29 18:58:14.230318577 +0300
+@@ -58,3 +58,5 @@ extern const UnitVTable automount_vtable
+ 
+ const char* automount_result_to_string(AutomountResult i) _const_;
+ AutomountResult automount_result_from_string(const char *s) _pure_;
++
++DEFINE_CAST(AUTOMOUNT, Automount);
+diff -purN systemd/src/core/dbus.c systemd-izh/src/core/dbus.c
+--- systemd/src/core/dbus.c	2020-09-24 18:18:34.238163101 +0300
++++ systemd-izh/src/core/dbus.c	2020-09-29 18:58:23.462347805 +0300
+@@ -44,6 +44,7 @@
+ #include "process-util.h"
+ #include "selinux-access.h"
+ #include "serialize.h"
++#include "service.h"
+ #include "special.h"
+ #include "string-util.h"
+ #include "strv.h"
+diff -purN systemd/src/core/dbus-scope.h systemd-izh/src/core/dbus-scope.h
+--- systemd/src/core/dbus-scope.h	2020-09-23 19:10:03.278873391 +0300
++++ systemd-izh/src/core/dbus-scope.h	2020-09-29 18:58:23.462347805 +0300
+@@ -22,7 +22,7 @@
+ 
+ #include "sd-bus.h"
+ 
+-#include "unit.h"
++#include "scope.h"
+ 
+ extern const sd_bus_vtable bus_scope_vtable[];
+ 
+diff -purN systemd/src/core/device.h systemd-izh/src/core/device.h
+--- systemd/src/core/device.h	2020-09-23 19:10:03.282873350 +0300
++++ systemd-izh/src/core/device.h	2020-09-29 18:58:23.462347805 +0300
+@@ -20,6 +20,8 @@
+   along with systemd; If not, see <http://www.gnu.org/licenses/>.
+ ***/
+ 
++#include "unit.h"
++
+ typedef struct Device Device;
+ 
+ typedef enum DeviceFound {
+@@ -49,3 +51,5 @@ extern const UnitVTable device_vtable;
+ 
+ int device_found_node(Manager *m, const char *node, bool add, DeviceFound found, bool now);
+ bool device_shall_be_bound_by(Unit *device, Unit *u);
++
++DEFINE_CAST(DEVICE, Device);
+diff -purN systemd/src/core/dynamic-user.c systemd-izh/src/core/dynamic-user.c
+--- systemd/src/core/dynamic-user.c	2020-09-24 18:18:34.238163101 +0300
++++ systemd-izh/src/core/dynamic-user.c	2020-09-29 18:58:23.462347805 +0300
+@@ -31,6 +31,7 @@
+ #include "parse-util.h"
+ #include "random-util.h"
+ #include "serialize.h"
++#include "socket-util.h"
+ #include "stdio-util.h"
+ #include "string-util.h"
+ #include "user-util.h"
+diff -purN systemd/src/core/execute.c systemd-izh/src/core/execute.c
+--- systemd/src/core/execute.c	2020-09-23 19:10:03.282873350 +0300
++++ systemd-izh/src/core/execute.c	2020-09-29 18:58:23.466347817 +0300
+@@ -99,6 +99,7 @@
+ #include "selinux-util.h"
+ #include "signal-util.h"
+ #include "smack-util.h"
++#include "socket-util.h"
+ #include "special.h"
+ #include "stat-util.h"
+ #include "string-table.h"
+diff -purN systemd/src/core/load-fragment.c systemd-izh/src/core/load-fragment.c
+--- systemd/src/core/load-fragment.c	2020-09-23 19:10:03.286873309 +0300
++++ systemd-izh/src/core/load-fragment.c	2020-09-29 18:58:23.470347829 +0300
+@@ -33,6 +33,7 @@
+ 
+ #include "af-list.h"
+ #include "alloc-util.h"
++#include "all-units.h"
+ #include "bus-error.h"
+ #include "bus-internal.h"
+ #include "bus-util.h"
+@@ -70,7 +71,6 @@
+ #include "strv.h"
+ #include "unit-name.h"
+ #include "unit-printf.h"
+-#include "unit.h"
+ #include "user-util.h"
+ #include "utf8.h"
+ #include "web-util.h"
+diff -purN systemd/src/core/load-fragment-gperf.gperf.m4 systemd-izh/src/core/load-fragment-gperf.gperf.m4
+--- systemd/src/core/load-fragment-gperf.gperf.m4	2020-09-23 19:10:03.282873350 +0300
++++ systemd-izh/src/core/load-fragment-gperf.gperf.m4	2020-09-29 18:58:23.466347817 +0300
+@@ -6,6 +6,8 @@ _Pragma("GCC diagnostic ignored \"-Wimpl
+ #include "conf-parser.h"
+ #include "load-fragment.h"
+ #include "missing.h"
++
++#include "all-units.h"
+ %}
+ struct ConfigPerfItem;
+ %null_strings
+diff -purN systemd/src/core/main.c systemd-izh/src/core/main.c
+--- systemd/src/core/main.c	2020-09-24 18:18:34.246163132 +0300
++++ systemd-izh/src/core/main.c	2020-09-29 18:58:23.470347829 +0300
+@@ -53,6 +53,7 @@
+ #include "def.h"
+ #include "emergency-action.h"
+ #include "env-util.h"
++#include "exit-status.h"
+ #include "fd-util.h"
+ #include "fdset.h"
+ #include "fileio.h"
+diff -purN systemd/src/core/manager.c systemd-izh/src/core/manager.c
+--- systemd/src/core/manager.c	2020-09-29 18:48:45.520508316 +0300
++++ systemd-izh/src/core/manager.c	2020-09-29 18:58:23.474347841 +0300
+@@ -41,6 +41,7 @@
+ #include "sd-path.h"
+ 
+ #include "alloc-util.h"
++#include "all-units.h"
+ #include "audit-fd.h"
+ #include "boot-timestamps.h"
+ #include "bus-common-errors.h"
+@@ -79,6 +80,7 @@
+ #include "rm-rf.h"
+ #include "serialize.h"
+ #include "signal-util.h"
++#include "socket-util.h"
+ #include "special.h"
+ #include "stat-util.h"
+ #include "string-table.h"
+diff -purN systemd/src/core/manager.h systemd-izh/src/core/manager.h
+--- systemd/src/core/manager.h	2020-09-23 19:10:03.286873309 +0300
++++ systemd-izh/src/core/manager.h	2020-09-29 18:58:23.474347841 +0300
+@@ -34,6 +34,8 @@
+ #include "list.h"
+ #include "ratelimit.h"
+ 
++typedef struct Unit Unit;
++
+ /* Enforce upper limit how many names we allow */
+ #define MANAGER_MAX_NAMES 131072 /* 128K */
+ 
+diff -purN systemd/src/core/mount.c systemd-izh/src/core/mount.c
+--- systemd/src/core/mount.c	2020-09-24 18:18:34.250163147 +0300
++++ systemd-izh/src/core/mount.c	2020-09-29 18:58:23.474347841 +0300
+@@ -27,6 +27,7 @@
+ 
+ #include "alloc-util.h"
+ #include "dbus-mount.h"
++#include "device.h"
+ #include "escape.h"
+ #include "exit-status.h"
+ #include "format-util.h"
+diff -purN systemd/src/core/mount.h systemd-izh/src/core/mount.h
+--- systemd/src/core/mount.h	2020-09-23 19:10:03.286873309 +0300
++++ systemd-izh/src/core/mount.h	2020-09-29 18:58:23.474347841 +0300
+@@ -24,6 +24,7 @@ typedef struct Mount Mount;
+ 
+ #include "kill.h"
+ #include "dynamic-user.h"
++#include "unit.h"
+ 
+ typedef enum MountExecCommand {
+         MOUNT_EXEC_MOUNT,
+@@ -110,3 +111,5 @@ MountExecCommand mount_exec_command_from
+ 
+ const char* mount_result_to_string(MountResult i) _const_;
+ MountResult mount_result_from_string(const char *s) _pure_;
++
++DEFINE_CAST(MOUNT, Mount);
+diff -purN systemd/src/core/path.h systemd-izh/src/core/path.h
+--- systemd/src/core/path.h	2020-09-23 19:10:03.290873269 +0300
++++ systemd-izh/src/core/path.h	2020-09-29 18:58:23.474347841 +0300
+@@ -92,3 +92,5 @@ PathType path_type_from_string(const cha
+ 
+ const char* path_result_to_string(PathResult i) _const_;
+ PathResult path_result_from_string(const char *s) _pure_;
++
++DEFINE_CAST(PATH, Path);
+diff -purN systemd/src/core/scope.h systemd-izh/src/core/scope.h
+--- systemd/src/core/scope.h	2020-09-23 19:10:03.290873269 +0300
++++ systemd-izh/src/core/scope.h	2020-09-29 18:58:23.474347841 +0300
+@@ -59,3 +59,5 @@ int scope_abandon(Scope *s);
+ 
+ const char* scope_result_to_string(ScopeResult i) _const_;
+ ScopeResult scope_result_from_string(const char *s) _pure_;
++
++DEFINE_CAST(SCOPE, Scope);
+diff -purN systemd/src/core/service.h systemd-izh/src/core/service.h
+--- systemd/src/core/service.h	2020-09-24 18:11:44.080610166 +0300
++++ systemd-izh/src/core/service.h	2020-09-29 18:58:23.478347854 +0300
+@@ -27,6 +27,8 @@ typedef struct ServiceFDStore ServiceFDS
+ #include "kill.h"
+ #include "path.h"
+ #include "ratelimit.h"
++#include "socket.h"
++#include "unit.h"
+ 
+ typedef enum ServiceRestart {
+         SERVICE_RESTART_NO,
+@@ -218,4 +220,6 @@ NotifyState notify_state_from_string(con
+ const char* service_result_to_string(ServiceResult i) _const_;
+ ServiceResult service_result_from_string(const char *s) _pure_;
+ 
++DEFINE_CAST(SERVICE, Service);
++
+ #define STATUS_TEXT_MAX (16U*1024U)
+diff -purN systemd/src/core/slice.h systemd-izh/src/core/slice.h
+--- systemd/src/core/slice.h	2020-09-23 19:10:03.294873228 +0300
++++ systemd-izh/src/core/slice.h	2020-09-29 18:58:23.478347854 +0300
+@@ -20,6 +20,8 @@
+   along with systemd; If not, see <http://www.gnu.org/licenses/>.
+ ***/
+ 
++#include "unit.h"
++
+ typedef struct Slice Slice;
+ 
+ struct Slice {
+@@ -31,3 +33,5 @@ struct Slice {
+ };
+ 
+ extern const UnitVTable slice_vtable;
++
++DEFINE_CAST(SLICE, Slice);
+diff -purN systemd/src/core/socket.h systemd-izh/src/core/socket.h
+--- systemd/src/core/socket.h	2020-09-23 19:10:03.294873228 +0300
++++ systemd-izh/src/core/socket.h	2020-09-29 19:09:50.076521055 +0300
+@@ -26,6 +26,7 @@ typedef struct SocketPeer SocketPeer;
+ #include "mount.h"
+ #include "service.h"
+ #include "socket-util.h"
++#include "unit.h"
+ 
+ typedef enum SocketExecCommand {
+         SOCKET_EXEC_START_PRE,
+@@ -195,3 +196,5 @@ SocketResult socket_result_from_string(c
+ 
+ const char* socket_port_type_to_string(SocketPort *p) _pure_;
+ SocketType socket_port_type_from_string(const char *p) _pure_;
++
++DEFINE_CAST(SOCKET, Socket);
+diff -purN systemd/src/core/swap.c systemd-izh/src/core/swap.c
+--- systemd/src/core/swap.c	2020-09-24 18:18:34.258163177 +0300
++++ systemd-izh/src/core/swap.c	2020-09-29 18:58:23.478347854 +0300
+@@ -27,6 +27,7 @@
+ 
+ #include "alloc-util.h"
+ #include "dbus-swap.h"
++#include "device.h"
+ #include "escape.h"
+ #include "exit-status.h"
+ #include "fd-util.h"
+diff -purN systemd/src/core/swap.h systemd-izh/src/core/swap.h
+--- systemd/src/core/swap.h	2020-09-23 19:10:03.294873228 +0300
++++ systemd-izh/src/core/swap.h	2020-09-29 18:58:23.478347854 +0300
+@@ -22,6 +22,7 @@
+ ***/
+ 
+ #include "libudev.h"
++#include "unit.h"
+ 
+ typedef struct Swap Swap;
+ 
+@@ -108,3 +109,5 @@ SwapExecCommand swap_exec_command_from_s
+ 
+ const char* swap_result_to_string(SwapResult i) _const_;
+ SwapResult swap_result_from_string(const char *s) _pure_;
++
++DEFINE_CAST(SWAP, Swap);
+diff -purN systemd/src/core/target.h systemd-izh/src/core/target.h
+--- systemd/src/core/target.h	2020-09-23 19:10:03.294873228 +0300
++++ systemd-izh/src/core/target.h	2020-09-29 18:58:23.478347854 +0300
+@@ -20,6 +20,8 @@
+   along with systemd; If not, see <http://www.gnu.org/licenses/>.
+ ***/
+ 
++#include "unit.h"
++
+ typedef struct Target Target;
+ 
+ struct Target {
+@@ -29,3 +31,5 @@ struct Target {
+ };
+ 
+ extern const UnitVTable target_vtable;
++
++DEFINE_CAST(TARGET, Target);
+diff -purN systemd/src/core/timer.h systemd-izh/src/core/timer.h
+--- systemd/src/core/timer.h	2020-09-23 19:10:03.294873228 +0300
++++ systemd-izh/src/core/timer.h	2020-09-29 18:58:23.478347854 +0300
+@@ -23,6 +23,7 @@
+ typedef struct Timer Timer;
+ 
+ #include "calendarspec.h"
++#include "unit.h"
+ 
+ typedef enum TimerBase {
+         TIMER_ACTIVE,
+@@ -90,3 +91,5 @@ TimerBase timer_base_from_string(const c
+ 
+ const char* timer_result_to_string(TimerResult i) _const_;
+ TimerResult timer_result_from_string(const char *s) _pure_;
++
++DEFINE_CAST(TIMER, Timer);
+diff -purN systemd/src/core/unit.c systemd-izh/src/core/unit.c
+--- systemd/src/core/unit.c	2020-09-29 18:10:04.109014196 +0300
++++ systemd-izh/src/core/unit.c	2020-09-29 18:58:23.482347866 +0300
+@@ -29,6 +29,7 @@
+ #include "sd-messages.h"
+ 
+ #include "alloc-util.h"
++#include "all-units.h"
+ #include "bus-common-errors.h"
+ #include "bus-util.h"
+ #include "cgroup-util.h"
+diff -purN systemd/src/core/unit.h systemd-izh/src/core/unit.h
+--- systemd/src/core/unit.h	2020-09-24 19:38:34.915680775 +0300
++++ systemd-izh/src/core/unit.h	2020-09-29 19:14:21.085533329 +0300
+@@ -24,11 +24,6 @@
+ #include <stdlib.h>
+ #include <unistd.h>
+ 
+-typedef struct Unit Unit;
+-typedef struct UnitVTable UnitVTable;
+-typedef struct UnitRef UnitRef;
+-typedef struct UnitStatusMessageFormats UnitStatusMessageFormats;
+-
+ #include "bpf-program.h"
+ #include "condition.h"
+ #include "emergency-action.h"
+@@ -37,6 +32,8 @@ typedef struct UnitStatusMessageFormats
+ #include "unit-name.h"
+ #include "cgroup.h"
+ 
++typedef struct UnitRef UnitRef;
++
+ typedef enum KillOperation {
+         KILL_TERMINATE,
+         KILL_TERMINATE_AND_LOG,
+@@ -133,7 +130,7 @@ typedef enum UnitCGroupBPFState {
+         UNIT_CGROUP_BPF_INVALIDATED = -1,
+ } UnitCGroupBPFState;
+ 
+-struct Unit {
++typedef struct Unit {
+         Manager *manager;
+ 
+         UnitType type;
+@@ -367,13 +364,13 @@ struct Unit {
+         /* When writing transient unit files, stores which section we stored last. If < 0, we didn't write any yet. If
+          * == 0 we are in the [Unit] section, if > 0 we are in the unit type-specific section. */
+         int last_section_private:2;
+-};
++} Unit;
+ 
+-struct UnitStatusMessageFormats {
++typedef struct UnitStatusMessageFormats {
+         const char *starting_stopping[2];
+         const char *finished_start_job[_JOB_RESULT_MAX];
+         const char *finished_stop_job[_JOB_RESULT_MAX];
+-};
++} UnitStatusMessageFormats;
+ 
+ /* Flags used when writing drop-in files or transient unit files */
+ typedef enum UnitWriteFlags {
+@@ -396,17 +393,9 @@ typedef enum UnitWriteFlags {
+ /* Returns true if neither persistent, nor runtime storage is requested, i.e. this is a check invocation only */
+ #define UNIT_WRITE_FLAGS_NOOP(flags) (((flags) & (UNIT_RUNTIME|UNIT_PERSISTENT)) == 0)
+ 
+-#include "automount.h"
+-#include "device.h"
+-#include "path.h"
+-#include "scope.h"
+-#include "slice.h"
+-#include "socket.h"
+-#include "swap.h"
+-#include "target.h"
+-#include "timer.h"
++#include "kill.h"
+ 
+-struct UnitVTable {
++typedef struct UnitVTable {
+         /* How much memory does an object of this unit type need */
+         size_t object_size;
+ 
+@@ -572,7 +561,7 @@ struct UnitVTable {
+ 
+         /* True if queued jobs of this type should be GC'ed if no other job needs them anymore */
+         bool gc_jobs:1;
+-};
++} UnitVTable;
+ 
+ extern const UnitVTable * const unit_vtable[_UNIT_TYPE_MAX];
+ 
+@@ -596,18 +585,6 @@ extern const UnitVTable * const unit_vta
+ 
+ #define UNIT_TRIGGER(u) ((Unit*) hashmap_first_key((u)->dependencies[UNIT_TRIGGERS]))
+ 
+-DEFINE_CAST(SERVICE, Service);
+-DEFINE_CAST(SOCKET, Socket);
+-DEFINE_CAST(TARGET, Target);
+-DEFINE_CAST(DEVICE, Device);
+-DEFINE_CAST(MOUNT, Mount);
+-DEFINE_CAST(AUTOMOUNT, Automount);
+-DEFINE_CAST(SWAP, Swap);
+-DEFINE_CAST(TIMER, Timer);
+-DEFINE_CAST(PATH, Path);
+-DEFINE_CAST(SLICE, Slice);
+-DEFINE_CAST(SCOPE, Scope);
+-
+ Unit *unit_new(Manager *m, size_t size);
+ void unit_free(Unit *u);
+ 
+diff -purN systemd/src/test/test-execute.c systemd-izh/src/test/test-execute.c
+--- systemd/src/test/test-execute.c	2020-09-23 19:10:03.406872094 +0300
++++ systemd-izh/src/test/test-execute.c	2020-09-29 18:58:23.486347878 +0300
+@@ -37,6 +37,7 @@
+ #if HAVE_SECCOMP
+ #include "seccomp-util.h"
+ #endif
++#include "service.h"
+ #include "stat-util.h"
+ #include "test-helper.h"
+ #include "tests.h"
+diff -purN systemd/src/test/test-path.c systemd-izh/src/test/test-path.c
+--- systemd/src/test/test-path.c	2020-09-23 19:10:03.410872053 +0300
++++ systemd-izh/src/test/test-path.c	2020-09-29 18:58:23.486347878 +0300
+@@ -22,6 +22,7 @@
+ #include <stdio.h>
+ 
+ #include "alloc-util.h"
++#include "all-units.h"
+ #include "fd-util.h"
+ #include "fs-util.h"
+ #include "macro.h"
+diff -purN systemd/src/test/test-sched-prio.c systemd-izh/src/test/test-sched-prio.c
+--- systemd/src/test/test-sched-prio.c	2020-09-23 19:10:03.410872053 +0300
++++ systemd-izh/src/test/test-sched-prio.c	2020-09-29 18:58:23.486347878 +0300
+@@ -20,6 +20,7 @@
+ 
+ #include <sched.h>
+ 
++#include "all-units.h"
+ #include "macro.h"
+ #include "manager.h"
+ #include "rm-rf.h"
+diff -purN systemd/src/test/test-unit-file.c systemd-izh/src/test/test-unit-file.c
+--- systemd/src/test/test-unit-file.c	2020-09-23 19:10:03.414872013 +0300
++++ systemd-izh/src/test/test-unit-file.c	2020-09-29 18:58:23.486347878 +0300
+@@ -27,6 +27,7 @@
+ #include <unistd.h>
+ 
+ #include "alloc-util.h"
++#include "all-units.h"
+ #include "capability-util.h"
+ #include "fd-util.h"
+ #include "fileio.h"
+diff -purN systemd/src/test/test-unit-name.c systemd-izh/src/test/test-unit-name.c
+--- systemd/src/test/test-unit-name.c	2020-09-23 19:10:03.414872013 +0300
++++ systemd-izh/src/test/test-unit-name.c	2020-09-29 18:58:23.486347878 +0300
+@@ -26,6 +26,7 @@
+ #include <string.h>
+ 
+ #include "alloc-util.h"
++#include "all-units.h"
+ #include "glob-util.h"
+ #include "hostname-util.h"
+ #include "macro.h"
+diff -purN systemd/src/test/test-watch-pid.c systemd-izh/src/test/test-watch-pid.c
+--- systemd/src/test/test-watch-pid.c	2020-09-23 19:10:03.414872013 +0300
++++ systemd-izh/src/test/test-watch-pid.c	2020-09-29 18:58:23.486347878 +0300
+@@ -3,6 +3,7 @@
+ #include "log.h"
+ #include "manager.h"
+ #include "rm-rf.h"
++#include "service.h"
+ #include "test-helper.h"
+ #include "tests.h"
+ 

@@ -12,16 +12,17 @@ diff --git a/src/journal/test-journal-send.c b/src/journal/test-journal-send.c
 index 3e986ed..7aa913f 100644
 --- a/src/journal/test-journal-send.c
 +++ b/src/journal/test-journal-send.c
-@@ -25,8 +25,9 @@
+@@ -26,8 +26,9 @@
  
- #include "log.h"
+ #include "macro.h"
  
 +static char huge[4096*1024];
 +
  int main(int argc, char *argv[]) {
 -        char huge[4096*1024];
  
-         log_set_max_level(LOG_DEBUG);
+         /* utf-8 and non-utf-8, message-less and message-ful iovecs */
+         struct iovec graph1[] = {
  
 -- 
 1.9.1
