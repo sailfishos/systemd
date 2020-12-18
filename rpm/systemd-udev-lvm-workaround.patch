@@ -5,7 +5,7 @@ events when volume group is activated.
 diff -purN systemd/units/systemd-udev-trigger.service.in systemd-izh/units/systemd-udev-trigger.service.in
 --- systemd/units/systemd-udev-trigger.service.in
 +++ systemd-izh/units/systemd-udev-trigger.service.in
-@@ -18,3 +18,7 @@ ConditionPathIsReadWrite=/sys
+@@ -20,3 +20,7 @@ ConditionPathIsReadWrite=/sys
  Type=oneshot
  RemainAfterExit=yes
  ExecStart=@rootbindir@/udevadm trigger --type=subsystems --action=add ; @rootbindir@/udevadm trigger --type=devices --action=add

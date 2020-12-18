@@ -10,30 +10,30 @@ Subject: [PATCH] fuzz: decrease DATA_SIZE_MAX
 
 Fixes oss-fuzz#8658.
 
-diff -purN systemd/src/journal/coredump.c systemd-izh/src/journal/coredump.c
---- systemd/src/journal/coredump.c	2019-08-05 05:38:44.075368451 -0400
-+++ systemd-izh/src/journal/coredump.c	2019-08-05 09:23:47.773816172 -0400
-@@ -59,7 +59,8 @@
+diff -purN systemd/src/basic/journal-importer.h systemd-izh/src/basic/journal-importer.h
+--- systemd/src/basic/journal-importer.h	2019-11-06 18:48:47.600329145 +0300
++++ systemd-izh/src/basic/journal-importer.h	2019-11-15 11:08:52.453804065 +0300
+@@ -28,8 +28,8 @@
  
- /* The maximum size up to which we store the coredump in the
-  * journal */
+ /* Make sure not to make this smaller than the maximum coredump size.
+  * See COREDUMP_MAX in coredump.c */
+-#define ENTRY_SIZE_MAX (1024*1024*770u)
+-#define DATA_SIZE_MAX (1024*1024*768u)
++#define ENTRY_SIZE_MAX (1024*1024*13u)
++#define DATA_SIZE_MAX (1024*1024*11u)
+ #define LINE_CHUNK 8*1024u
+ 
+ struct iovec_wrapper {
+diff -purN systemd/src/coredump/coredump.c systemd-izh/src/coredump/coredump.c
+--- systemd/src/coredump/coredump.c	2019-11-06 18:48:47.656329243 +0300
++++ systemd-izh/src/coredump/coredump.c	2019-11-15 11:07:55.734814277 +0300
+@@ -73,7 +73,8 @@
+ #define EXTERNAL_SIZE_MAX PROCESS_SIZE_MAX
+ 
+ /* The maximum size up to which we store the coredump in the journal */
 -#define JOURNAL_SIZE_MAX ((size_t) (767LU*1024LU*1024LU))
 +/* oss-fuzz limits memory usage. */
 +#define JOURNAL_SIZE_MAX ((size_t) (10LU*1024LU*1024LU))
  
  /* Make sure to not make this larger than the maximum journal entry
   * size. See DATA_SIZE_MAX in journald-native.c. */
-diff -purN systemd/src/journal/journald-native.h systemd-izh/src/journal/journald-native.h
---- systemd/src/journal/journald-native.h	2019-08-05 08:19:55.982711293 -0400
-+++ systemd-izh/src/journal/journald-native.h	2019-08-05 09:09:23.164321075 -0400
-@@ -25,8 +25,8 @@
- 
- /* Make sure not to make this smaller than the maximum coredump
-  * size. See COREDUMP_MAX in coredump.c */
--#define ENTRY_SIZE_MAX (1024*1024*770u)
--#define DATA_SIZE_MAX (1024*1024*768u)
-+#define ENTRY_SIZE_MAX (1024*1024*13u)
-+#define DATA_SIZE_MAX (1024*1024*11u)
- 
- bool valid_user_field(const char *p, size_t l, bool allow_protected);
- 

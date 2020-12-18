@@ -4,23 +4,17 @@ Date: Mon, 6 Jul 2020 15:11:42 +0300
 Subject: [PATCH] We do not have a clean environment where HAVE_SPIT_USR will
  actually work, so adding /sbin and /bin to path
 
----
- src/basic/path-util.h | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/src/basic/path-util.h b/src/basic/path-util.h
-index 1eac89c..e58469f 100644
---- a/src/basic/path-util.h
-+++ b/src/basic/path-util.h
-@@ -26,7 +26,7 @@
- #include "macro.h"
- #include "time-util.h"
+diff -purN systemd41/src/basic/path-util.h systemd42/src/basic/path-util.h
+--- systemd/src/basic/path-util.h	2020-10-13 13:34:00.118952190 +0300
++++ systemd-izh/src/basic/path-util.h	2020-10-13 18:09:42.674740348 +0300
+@@ -34,8 +34,8 @@
+ #  define PATH_SBIN_BIN(x) x "bin"
+ #endif
  
--#define DEFAULT_PATH_NORMAL "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
-+#define DEFAULT_PATH_NORMAL "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
- #define DEFAULT_PATH_SPLIT_USR DEFAULT_PATH_NORMAL ":/sbin:/bin"
+-#define DEFAULT_PATH_NORMAL PATH_SBIN_BIN("/usr/local/") ":" PATH_SBIN_BIN("/usr/")
+-#define DEFAULT_PATH_SPLIT_USR DEFAULT_PATH_NORMAL ":" PATH_SBIN_BIN("/")
++#define DEFAULT_PATH_NORMAL PATH_SBIN_BIN("/usr/local/") ":" PATH_SBIN_BIN("/usr/") ":" PATH_SBIN_BIN("/")
++#define DEFAULT_PATH_SPLIT_USR DEFAULT_PATH_NORMAL
  
- #ifdef HAVE_SPLIT_USR
--- 
-1.9.1
-
+ #if HAVE_SPLIT_USR
+ #  define DEFAULT_PATH DEFAULT_PATH_SPLIT_USR

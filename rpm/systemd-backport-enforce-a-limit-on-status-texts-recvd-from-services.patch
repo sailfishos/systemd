@@ -10,9 +10,9 @@ diff --git a/src/core/service.c b/src/core/service.c
 index d203e5ad1..fd10c1875 100644
 --- a/src/core/service.c
 +++ b/src/core/service.c
-@@ -2897,8 +2897,12 @@ static void service_notify_message(Unit *u, pid_t pid, char **tags, FDSet *fds)
+@@ -3564,8 +3564,12 @@ static void service_notify_message(Unit 
                  _cleanup_free_ char *t = NULL;
-
+ 
                  if (!isempty(e)) {
 -                        if (!utf8_is_valid(e))
 -                                log_unit_warning(u, "Status message in notification message is not UTF-8 clean.");
@@ -29,8 +29,8 @@ diff --git a/src/core/service.h b/src/core/service.h
 index 7da0a9396..b16494c22 100644
 --- a/src/core/service.h
 +++ b/src/core/service.h
-@@ -238,3 +238,5 @@ NotifyState notify_state_from_string(const char *s) _pure_;
-
+@@ -217,3 +217,5 @@ NotifyState notify_state_from_string(con
+ 
  const char* service_result_to_string(ServiceResult i) _const_;
  ServiceResult service_result_from_string(const char *s) _pure_;
 +

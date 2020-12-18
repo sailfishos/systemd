@@ -3,8 +3,8 @@
 %global user_unit_dir %{pkgdir}/user
 
 Name:           systemd
-Url:            http://www.freedesktop.org/wiki/Software/systemd
-Version:        225
+Url:            https://www.freedesktop.org/wiki/Software/systemd
+Version:        238
 Release:        1
 # For a breakdown of the licensing, see README
 License:        LGPLv2+ and MIT and GPLv2+
@@ -18,47 +18,50 @@ Source3:        systemctl-user
 Source4:        systemd-rpmlintrc
 
 Patch0:         systemd-208-video.patch
-Patch1:         systemd-208-pkgconfigdir.patch
 Patch2:         systemd-187-remove-display-manager.service.patch
-Patch4:         systemd-208-install-test-binaries.patch
 Patch8:         systemd-208-count-only-restarts.patch
 Patch9:         systemd-208-do-not-pull-4-megs-from-stack-for-journal-send-test.patch
-Patch10:        systemd-227-sd_pid_notify_with_fds-fix-computing-msg_controllen.patch
-Patch11:        systemd-228-core-simplify-handling-of-u-U-s-and-h-unit-file-spec.patch
-Patch12:        systemd-228-tmpfiles-set-acls-on-system.journal-explicitly.patch
 Patch20:        systemd-Define-__NR_kcmp-if-it-is-not-defined.patch
-Patch21:        systemd-backport-Revert-usage-of-ln-relative.patch
-# These 2 patches backport udev-based firmware loading.
-# Should be removed after switching to proper kernel-based way.
-Patch22:        systemd-backport-Revert-udev-remove-userspace-firmware-loading-suppor.patch
-Patch23:        systemd-backport-Revert-rules-remove-firmware-loading-rules.patch
 # Workaround for JB#36605. Should be removed after implementing UDEV events
 # handling in initramfs.
 Patch24:        systemd-udev-lvm-workaround.patch
 Patch25:        systemd-225-add-pam-systemd-timeout-argument.patch
-Patch26:        systemd-227-sd-event-fix-prepare-priority-queue-comparison-function.patch
-Patch27:        systemd-233-core-downgrade-time-has-been-changed-to-debug.patch
 Patch28:        systemd-backport-when-deserializing-always-use-read_line.patch
 Patch29:        systemd-backport-enforce-a-limit-on-status-texts-recvd-from-services.patch
 Patch30:        systemd-backport-fix-deserialization-of-dev_t.patch
-Patch31:        systemd-backport-rework-serialization.patch
+Patch31:        systemd-backport-rework-serialization-v3.patch
 Patch32:        systemd-239-dhcp6-client-CVE-2018-15688-fix.patch
-Patch33:        systemd-backport-Remove-extra-BindsTo.patch
-Patch34:        systemd-234-udev-fix-some-incorrect-usages-of-CLOCK_BOOTTIME-619.patch
 Patch35:        systemd-backport-journald-set-a-limit-on-the-number-of-fields-1k.patch
 Patch36:        systemd-backport-fuzz-decrease-DATA_SIZE_MAX.patch
 Patch37:        systemd-backport-journal-fix-syslog_parse_identifier.patch
 Patch38:        systemd-backport-If-the-notification-message-length-is-0-ignore-the-m.patch
 Patch39:        systemd-backport-pam-systemd-use-secure_getenv-rather-than-getenv.patch
-Patch40:        systemd-234-sd-login-read-list-of-uids-of-sessions-from-UIDS-not.patch
 # JB#49681 related patches
 Patch41:        0001-aarch64-Force-udev-path.-Contributes-to-JB-49681.patch
-Patch42:	0002-We-do-not-have-a-clean-environment-where-HAVE_SPIT_U.patch
+Patch42:        0002-We-do-not-have-a-clean-environment-where-HAVE_SPIT_U.patch
 # end
-Patch43:        systemd-backport-build-sys-add-check-for-gperf-lookup-function-signat.patch
-Patch99:        systemd-225_fix_build_with_glibc228.patch
+Patch43:        systemd-240-core-undo-the-dependency-inversion-between-unit.h-an.patch
+Patch44:        systemd-239-core-don-t-include-libmount.h-in-a-header-file-8580.patch
+Patch45:        systemd-pam_selinux-remove.patch
+Patch46:        systemd-241-meson-rename-Ddebug-to-Ddebug-extra.patch
+Patch47:        systemd-240-meson-unify-linux-stat.h-check-with-other-checks-and.patch
+Patch48:        systemd-239-meson-avoid-warning-about-comparison-of-bool-and-str.patch
+Patch49:        systemd-240-meson-drop-name-argument-in-cc.has_argument-8878.patch
+Patch50:        systemd-240-meson-use-triple-quote-delimition-in-one-more-place.patch
+Patch51:        systemd-241-coredump-only-install-coredump.conf-when-ENABLED_COR.patch
+Patch52:        systemd-fix-fstab-generator.diff
+Patch53:        systemd-240-core-dont-t-remount-sys-fs-cgroup-for-relabel-if-not.patch
+Patch54:        systemd-239-core-do-not-free-heap-allocated-strings-8391.patch
+Patch55:        systemd-disable-power-key-handling.diff
+Patch56:        systemd-239-core-when-reloading-delay-any-actions-on-journal-and.patch
+Patch57:        systemd-revert-PID-file-hardening-for-booster-silica-qt5.diff
+# This patch serves two purposes: it adds needed "#include <sys/sysmacros.h>"
+# and initializes variables with automatic cleanup functions to silence
+# compiler warnings.
+Patch99:        systemd-238_fix_build_with_glibc228.patch
 
 BuildRequires:  audit-libs-devel
+BuildRequires:  cmake
 BuildRequires:  fdupes
 BuildRequires:  glib2-devel
 BuildRequires:  gperf
@@ -71,6 +74,7 @@ BuildRequires:  libmount-devel
 BuildRequires:  libselinux-devel
 BuildRequires:  libtool
 BuildRequires:  libxslt
+BuildRequires:  meson
 BuildRequires:  pam-devel
 BuildRequires:  pkgconfig(blkid) >= 2.20
 BuildRequires:  pkgconfig(dbus-1) >= 1.3.2
@@ -96,22 +100,6 @@ Provides:       udev = %{version}
 Obsoletes:      udev < 184
 Provides:       systemd-sysv = %{version}
 Obsoletes:      systemd-sysv < %{version}
-
-Provides:       systemd-console-ttyMFD2 = %{version}
-Obsoletes:      systemd-console-ttyMFD2 <= 187
-Provides:       systemd-console-ttyS0 = %{version}
-Obsoletes:      systemd-console-ttyS0 <= 187
-Provides:       systemd-console-ttyS1 = %{version}
-Obsoletes:      systemd-console-ttyS1 <= 187
-Provides:       systemd-console-tty01 = %{version}
-Obsoletes:      systemd-console-tty01 <= 187
-Provides:       systemd-console-ttyO2 = %{version}
-Obsoletes:      systemd-console-ttyO2 <= 187
-Provides:       systemd-console-ttyAMA0 = %{version}
-Obsoletes:      systemd-console-ttyAMA0 <= 187
-
-Provides:       libgudev1 = %{version}
-Obsoletes:      libgudev1 <= 209
 
 %description
 systemd is a system and service manager for Linux, compatible with
@@ -153,23 +141,10 @@ Requires:       pam >= 1.3.1
 %description libs
 Libraries for systemd and udev, as well as the systemd PAM module.
 
-%package compat-libs
-Summary:        systemd compatibility libraries
-License:        LGPLv2+ and MIT
-# To reduce confusion, this package can only be installed in parallel
-# with the normal systemd-libs, same version.
-Requires:       systemd-libs = %{version}-%{release}
-
-%description compat-libs
-Compatibility libraries for systemd. If your package requires this
-package, you need to update your link options and build.
-
 %package devel
 Summary:        Development headers for systemd
 License:        LGPLv2+ and MIT
-# We need both libsystemd and libsystemd-<compat> libraries
 Requires:       %{name}-libs = %{version}-%{release}
-Requires:       %{name}-compat-libs = %{version}-%{release}
 # For macros.systemd
 Requires:       %{name} = %{version}-%{release}
 Provides:       libudev-devel = %{version}
@@ -191,136 +166,97 @@ Obsoletes: %{name}-docs
 Summary:   Systemd tests
 Requires:  %{name} = %{version}-%{release}
 Requires:  blts-tools
+Requires:  acl
 
 %description tests
 This package includes tests for systemd.
 
 %prep
-%setup -q -n %{name}-%{version}/systemd
-
-%patch0 -p1
-%patch1 -p1
-%patch2 -p1
-%patch4 -p1
-%patch8 -p1
-%patch9 -p1
-%patch10 -p1
-%patch11 -p1
-%patch12 -p1
-%patch20 -p1
-%patch21 -p1
-# Udev firmware loading workaround.
-%patch22 -p1
-%patch23 -p1
-# JB#36605 LVM/UDEV workaround.
-%patch24 -p1
-%patch25 -p1
-# occasional boot hang fix
-%patch26 -p1
-# shutup 'Time has been changed messages' in journal info
-%patch27 -p1
-%patch28 -p1
-%patch29 -p1
-%patch30 -p1
-%patch31 -p1
-# DHCP6 client CVE-2018-15688 fix
-%patch32 -p1
-# home encryption related patches
-%patch33 -p1
-%patch34 -p1
-%patch35 -p1
-%patch36 -p1
-%patch37 -p1
-%patch38 -p1
-%patch39 -p1
-# multiuser fixes
-%patch40 -p1
-# udev path temporary fix
-%patch41 -p1
-%patch42 -p1
-# gperf 3.1 compatibility fix
-%patch43 -p1
-#systemd-225_fix_build_with_glibc228.patch
-%patch99 -p1
+%autosetup -p1 -n %{name}-%{version}/systemd
 
 %build
-./autogen.sh
+ntp_servers=({0..3}.sailfishos.pool.ntp.org)
 
 CONFIGURE_OPTS=(
-        --disable-kdbus
+        -Drootprefix=/usr
+        -Dacl=true
+        -Dapparmor=false
+        -Daudit=true
+        -Dbacklight=false
+        -Dblkid=true
+        -Db_pie=true
+        -Dbzip2=false
+        -Dcoredump=false
+        -Ddbus=true
+        -Defi=false
+        -Delfutils=false
+        -Dfirstboot=false
+        -Dgcrypt=true
+        -Dglib=false
+        -Dgnu-efi=false
+        -Dgnutls=false
+        -Dhibernate=false
+        -Dimportd=false
+        -Dinstall-tests=true
+        -Dkmod=true
+        -Dlibcryptsetup=true
+        -Dlibcurl=false
+        -Dlibidn=false
+        -Dlibiptc=false
+        -Dlocaled=false
+        -Dlz4=false
+        -Dmachined=false
+        -Dman=false
+        -Dmicrohttpd=false
+        -Dmyhostname=false
+        -Dnetworkd=false
+        -Dntp-servers="${ntp_servers[*]}"
+        -Dpam=true
+        -Dqrencode=false
+        -Dquotacheck=false
+        -Dresolve=false
+        -Drfkill=false
+        -Dseccomp=false
+        -Dselinux=true
+        -Dsmack=false
+        -Dsplit-usr=false
+        -Dsystem-gid-max=999
+        -Dsystem-uid-max=999
+        -Dsysusers=false
+        -Dsysvinit-path=
+        -Dsysvrcnd-path=
+        -Dtests=true
+        -Dtimedated=false
+        -Dtimesyncd=false
+        -Dtpm=false
+        -Dusers-gid=100
+        -Dxkbcommon=false
+        -Dxz=true
+        -Dzlib=false
+        -Dzshcompletiondir=no
 )
 
-%configure \
-        "${CONFIGURE_OPTS[@]}" \
-        --enable-compat-libs \
-        --with-rootprefix=/usr \
-        --disable-coredump \
-        --disable-static \
-        --with-firmware-path=/lib/firmware/updates:/lib/firmware:/system/etc/firmware:/etc/firmware:/vendor/firmware:/firmware/image \
-        --disable-manpages \
-        --disable-libcurl \
-        --disable-timesyncd \
-        --disable-resolved \
-        --disable-rfkill \
-        --disable-machined \
-        --disable-importd \
-        --disable-zlib \
-        --without-python \
-        --disable-xkbcommon \
-        --disable-seccomp \
-        --disable-apparmor \
-        --enable-pam \
-        --enable-acl \
-        --enable-audit \
-        --disable-elfutils \
-        --disable-qrencode \
-        --disable-microhttpd \
-        --disable-gnutls \
-        --disable-libcurl \
-        --disable-libidn \
-        --disable-libiptc \
-        --disable-quotacheck \
-        --disable-firstboot \
-        --disable-backlight \
-        --disable-timedated \
-        --disable-networkd \
-        --disable-localed \
-        --disable-myhostname \
-        --with-sysvinit-path="" \
-        --with-sysvrcnd-path="" \
-        --disable-hibernate \
-        --with-zshcompletiondir=no \
-        --with-ntp-servers="0.sailfishos.pool.ntp.org 1.sailfishos.pool.ntp.org 2.sailfishos.pool.ntp.org 3.sailfishos.pool.ntp.org" \
-        --enable-tests \
-        --enable-selinux \
-        CFLAGS=-fno-lto
-
-make %{?_smp_mflags} GCC_COLORS="" V=1
+%meson "${CONFIGURE_OPTS[@]}"
+%meson_build
 
 %install
-%make_install
+%meson_install
 
 # udev links
-mkdir -p %{buildroot}/%{_sbindir}
-ln -sf ..%{_bindir}/udevadm %{buildroot}%{_sbindir}/udevadm
+mkdir -p %{buildroot}%{_sbindir}
+ln -sf ../..%{_bindir}/udevadm %{buildroot}%{_sbindir}/udevadm
 # legacy link to keep things working while we move to bindir
 mkdir -p %{buildroot}/bin
 ln -sf ..%{_bindir}/udevadm %{buildroot}/bin/udevadm
 
 # Compatiblity and documentation files
-touch %{buildroot}/%{_sysconfdir}/crypttab
-chmod 600 %{buildroot}/%{_sysconfdir}/crypttab
+touch %{buildroot}%{_sysconfdir}/crypttab
+chmod 600 %{buildroot}%{_sysconfdir}/crypttab
 
 # Create SysV compatibility symlinks. systemctl/systemd are smart
 # enough to detect in which way they are called.
 mkdir -p %{buildroot}/sbin
 ln -s ..%{pkgdir}/systemd %{buildroot}/sbin/init
-ln -s ../..%{_bindir}/systemctl %{buildroot}%{_sbindir}/reboot
-ln -s ../..%{_bindir}/systemctl %{buildroot}%{_sbindir}/halt
-ln -s ../..%{_bindir}/systemctl %{buildroot}%{_sbindir}/poweroff
-ln -s ../..%{_bindir}/systemctl %{buildroot}%{_sbindir}/shutdown
-ln -s ../..%{_bindir}/systemctl %{buildroot}%{_sbindir}/telinit
-ln -s ../..%{_bindir}/systemctl %{buildroot}%{_sbindir}/runlevel
 
 # Make sure these directories are properly owned
 mkdir -p %{buildroot}%{system_unit_dir}/basic.target.wants
@@ -330,6 +266,14 @@ mkdir -p %{buildroot}%{system_unit_dir}/getty.target.wants
 mkdir -p %{buildroot}%{system_unit_dir}/syslog.target.wants
 mkdir -p %{buildroot}%{system_unit_dir}/graphical.target.wants
 mkdir -p %{buildroot}%{system_unit_dir}/network.target.wants
+mkdir -p %{buildroot}%{_localstatedir}/run
+mkdir -p %{buildroot}%{_localstatedir}/log
+touch %{buildroot}%{_localstatedir}/run/utmp
+touch %{buildroot}%{_localstatedir}/log/{w,b}tmp
+
+# Make sure the user generators dir exists too
+mkdir -p %{buildroot}%{pkgdir}/system-generators
+mkdir -p %{buildroot}%{pkgdir}/user-generators
 
 # Require network to be enabled with multi-user.target
 mkdir -p %{buildroot}%{system_unit_dir}/multi-user.target.wants/
@@ -385,11 +329,7 @@ rm %{buildroot}%{_sysconfdir}/X11/xinit/xinitrc.d/50-systemd-user.sh
 %find_lang %{name}
 
 %check
-#make check VERBOSE=1
-
-# Check for botched translations (https://bugzilla.redhat.com/show_bug.cgi?id=1226566)
-test -z "$(grep -L xml:lang %{buildroot}%{_datadir}/polkit-1/actions/org.freedesktop.*.policy)"
-
+#% meson_test
 
 %pre
 getent group cdrom >/dev/null 2>&1 || groupadd -r -g 11 cdrom >/dev/null 2>&1 || :
@@ -397,18 +337,20 @@ getent group utmp >/dev/null 2>&1 || groupadd -r -g 22 utmp >/dev/null 2>&1 || :
 getent group tape >/dev/null 2>&1 || groupadd -r -g 33 tape >/dev/null 2>&1 || :
 getent group dialout >/dev/null 2>&1 || groupadd -r -g 18 dialout >/dev/null 2>&1 || :
 getent group input >/dev/null 2>&1 || groupadd -r input >/dev/null 2>&1 || :
+getent group kvm &>/dev/null || groupadd -r -g 36 kvm &>/dev/null || :
+getent group render &>/dev/null || groupadd -r render &>/dev/null || :
 getent group systemd-journal >/dev/null 2>&1 || groupadd -r -g 190 systemd-journal 2>&1 || :
-#getent group systemd-timesync >/dev/null 2>&1 || groupadd -r systemd-timesync 2>&1 || :
-#getent passwd systemd-timesync >/dev/null 2>&1 || useradd -r -l -g systemd-timesync -d / -s /sbin/nologin -c "systemd Time Synchronization" systemd-timesync >/dev/null 2>&1 || :
+
+#getent group systemd-coredump &>/dev/null || groupadd -r systemd-coredump 2>&1 || :
+#getent passwd systemd-coredump &>/dev/null || useradd -r -l -g systemd-coredump -d / -s /sbin/nologin -c "systemd Core Dumper" systemd-coredump &>/dev/null || :
+
 getent group systemd-network >/dev/null 2>&1 || groupadd -r systemd-network 2>&1 || :
 getent passwd systemd-network >/dev/null 2>&1 || useradd -r -l -g systemd-network -d / -s /sbin/nologin -c "systemd Network Management" systemd-network >/dev/null 2>&1 || :
+
 #getent group systemd-resolve >/dev/null 2>&1 || groupadd -r systemd-resolve 2>&1 || :
 #getent passwd systemd-resolve >/dev/null 2>&1 || useradd -r -l -g systemd-resolve -d / -s /sbin/nologin -c "systemd Resolver" systemd-resolve >/dev/null 2>&1 || :
-getent group systemd-bus-proxy >/dev/null 2>&1 || groupadd -r systemd-bus-proxy 2>&1 || :
-getent passwd systemd-bus-proxy >/dev/null 2>&1 || useradd -r -l -g systemd-bus-proxy -d / -s /sbin/nologin -c "systemd Bus Proxy" systemd-bus-proxy >/dev/null 2>&1 || :
 
 systemctl stop systemd-udevd-control.socket systemd-udevd-kernel.socket systemd-udevd.service >/dev/null 2>&1 || :
-
 
 %post
 touch /etc/machine-id || :
@@ -436,12 +378,8 @@ rm -f /.readahead > /dev/null 2>&1 || :
 # JB#51560
 for a in `find /etc/systemd/system -type l ! -exec test -e {} \; -print`; do stat -t -c%N $a | sed "s/'//g" | awk -F "/" '{print $NF" "$NF}' | xargs printf "systemctl disable %s; systemctl enable %s;\n" | sh; done || :
 
-
 %post libs -p /sbin/ldconfig
 %postun libs -p /sbin/ldconfig
-
-%post compat-libs -p /sbin/ldconfig
-%postun compat-libs -p /sbin/ldconfig
 
 %files -f %{name}.lang
 %defattr(-,root,root,-)
@@ -455,9 +393,8 @@ for a in `find /etc/systemd/system -type l ! -exec test -e {} \; -print`; do sta
 %dir %{_sysconfdir}/binfmt.d
 %dir %{_sysconfdir}/udev
 %dir %{_sysconfdir}/udev/rules.d
-%dir %{pkgdir}
-%dir %{pkgdir}/catalog
-%dir %{system_unit_dir}
+# Include everything inside /usr/lib/systemd
+%{pkgdir}
 %dir %{_prefix}/lib/tmpfiles.d
 %dir %{_prefix}/lib/sysctl.d
 %dir %{_prefix}/lib/modules-load.d
@@ -468,11 +405,14 @@ for a in `find /etc/systemd/system -type l ! -exec test -e {} \; -print`; do sta
 %dir %{_localstatedir}/lib/systemd/coredump
 %ghost %{_localstatedir}/lib/systemd/random-seed
 %ghost %{_localstatedir}/lib/systemd/catalog/database
-%dir %{_sysconfdir}/dbus-1/system.d
-%config %{_sysconfdir}/dbus-1/system.d/org.freedesktop.systemd1.conf
-%config %{_sysconfdir}/dbus-1/system.d/org.freedesktop.hostname1.conf
-%config %{_sysconfdir}/dbus-1/system.d/org.freedesktop.login1.conf
-%config %{_sysconfdir}/pam.d/systemd-user
+%ghost %{_localstatedir}/log/btmp
+%ghost %{_localstatedir}/log/wtmp
+%ghost %{_localstatedir}/run/utmp
+%dir %{_datadir}/dbus-1/system.d
+%{_datadir}/dbus-1/system.d/org.freedesktop.systemd1.conf
+%{_datadir}/dbus-1/system.d/org.freedesktop.hostname1.conf
+%{_datadir}/dbus-1/system.d/org.freedesktop.login1.conf
+%{_sysconfdir}/pam.d/systemd-user
 %ghost %{_sysconfdir}/udev/hwdb.bin
 %{_rpmconfigdir}/macros.d/macros.systemd
 %dir %{_sysconfdir}/xdg/systemd
@@ -485,17 +425,11 @@ for a in `find /etc/systemd/system -type l ! -exec test -e {} \; -print`; do sta
 %{_bindir}/systemd-machine-id-setup
 %{_bindir}/loginctl
 %{_bindir}/journalctl
-%config %{_sysconfdir}/xdg/systemd/user
+%{_sysconfdir}/xdg/systemd/user
 %ghost %{_sysconfdir}/crypttab
 %{_sysconfdir}/systemd/system/*
-# Do we really need this? We're including individual files below
-#%%{_prefix}/lib/tmpfiles.d/*
 %{_prefix}/lib/sysctl.d/50-default.conf
-%dir %{user_unit_dir}
-%{user_unit_dir}/*
-%{pkgdir}/user-generators/systemd-dbus1-generator
-%dir /lib/udev/
-/lib/udev/*
+/lib/udev
 %{_bindir}/systemctl-user
 %{_bindir}/busctl
 %{_bindir}/systemd-tmpfiles
@@ -506,14 +440,15 @@ for a in `find /etc/systemd/system -type l ! -exec test -e {} \; -print`; do sta
 %{_bindir}/systemd-cgls
 %{_bindir}/systemd-cgtop
 %{_bindir}/systemd-delta
+%{_bindir}/systemd-mount
+%{_bindir}/systemd-umount
+%{_bindir}/systemd-socket-activate
 %{_bindir}/systemd-run
 %{_bindir}/systemd-detect-virt
 %{_bindir}/systemd-inhibit
 %{_bindir}/systemd-path
-%{_bindir}/systemd-sysusers
 %{_bindir}/systemd-hwdb
 %{_bindir}/hostnamectl
-%{_bindir}/bootctl
 %{_prefix}/lib/tmpfiles.d/systemd.conf
 %{_prefix}/lib/tmpfiles.d/systemd-nologin.conf
 %{_prefix}/lib/tmpfiles.d/x11.conf
@@ -523,7 +458,6 @@ for a in `find /etc/systemd/system -type l ! -exec test -e {} \; -print`; do sta
 %{_prefix}/lib/tmpfiles.d/home.conf
 %{_prefix}/lib/tmpfiles.d/systemd-nspawn.conf
 %{_prefix}/lib/tmpfiles.d/journal-nocow.conf
-%{pkgdir}/catalog/systemd.catalog
 %{_bindir}/udevadm
 # legacy symlink
 /bin/udevadm
@@ -532,6 +466,7 @@ for a in `find /etc/systemd/system -type l ! -exec test -e {} \; -print`; do sta
 %{_prefix}/lib/kernel/install.d/50-depmod.install
 %{_prefix}/lib/kernel/install.d/90-loaderentry.install
 /sbin/init
+%{_sbindir}/init
 %{_sbindir}/reboot
 %{_sbindir}/halt
 %{_sbindir}/poweroff
@@ -539,20 +474,19 @@ for a in `find /etc/systemd/system -type l ! -exec test -e {} \; -print`; do sta
 %{_sbindir}/telinit
 %{_sbindir}/runlevel
 %{_sbindir}/udevadm
-%{_datadir}/factory/etc/nsswitch.conf
-%{_datadir}/factory/etc/pam.d/other
-%{_datadir}/factory/etc/pam.d/system-auth
-%{_prefix}/lib/systemd
-%{_datadir}/dbus-1/*/org.freedesktop.systemd1.*
+%{_datadir}/factory
+%{_datadir}/dbus-1/*/org.freedesktop.systemd1.service
 %{_datadir}/dbus-1/system-services/org.freedesktop.hostname1.service
 %{_datadir}/dbus-1/system-services/org.freedesktop.login1.service
 %{_datadir}/polkit-1/actions/org.freedesktop.systemd1.policy
 %{_datadir}/polkit-1/actions/org.freedesktop.hostname1.policy
 %{_datadir}/polkit-1/actions/org.freedesktop.login1.policy
-%dir %{_datadir}/bash-completion
-%dir %{_datadir}/bash-completion/completions
 %{_datadir}/bash-completion/completions/*
-%{pkgdir}/catalog/systemd.*.catalog
+# These 2 files should land in /usr/lib without depending on 32/64 bits.
+%{_prefix}/lib/environment.d/99-environment.conf
+%{_prefix}/lib/modprobe.d/systemd.conf
+%license LICENSE.GPL2
+%license LICENSE.LGPL2.1
 
 # Just make sure we don't package these by default
 %exclude %{_prefix}/lib/systemd/system/default.target
@@ -560,16 +494,16 @@ for a in `find /etc/systemd/system -type l ! -exec test -e {} \; -print`; do sta
 %exclude %{_sysconfdir}/systemd/system/multi-user.target.wants/remote-fs.target
 %exclude %{system_unit_dir}/user@.service
 
+# This directory belongs to the tests subpackage
+%exclude %{pkgdir}/tests
+
 %files config-mer
 %defattr(-,root,root,-)
-%config %{_sysconfdir}/systemd/journald.conf
-%config %{_sysconfdir}/systemd/logind.conf
-%config %{_sysconfdir}/systemd/system.conf
-%config %{_sysconfdir}/systemd/user.conf
-%config %{_sysconfdir}/udev/udev.conf
-%config %{_sysconfdir}/systemd/bootchart.conf
-%config %{_prefix}/lib/sysusers.d/basic.conf
-%config %{_prefix}/lib/sysusers.d/systemd.conf
+%{_sysconfdir}/systemd/journald.conf
+%{_sysconfdir}/systemd/logind.conf
+%{_sysconfdir}/systemd/system.conf
+%{_sysconfdir}/systemd/user.conf
+%{_sysconfdir}/udev/udev.conf
 %{system_unit_dir}/default.target
 %{system_unit_dir}/user@.service
 
@@ -581,8 +515,7 @@ for a in `find /etc/systemd/system -type l ! -exec test -e {} \; -print`; do sta
 %defattr(-,root,root,-)
 %dir /opt/tests/systemd-tests
 /opt/tests/systemd-tests/tests.xml
-%dir /opt/tests/systemd-tests/bin
-/opt/tests/systemd-tests/bin/test-*
+%{pkgdir}/tests
 
 %files analyze
 %defattr(-,root,root,-)
@@ -592,21 +525,12 @@ for a in `find /etc/systemd/system -type l ! -exec test -e {} \; -print`; do sta
 %{_libdir}/security/pam_systemd.so
 %{_libdir}/libudev.so.*
 %{_libdir}/libsystemd.so.*
-
-%files compat-libs
-%{_libdir}/libsystemd-daemon.so.*
-%{_libdir}/libsystemd-login.so.*
-%{_libdir}/libsystemd-journal.so.*
-%{_libdir}/libsystemd-id128.so.*
+%{_libdir}/libnss_systemd.so.*
 
 %files devel
 %dir %{_includedir}/systemd
 %{_libdir}/libudev.so
 %{_libdir}/libsystemd.so
-%{_libdir}/libsystemd-daemon.so
-%{_libdir}/libsystemd-login.so
-%{_libdir}/libsystemd-journal.so
-%{_libdir}/libsystemd-id128.so
 %{_includedir}/systemd/sd-daemon.h
 %{_includedir}/systemd/sd-login.h
 %{_includedir}/systemd/sd-journal.h
@@ -620,9 +544,5 @@ for a in `find /etc/systemd/system -type l ! -exec test -e {} \; -print`; do sta
 %{_includedir}/libudev.h
 %{_libdir}/pkgconfig/libudev.pc
 %{_libdir}/pkgconfig/libsystemd.pc
-%{_libdir}/pkgconfig/libsystemd-daemon.pc
-%{_libdir}/pkgconfig/libsystemd-login.pc
-%{_libdir}/pkgconfig/libsystemd-journal.pc
-%{_libdir}/pkgconfig/libsystemd-id128.pc
-%{_libdir}/pkgconfig/systemd.pc
-%{_libdir}/pkgconfig/udev.pc
+%{_datadir}/pkgconfig/systemd.pc
+%{_datadir}/pkgconfig/udev.pc

@@ -11,7 +11,7 @@ Subject: [PATCH] pam-systemd: use secure_getenv() rather than getenv()
 diff -purN systemd/src/login/pam_systemd.c systemd-izh/src/login/pam_systemd.c
 --- systemd/src/login/pam_systemd.c	2019-08-05 05:38:44.107368495 -0400
 +++ systemd-izh/src/login/pam_systemd.c	2019-08-05 14:00:21.968726200 -0400
-@@ -284,29 +284,40 @@ _public_ PAM_EXTERN int pam_sm_open_sess
+@@ -294,29 +294,40 @@ _public_ PAM_EXTERN int pam_sm_open_sess
          pam_get_item(handle, PAM_RUSER, (const void**) &remote_user);
          pam_get_item(handle, PAM_RHOST, (const void**) &remote_host);
  

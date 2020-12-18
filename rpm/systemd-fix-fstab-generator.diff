@@ -1,0 +1,19 @@
+diff -purN systemd/src/fstab-generator/fstab-generator.c systemd-izh/src/fstab-generator/fstab-generator.c
+--- systemd/src/fstab-generator/fstab-generator.c	2020-10-13 13:34:00.170952415 +0300
++++ systemd-izh/src/fstab-generator/fstab-generator.c	2020-10-28 23:39:10.575809715 +0300
+@@ -376,7 +376,14 @@ static int add_mount(
+                 SET_FLAG(flags, NOFAIL, true);
+         }
+ 
+-        if (!(flags & NOFAIL) && !(flags & AUTOMOUNT))
++
++        /* IZh: Before the commit bd6bcce4d7fd9f34f84588888fa9d0e664e0500b
++         * thed ependency wasn't added when "noauto" option is set. But now
++         * the dependency on the local-fs.target for the home.mount prevent
++         * the system from booting because the device can't be mounted without
++         * asking a user for a password, but we can't ask because the
++         * graphical UI is not stated yet. So let's skip the dependency. */
++        if (!(flags & NOFAIL) && !(flags & AUTOMOUNT) && !path_equal(where, "/home"))
+                 fprintf(f, "Before=%s\n", post);
+ 
+         if (!(flags & AUTOMOUNT) && opts) {

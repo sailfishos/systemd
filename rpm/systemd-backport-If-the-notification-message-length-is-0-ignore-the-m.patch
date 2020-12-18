@@ -16,14 +16,14 @@ Signed-off-by: Jorge Niedbalski <jnr@metaklass.org>
 diff -purN systemd/src/core/manager.c systemd-izh/src/core/manager.c
 --- systemd/src/core/manager.c	2019-08-05 05:38:44.059368428 -0400
 +++ systemd-izh/src/core/manager.c	2019-08-05 13:04:50.260358645 -0400
-@@ -1543,6 +1543,10 @@ static int manager_dispatch_notify_fd(sd
+@@ -2073,6 +2073,10 @@ static int manager_dispatch_notify_fd(sd
+                  * being woken up over and over again but being unable to actually read the message off the socket. */
+                 return log_error_errno(errno, "Failed to receive notification message: %m");
+         }
++        if (n == 0) {
++                log_debug("Got zero-length notification message. Ignoring.");
++                return 0;
++        }
  
-                         return -errno;
-                 }
-+                if (n == 0) {
-+                        log_debug("Got zero-length notification message. Ignoring.");
-+                        return 0;
-+                }
- 
-                 CMSG_FOREACH(cmsg, &msghdr) {
-                         if (cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_RIGHTS) {
+         CMSG_FOREACH(cmsg, &msghdr) {
+                 if (cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_RIGHTS) {

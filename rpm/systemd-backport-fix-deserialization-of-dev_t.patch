@@ -13,13 +13,13 @@ diff --git a/src/core/automount.c b/src/core/automount.c
 index 70232f358..eebcc3b20 100644
 --- a/src/core/automount.c
 +++ b/src/core/automount.c
-@@ -882,12 +882,13 @@ static int automount_deserialize_item(Unit *u, const char *key, const char *valu
+@@ -900,12 +900,13 @@ static int automount_deserialize_item(Un
                          a->result = f;
-
+ 
          } else if (streq(key, "dev-id")) {
 -                unsigned d;
 +                unsigned long d;
-
+ 
 -                if (safe_atou(value, &d) < 0)
 +                if (safe_atolu(value, &d) < 0)
                          log_unit_debug(u, "Failed to parse dev-id value: %s", value);
@@ -29,3 +29,4 @@ index 70232f358..eebcc3b20 100644
 +
          } else if (streq(key, "token")) {
                  unsigned token;
+ 

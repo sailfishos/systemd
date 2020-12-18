@@ -1,0 +1,41 @@
+Based on v241 commit.
+
+From 8f6b442a78d0b485f044742ad90b2e8271b4e68e Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Zbigniew=20J=C4=99drzejewski-Szmek?= <zbyszek@in.waw.pl>
+Date: Sun, 19 Aug 2018 19:11:30 +0200
+Subject: [PATCH] meson: rename -Ddebug to -Ddebug-extra
+
+Meson added -Doptimization and -Ddebug options, which obviously causes
+a conflict with our -Ddebug options. Let's rename it.
+
+Fixes #9883.
+diff -purN systemd/meson.build systemd-izh/meson.build
+--- systemd/meson.build	2020-10-13 14:07:06.552552990 +0000
++++ systemd-izh/meson.build	2020-10-14 16:11:24.062874704 +0000
+@@ -812,11 +812,11 @@ conf.set_quoted('GETTEXT_PACKAGE', meson
+ substs.set('SUSHELL', get_option('debug-shell'))
+ substs.set('DEBUGTTY', get_option('debug-tty'))
+ 
+-debug = get_option('debug')
++debug_extra = get_option('debug-extra')
+ enable_debug_hashmap = false
+ enable_debug_mmap_cache = false
+-if debug != ''
+-        foreach name : debug.split(',')
++if debug_extra != ''
++        foreach name : debug_extra.split(',')
+                 if name == 'hashmap'
+                         enable_debug_hashmap = true
+                 elif name == 'mmap-cache'
+diff -purN systemd/meson_options.txt systemd-izh/meson_options.txt
+--- systemd/meson_options.txt	2020-10-13 10:34:00.082952034 +0000
++++ systemd-izh/meson_options.txt	2020-10-14 16:09:07.386303460 +0000
+@@ -53,7 +53,7 @@ option('debug-shell', type : 'string', v
+        description : 'path to debug shell binary')
+ option('debug-tty', type : 'string', value : '/dev/tty9',
+        description : 'specify the tty device for debug shell')
+-option('debug', type : 'string',
++option('debug-extra', type : 'string',
+        description : 'enable extra debugging (hashmap,mmap-cache)')
+ option('memory-accounting-default', type : 'boolean',
+        description : 'enable MemoryAccounting= by default')

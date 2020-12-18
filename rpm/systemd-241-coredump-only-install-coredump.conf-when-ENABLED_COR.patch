@@ -1,0 +1,30 @@
+From 1d88bce2a08609dad945425275059c196ee73189 Mon Sep 17 00:00:00 2001
+From: Franck Bui <fbui@suse.com>
+Date: Fri, 2 Nov 2018 13:24:35 +0100
+Subject: [PATCH] coredump: only install coredump.conf when
+ ENABLED_COREDUMP=true
+
+---
+ src/coredump/meson.build | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/src/coredump/meson.build b/src/coredump/meson.build
+index bfba7ef58c..7fa5942697 100644
+--- a/src/coredump/meson.build
++++ b/src/coredump/meson.build
+@@ -28,8 +28,10 @@ endif
+ 
+ coredumpctl_sources = files('coredumpctl.c')
+ 
+-install_data('coredump.conf',
+-             install_dir : pkgsysconfdir)
++if conf.get('ENABLE_COREDUMP') == 1
++        install_data('coredump.conf',
++                     install_dir : pkgsysconfdir)
++endif
+ 
+ tests += [
+         [['src/coredump/test-coredump-vacuum.c',
+-- 
+2.26.2
+

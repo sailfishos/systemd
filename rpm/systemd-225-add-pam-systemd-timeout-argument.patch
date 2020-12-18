@@ -26,7 +26,7 @@ diff --git a/src/libsystemd/sd-bus/bus-convenience.c b/src/libsystemd/sd-bus/bus
 index af5f7da..90d9034 100644
 --- a/src/libsystemd/sd-bus/bus-convenience.c
 +++ b/src/libsystemd/sd-bus/bus-convenience.c
-@@ -136,6 +136,48 @@ fail:
+@@ -138,6 +138,48 @@ fail:
          return sd_bus_error_set_errno(error, r);
  }
  
@@ -41,7 +41,7 @@ index af5f7da..90d9034 100644
 +                sd_bus_message **reply,
 +                const char *types, ...) {
 +
-+        _cleanup_bus_message_unref_ sd_bus_message *m = NULL;
++        _cleanup_(sd_bus_message_unrefp) sd_bus_message *m = NULL;
 +        int r;
 +
 +        bus_assert_return(bus, -EINVAL, error);
@@ -60,7 +60,7 @@ index af5f7da..90d9034 100644
 +                va_list ap;
 +
 +                va_start(ap, types);
-+                r = bus_message_append_ap(m, types, ap);
++                r = sd_bus_message_appendv(m, types, ap);
 +                va_end(ap);
 +                if (r < 0)
 +                        goto fail;
@@ -79,7 +79,7 @@ diff --git a/src/login/pam_systemd.c b/src/login/pam_systemd.c
 index f83d18b..e85b640 100644
 --- a/src/login/pam_systemd.c
 +++ b/src/login/pam_systemd.c
-@@ -50,7 +50,8 @@ static int parse_argv(
+@@ -54,7 +54,8 @@ static int parse_argv(
                  int argc, const char **argv,
                  const char **class,
                  const char **type,
@@ -89,7 +89,7 @@ index f83d18b..e85b640 100644
  
          unsigned i;
  
-@@ -79,6 +80,9 @@ static int parse_argv(
+@@ -83,6 +84,9 @@ static int parse_argv(
                          else if (debug)
                                  *debug = k;
  
@@ -99,15 +99,15 @@ index f83d18b..e85b640 100644
                  } else
                          pam_syslog(handle, LOG_WARNING, "Unknown parameter '%s', ignoring", argv[i]);
          }
-@@ -217,6 +221,7 @@ _public_ PAM_EXTERN int pam_sm_open_session(
-         _cleanup_bus_flush_close_unref_ sd_bus *bus = NULL;
+@@ -229,6 +233,7 @@ _public_ PAM_EXTERN int pam_sm_open_sess
+         _cleanup_(sd_bus_flush_close_unrefp) sd_bus *bus = NULL;
          int session_fd = -1, existing, r;
          bool debug = false, remote;
 +        unsigned  timeout = 0;
          struct passwd *pw;
          uint32_t vtnr = 0;
          uid_t original_uid;
-@@ -231,7 +236,8 @@ _public_ PAM_EXTERN int pam_sm_open_session(
+@@ -243,7 +248,8 @@ _public_ PAM_EXTERN int pam_sm_open_sess
                         argc, argv,
                         &class_pam,
                         &type_pam,
@@ -117,7 +117,7 @@ index f83d18b..e85b640 100644
                  return PAM_SESSION_ERR;
  
          if (debug)
-@@ -377,11 +383,15 @@ _public_ PAM_EXTERN int pam_sm_open_session(
+@@ -383,11 +389,15 @@ _public_ PAM_EXTERN int pam_sm_open_sess
                             strempty(seat), vtnr, strempty(tty), strempty(display),
                             yes_no(remote), strempty(remote_user), strempty(remote_host));
  
@@ -138,7 +138,7 @@ diff --git a/src/systemd/sd-bus.h b/src/systemd/sd-bus.h
 index 5439a19..a8f3d4f 100644
 --- a/src/systemd/sd-bus.h
 +++ b/src/systemd/sd-bus.h
-@@ -300,6 +300,7 @@ int sd_bus_get_name_machine_id(sd_bus *bus, const char *name, sd_id128_t *machin
+@@ -326,6 +326,7 @@ int sd_bus_get_name_machine_id(sd_bus *b
  /* Convenience calls */
  
  int sd_bus_call_method(sd_bus *bus, const char *destination, const char *path, const char *interface, const char *member, sd_bus_error *ret_error, sd_bus_message **reply, const char *types, ...);

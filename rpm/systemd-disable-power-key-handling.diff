@@ -1,0 +1,22 @@
+Disable Power key press action in logind because we handle it elsewhere.
+
+diff -purN -X dontdiff systemd/src/login/logind.conf.in systemd-izh/src/login/logind.conf.in
+--- systemd/src/login/logind.conf.in	2020-10-29 16:44:30.245422615 +0300
++++ systemd-izh/src/login/logind.conf.in	2020-11-13 16:43:36.961690967 +0300
+@@ -18,11 +18,11 @@
+ #KillOnlyUsers=
+ #KillExcludeUsers=root
+ #InhibitDelayMaxSec=5
+-#HandlePowerKey=poweroff
+-#HandleSuspendKey=suspend
+-#HandleHibernateKey=hibernate
+-#HandleLidSwitch=suspend
+-#HandleLidSwitchExternalPower=suspend
++HandlePowerKey=ignore
++HandleSuspendKey=ignore
++HandleHibernateKey=ignore
++HandleLidSwitch=ignore
++HandleLidSwitchExternalPower=ignore
+ #HandleLidSwitchDocked=ignore
+ #PowerKeyIgnoreInhibited=no
+ #SuspendKeyIgnoreInhibited=no
