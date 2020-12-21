@@ -1,0 +1,61 @@
+From d3243f55ca9b5f305306ba4105ab29768e372a78 Mon Sep 17 00:00:00 2001
+From: Alan Jenkins <alan.christopher.jenkins@gmail.com>
+Date: Thu, 21 Jun 2018 14:12:30 +0100
+Subject: [PATCH] core: remove support for API bus "started outside our own
+ logic"
+
+Looking at a recent Bad Day, my log contains over 100 lines of
+
+    systemd[23895]: Failed to connect to API bus: Connection refused
+
+It is due to "systemd --user" retrying to connect to an API bus.[*]  I
+would prefer to avoid spamming the logs.  I don't think it is good for us
+to retry so much like this.
+
+systemd was mislead by something setting DBUS_SESSION_BUS_ADDRESS.  My best
+guess is an unfortunate series of events caused gdm to set this.  gdm has
+code to start a session dbus if there is not a bus available already (and
+in this case it exports the environment variable).  I believe it does not
+normally do this when running under systemd, because "systemd --user" and
+hence "dbus.service" would already have been started by pam_systemd.
+
+I see two possibilities
+
+1. Rip out the check for DBUS_SESSION_BUS_ADDRESS entirely.
+2. Only check for DBUS_SESSION_BUS_ADDRESS on startup.  Not in the
+   "recheck" logic.
+
+The justification for 2), is that the recheck is called from unit_notify(),
+this is used to check whether the service just started (or stopped) was
+"dbus.service".  This reason for rechecking does not apply if we think
+the session bus was started outside our logic.
+
+But I think we can justify 1).  dbus-daemon ships a statically-enabled
+/usr/lib/systemd/user/dbus.service, which would conflict with an attempt to
+use an external dbus.  Also "systemd --user" is started from user@.service;
+if you try to start it manually so that it inherits an environment
+variable, it will conflict if user@.service was started by pam_systemd
+(or loginctl enable-linger).
+---
+ src/core/manager.c | 5 -----
+ 1 file changed, 5 deletions(-)
+
+diff --git a/src/core/manager.c b/src/core/manager.c
+index a3ae481158..ada8712fd5 100644
+--- a/src/core/manager.c
++++ b/src/core/manager.c
+@@ -1481,11 +1481,6 @@ static bool manager_dbus_is_running(Manager *m, bool deserialized) {
+         if (m->test_run_flags != 0)
+                 return false;
+ 
+-        /* If we are in the user instance, and the env var is already set for us, then this means D-Bus is ran
+-         * somewhere outside of our own logic. Let's use it */
+-        if (MANAGER_IS_USER(m) && getenv("DBUS_SESSION_BUS_ADDRESS"))
+-                return true;
+-
+         u = manager_get_unit(m, SPECIAL_DBUS_SOCKET);
+         if (!u)
+                 return false;
+-- 
+2.25.1
+

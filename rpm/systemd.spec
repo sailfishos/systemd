@@ -55,6 +55,7 @@ Patch54:        systemd-239-core-do-not-free-heap-allocated-strings-8391.patch
 Patch55:        systemd-disable-power-key-handling.diff
 Patch56:        systemd-239-core-when-reloading-delay-any-actions-on-journal-and.patch
 Patch57:        systemd-revert-PID-file-hardening-for-booster-silica-qt5.diff
+Patch58:        systemd-240-core-remove-support-for-API-bus-started-outside-our-.patch
 # This patch serves two purposes: it adds needed "#include <sys/sysmacros.h>"
 # and initializes variables with automatic cleanup functions to silence
 # compiler warnings.
