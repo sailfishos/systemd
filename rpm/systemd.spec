@@ -56,6 +56,7 @@ Patch55:        systemd-disable-power-key-handling.diff
 Patch56:        systemd-239-core-when-reloading-delay-any-actions-on-journal-and.patch
 Patch57:        systemd-revert-PID-file-hardening-for-booster-silica-qt5.diff
 Patch58:        systemd-240-core-remove-support-for-API-bus-started-outside-our-.patch
+Patch59:        systemd-240-units-add-new-system-update-pre.target.patch
 # This patch serves two purposes: it adds needed "#include <sys/sysmacros.h>"
 # and initializes variables with automatic cleanup functions to silence
 # compiler warnings.
