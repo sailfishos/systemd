@@ -1,0 +1,90 @@
+From f7239317815a0a9466d4c0e58e309c09056e23a9 Mon Sep 17 00:00:00 2001
+From: Hans de Goede <hdegoede@redhat.com>
+Date: Tue, 19 Jun 2018 10:50:41 +0200
+Subject: [PATCH] units: Add new system-update-pre.target
+
+systemd offline-updates allows dropping multiple system update units
+to be added to system-update.target.wants.
+
+As documented in systemd.offline-updates(7) only 1 of these units
+should actually be active (based on the /system-update symlink) and
+when that unit is done it should reboot the system.
+
+In some cases it is desirable to run a unit whenever booting in
+offline-updates mode indepedent of which update unit is going to
+handle the update. One example of this is integration with bootloader
+code which checks if the previous boot was succesful.
+
+Since the active unit will reboot the system when it is done, there
+is no guarantee that adding such a unit to system-update.target.wants
+will get it executed always.
+
+This commit adds a system-update-pre.target which can be used for
+units which should always run when booting in offline-updates mode.
+---
+ man/systemd.offline-updates.xml |  1 +
+ units/meson.build               |  1 +
+ units/system-update-pre.target  | 16 ++++++++++++++++
+ units/system-update.target      |  1 +
+ 4 files changed, 19 insertions(+)
+ create mode 100644 units/system-update-pre.target
+
+diff --git a/man/systemd.offline-updates.xml b/man/systemd.offline-updates.xml
+index ca7d6d3c1..b16e19bf8 100644
+--- a/man/systemd.offline-updates.xml
++++ b/man/systemd.offline-updates.xml
+@@ -163,6 +163,7 @@
+       <listitem>
+         <para>The update service should declare <varname>DefaultDependencies=false</varname>,
+         <varname>Requires=sysinit.target</varname>, <varname>After=sysinit.target</varname>,
++        <varname>After=system-update-pre.target</varname>
+         and explicitly pull in any other services it requires.</para>
+       </listitem>
+     </orderedlist>
+diff --git a/units/meson.build b/units/meson.build
+index 7f4046419..28dce1ff4 100644
+--- a/units/meson.build
++++ b/units/meson.build
+@@ -91,6 +91,7 @@ units = [
+         ['sysinit.target',                      ''],
+         ['syslog.socket',                       ''],
+         ['system-update.target',                ''],
++        ['system-update-pre.target',            ''],
+         ['systemd-ask-password-console.path',   '',
+          'sysinit.target.wants/'],
+         ['systemd-ask-password-wall.path',      '',
+diff --git a/units/system-update-pre.target b/units/system-update-pre.target
+new file mode 100644
+index 000000000..dbd9ad92e
+--- /dev/null
++++ b/units/system-update-pre.target
+@@ -0,0 +1,16 @@
++#  SPDX-License-Identifier: LGPL-2.1+
++#
++#  This file is part of systemd.
++#
++#  systemd is free software; you can redistribute it and/or modify it
++#  under the terms of the GNU Lesser General Public License as published by
++#  the Free Software Foundation; either version 2.1 of the License, or
++#  (at your option) any later version.
++
++[Unit]
++Description=Offline System Update (Pre)
++Documentation=man:systemd.offline-updates(7)
++Documentation=man:systemd.special(7) man:systemd-system-update-generator(8)
++RefuseManualStart=yes
++After=sysinit.target
++Before=system-update.target
+diff --git a/units/system-update.target b/units/system-update.target
+index c46bfe754..b52a49489 100644
+--- a/units/system-update.target
++++ b/units/system-update.target
+@@ -14,4 +14,5 @@ Documentation=man:systemd.special(7) man:systemd-system-update-generator(8)
+ Requires=sysinit.target
+ After=sysinit.target
+ AllowIsolate=yes
++Wants=system-update-pre.target
+ Wants=system-update-cleanup.service
+-- 
+2.26.2
+
