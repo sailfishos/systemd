@@ -1,0 +1,26 @@
+From a54d57dc475f0e03552d7d8237db1ee79cc0216a Mon Sep 17 00:00:00 2001
+From: Ville Nummela <ville.nummela@jolla.com>
+Date: Tue, 5 Jan 2021 07:44:36 +0200
+Subject: [PATCH] machine-id-setup: Don't fsync after writing
+
+fsync_directory_of_file always fails if proc is not mounted.
+---
+ src/core/machine-id-setup.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/core/machine-id-setup.c b/src/core/machine-id-setup.c
+index 1b7424800c..157d8f3c9e 100644
+--- a/src/core/machine-id-setup.c
++++ b/src/core/machine-id-setup.c
+@@ -155,7 +155,7 @@ int machine_id_setup(const char *root, sd_id128_t machine_id, sd_id128_t *ret) {
+                 if (ftruncate(fd, 0) < 0)
+                         return log_error_errno(errno, "Failed to truncate %s: %m", etc_machine_id);
+ 
+-                if (id128_write_fd(fd, ID128_PLAIN, machine_id, true) >= 0)
++                if (id128_write_fd(fd, ID128_PLAIN, machine_id, false) >= 0)
+                         goto finish;
+         }
+ 
+-- 
+2.17.1
+

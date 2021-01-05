@@ -61,6 +61,8 @@ Patch59:        systemd-240-units-add-new-system-update-pre.target.patch
 # and initializes variables with automatic cleanup functions to silence
 # compiler warnings.
 Patch99:        systemd-238_fix_build_with_glibc228.patch
+# Fixes JB#52613. This patch can be removed once we have released SDK 3.4
+Patch100:       systemd-machine-id-setup-Don-t-fsync-after-writing.patch
 
 BuildRequires:  audit-libs-devel
 BuildRequires:  cmake
