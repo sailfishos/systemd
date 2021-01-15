@@ -57,6 +57,7 @@ Patch56:        systemd-239-core-when-reloading-delay-any-actions-on-journal-and
 Patch57:        systemd-revert-PID-file-hardening-for-booster-silica-qt5.diff
 Patch58:        systemd-240-core-remove-support-for-API-bus-started-outside-our-.patch
 Patch59:        systemd-240-units-add-new-system-update-pre.target.patch
+Patch60:        systemd-Fix-udev-firmware-events-dependencies.patch
 # This patch serves two purposes: it adds needed "#include <sys/sysmacros.h>"
 # and initializes variables with automatic cleanup functions to silence
 # compiler warnings.

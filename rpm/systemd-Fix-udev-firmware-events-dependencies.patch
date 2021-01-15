@@ -1,0 +1,46 @@
+Fix udev firmware events dependencies
+
+The "firmware" udev builtin command was dropped from the systemd by the commit:
+https://github.com/systemd/systemd/commit/be2ea723b1d023b3d385d3b791ee4607cbfb20ca
+
+But because of that the firmware loading events can be triggered too late,
+waiting for other events, e.g. module loading, to be processed first. But the
+device driver can in turn wait for the firmware to be loaded. So a timeout could
+happen and the device initialization will be aborted.
+
+Therefore let's bring back the code that skips dependency on the parent devices
+for firmware loading events.
+
+See: https://github.com/systemd/systemd/issues/18259
+
+diff -purN systemd/src/udev/udevd.c systemd-izh/src/udev/udevd.c
+--- systemd/src/udev/udevd.c	2021-01-15 16:29:27.280576575 +0000
++++ systemd-izh/src/udev/udevd.c	2021-01-15 16:39:27.146112548 +0000
+@@ -125,6 +125,7 @@ struct event {
+         dev_t devnum;
+         int ifindex;
+         bool is_block;
++        bool nodelay;
+         sd_event_source *timeout_warning;
+         sd_event_source *timeout;
+ };
+@@ -609,6 +610,8 @@ static int event_queue_insert(Manager *m
+         event->devnum = udev_device_get_devnum(dev);
+         event->is_block = streq("block", udev_device_get_subsystem(dev));
+         event->ifindex = udev_device_get_ifindex(dev);
++        if (streq(udev_device_get_subsystem(dev), "firmware"))
++                event->nodelay = true;
+ 
+         log_debug("seq %llu queued, '%s' '%s'", udev_device_get_seqnum(dev),
+              udev_device_get_action(dev), udev_device_get_subsystem(dev));
+@@ -692,6 +695,10 @@ static bool is_devpath_busy(Manager *man
+                         return true;
+                 }
+ 
++                /* allow to bypass the dependency tracking */
++                if (event->nodelay)
++                        continue;
++
+                 /* parent device event found */
+                 if (event->devpath[common] == '/') {
+                         event->delaying_seqnum = loop_event->seqnum;
