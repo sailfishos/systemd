@@ -1,0 +1,12 @@
+Return back missing pam_limits.so because the new systemd version (v238)
+doesn't include "system-auth" module.
+
+diff -purN systemd/src/login/systemd-user.m4 systemd-izh/src/login/systemd-user.m4
+--- systemd/src/login/systemd-user.m4	2021-03-22 11:23:59.831352968 +0000
++++ systemd-izh/src/login/systemd-user.m4	2021-03-22 11:26:20.741907967 +0000
+@@ -5,4 +5,5 @@
+ account required pam_unix.so
+ session required pam_loginuid.so
+ session optional pam_keyinit.so force revoke
++session required pam_limits.so
+ session optional pam_systemd.so
