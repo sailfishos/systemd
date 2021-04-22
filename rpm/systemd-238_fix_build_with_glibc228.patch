@@ -301,7 +301,7 @@ diff -purN systemd/src/core/mount.c systemd-izh/src/core/mount.c
 diff -purN systemd/src/core/mount-setup.c systemd-izh/src/core/mount-setup.c
 --- systemd/src/core/mount-setup.c	2020-10-13 13:34:00.154952346 +0300
 +++ systemd-izh/src/core/mount-setup.c	2020-10-19 23:37:02.796439036 +0300
-@@ -296,7 +296,7 @@ int mount_cgroup_controllers(char ***joi
+@@ -298,7 +298,7 @@ int mount_cgroup_controllers(char ***joi
                          for (i = *k, j = *k; *i; i++) {
  
                                  if (!streq(*i, controller)) {
@@ -345,7 +345,7 @@ diff -purN systemd/src/core/service.c systemd-izh/src/core/service.c
  #include <unistd.h>
  
  #include "sd-messages.h"
-@@ -3754,7 +3755,7 @@ int service_set_socket_fd(Service *s, in
+@@ -3672,7 +3673,7 @@ int service_set_socket_fd(Service *s, in
          if (getpeername_pretty(fd, true, &peer) >= 0) {
  
                  if (UNIT(s)->description) {
@@ -441,7 +441,7 @@ diff -purN systemd/src/fsck/fsck.c systemd-izh/src/fsck/fsck.c
 diff -purN systemd/src/fstab-generator/fstab-generator.c systemd-izh/src/fstab-generator/fstab-generator.c
 --- systemd/src/fstab-generator/fstab-generator.c	2020-10-13 13:34:00.170952415 +0300
 +++ systemd-izh/src/fstab-generator/fstab-generator.c	2020-10-19 23:37:02.804438943 +0300
-@@ -414,7 +414,7 @@ static int add_mount(
+@@ -421,7 +421,7 @@ static int add_mount(
                  return r;
  
          if (!isempty(fstype) && !streq(fstype, "auto")) {
@@ -525,7 +525,7 @@ diff -purN systemd/src/journal/journalctl.c systemd-izh/src/journal/journalctl.c
 diff -purN systemd/src/journal/journald-kmsg.c systemd-izh/src/journal/journald-kmsg.c
 --- systemd/src/journal/journald-kmsg.c	2020-10-13 13:34:00.182952468 +0300
 +++ systemd-izh/src/journal/journald-kmsg.c	2020-10-19 23:37:02.808438896 +0300
-@@ -443,7 +443,7 @@ fail:
+@@ -444,7 +444,7 @@ fail:
  }
  
  int server_open_kernel_seqnum(Server *s) {
