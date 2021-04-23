@@ -60,6 +60,7 @@ Patch59:        systemd-240-units-add-new-system-update-pre.target.patch
 Patch60:        systemd-Fix-udev-firmware-events-dependencies.patch
 Patch61:        systemd-245-polkit-async-CVE-2020-1712.diff
 Patch62:        systemd-pam_limits-fix.patch
+Patch63:        systemd-249-journald-Retry-if-posix_fallocate-returned-1-EINTR.patch
 # This patch serves two purposes: it adds needed "#include <sys/sysmacros.h>"
 # and initializes variables with automatic cleanup functions to silence
 # compiler warnings.

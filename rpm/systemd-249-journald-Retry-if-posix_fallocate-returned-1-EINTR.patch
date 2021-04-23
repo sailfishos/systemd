@@ -1,0 +1,125 @@
+Backported upstream commit 4c54768c9732532f4e56eab1be3e5474769e0d7a.
+
+From 4c54768c9732532f4e56eab1be3e5474769e0d7a Mon Sep 17 00:00:00 2001
+From: Igor Zhbanov <i.zhbanov@omprussia.ru>
+Date: Tue, 20 Apr 2021 17:22:28 +0000
+Subject: [PATCH] journald: Retry if posix_fallocate returned -1 (EINTR)
+
+On some conditions (particularly when mobile CPUs are going to sleep),
+the posix_fallocate(), which is called when a new journal file is allocated,
+can return -1 (EINTR). This is counted as a fatal error. So the journald
+closes both old and journals, and simply throwing away further incoming
+events, because of no log files open.
+
+Introduce posix_fallocate_loop() that restarts the function in the case
+of EINTR. Also let's make code base more uniform by returning negative
+values on error.
+
+Fix assert in test-sigbus.c that incorrectly counted positive values as
+success. After changing the function return values, that will actually work.
+
+Fixes: #19041
+
+Signed-off-by: Igor Zhbanov <i.zhbanov@omprussia.ru>
+
+diff -purN systemd/src/basic/fs-util.c systemd-izh/src/basic/fs-util.c
+--- systemd/src/basic/fs-util.c	2021-03-22 10:26:24.302958707 +0000
++++ systemd-izh/src/basic/fs-util.c	2021-04-22 14:11:23.293547546 +0000
+@@ -40,6 +40,7 @@
+ #include "parse-util.h"
+ #include "path-util.h"
+ #include "process-util.h"
++#include "ratelimit.h"
+ #include "stat-util.h"
+ #include "stdio-util.h"
+ #include "string-util.h"
+@@ -997,3 +998,22 @@ int fsync_directory_of_file(int fd) {
+ 
+         return 0;
+ }
++
++int posix_fallocate_loop(int fd, uint64_t offset, uint64_t size) {
++        /* On EINTR try a couple of times more, but protect against busy looping
++         * (not more than 16 times per 10s) */
++        RATELIMIT_DEFINE(rl, 10 * USEC_PER_SEC, 16);
++        int r;
++
++        r = posix_fallocate(fd, offset, size); /* returns positive errnos on error */
++        if (r != EINTR)
++                return -r; /* Let's return negative errnos, like common in our codebase */
++
++        while (ratelimit_test(&rl)) {
++                r = posix_fallocate(fd, offset, size);
++                if (r != EINTR)
++                        return -r;
++        }
++
++        return -EINTR;
++}
+diff -purN systemd/src/basic/fs-util.h systemd-izh/src/basic/fs-util.h
+--- systemd/src/basic/fs-util.h	2021-03-22 10:26:24.302958707 +0000
++++ systemd-izh/src/basic/fs-util.h	2021-04-22 14:10:44.905940351 +0000
+@@ -109,3 +109,5 @@ int access_fd(int fd, int mode);
+ int unlinkat_deallocate(int fd, const char *name, int flags);
+ 
+ int fsync_directory_of_file(int fd);
++
++int posix_fallocate_loop(int fd, uint64_t offset, uint64_t size);
+diff -purN systemd/src/journal/journald-kmsg.c systemd-izh/src/journal/journald-kmsg.c
+--- systemd/src/journal/journald-kmsg.c	2021-03-22 10:26:24.354958154 +0000
++++ systemd-izh/src/journal/journald-kmsg.c	2021-04-22 14:09:35.234653269 +0000
+@@ -31,6 +31,7 @@
+ #include "escape.h"
+ #include "fd-util.h"
+ #include "format-util.h"
++#include "fs-util.h"
+ #include "io-util.h"
+ #include "journald-kmsg.h"
+ #include "journald-server.h"
+@@ -459,8 +460,8 @@ int server_open_kernel_seqnum(Server *s)
+                 return 0;
+         }
+ 
+-        r = posix_fallocate(fd, 0, sizeof(uint64_t));
+-        if (r != 0) {
++        r = posix_fallocate_loop(fd, 0, sizeof(uint64_t));
++        if (r < 0) {
+                 log_error_errno(r, "Failed to allocate sequential number file, ignoring: %m");
+                 return 0;
+         }
+diff -purN systemd/src/journal/journal-file.c systemd-izh/src/journal/journal-file.c
+--- systemd/src/journal/journal-file.c	2021-03-22 10:26:24.354958154 +0000
++++ systemd-izh/src/journal/journal-file.c	2021-04-22 14:19:00.804876740 +0000
+@@ -696,9 +696,9 @@ static int journal_file_allocate(Journal
+         /* Note that the glibc fallocate() fallback is very
+            inefficient, hence we try to minimize the allocation area
+            as we can. */
+-        r = posix_fallocate(f->fd, old_size, new_size - old_size);
+-        if (r != 0)
+-                return -r;
++        r = posix_fallocate_loop(f->fd, old_size, new_size - old_size);
++        if (r < 0)
++                return r;
+ 
+         f->header->arena_size = htole64(new_size - le64toh(f->header->header_size));
+ 
+diff -purN systemd/src/test/test-sigbus.c systemd-izh/src/test/test-sigbus.c
+--- systemd/src/test/test-sigbus.c	2021-03-22 10:26:24.434957303 +0000
++++ systemd-izh/src/test/test-sigbus.c	2021-04-22 14:12:14.885019631 +0000
+@@ -21,6 +21,7 @@
+ #include <sys/mman.h>
+ 
+ #include "fd-util.h"
++#include "fs-util.h"
+ #include "sigbus.h"
+ #include "util.h"
+ #if HAVE_VALGRIND_VALGRIND_H
+@@ -47,7 +48,7 @@ int main(int argc, char *argv[]) {
+ 
+         assert_se((fd = mkostemp(template, O_RDWR|O_CREAT|O_EXCL)) >= 0);
+         assert_se(unlink(template) >= 0);
+-        assert_se(posix_fallocate(fd, 0, page_size() * 8) >= 0);
++        assert_se(posix_fallocate_loop(fd, 0, page_size() * 8) >= 0);
+ 
+         p = mmap(NULL, page_size() * 16, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+         assert_se(p != MAP_FAILED);
