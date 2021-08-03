@@ -67,27 +67,27 @@ Patch64:        systemd-meson-do-not-fail-if-rsync-is-not-installed-with-mes.pat
 # compiler warnings.
 Patch99:        systemd-238_fix_build_with_glibc228.patch
 
-BuildRequires:  audit-libs-devel
 BuildRequires:  cmake
 BuildRequires:  fdupes
-BuildRequires:  glib2-devel
 BuildRequires:  gperf
 BuildRequires:  intltool >= 0.40.0
-BuildRequires:  kmod-devel >= 15
-BuildRequires:  libacl-devel
-BuildRequires:  libcap-devel
-BuildRequires:  libgcrypt-devel
-BuildRequires:  libmount-devel
-BuildRequires:  libselinux-devel
 BuildRequires:  libtool
 BuildRequires:  libxslt
 BuildRequires:  meson
 BuildRequires:  pam-devel
-BuildRequires:  pkgconfig(blkid) >= 2.20
+BuildRequires:  pkgconfig(glib-2.0)
 BuildRequires:  pkgconfig(dbus-1) >= 1.3.2
 BuildRequires:  pkgconfig(dbus-glib-1)
+BuildRequires:  pkgconfig(audit)
+BuildRequires:  pkgconfig(libkmod) >= 15
+BuildRequires:  pkgconfig(libacl)
+BuildRequires:  pkgconfig(libcap)
+BuildRequires:  pkgconfig(blkid) >= 2.20
+BuildRequires:  pkgconfig(mount)
 BuildRequires:  pkgconfig(libcryptsetup) >= 1.6.0
-BuildRequires:  xz-devel
+BuildRequires:  pkgconfig(liblzma)
+BuildRequires:  pkgconfig(libgcrypt)
+BuildRequires:  pkgconfig(libselinux)
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
 Requires:       %{name}-libs = %{version}-%{release}
