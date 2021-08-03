@@ -2,6 +2,11 @@
 %global system_unit_dir %{pkgdir}/system
 %global user_unit_dir %{pkgdir}/user
 
+%global _name systemd
+# In case of bootstrapping systemd to fix circuclar dependency
+# enable this
+%bcond_with     systemd_bootstrap
+
 Name:           systemd
 Url:            https://www.freedesktop.org/wiki/Software/systemd
 Version:        238
@@ -67,6 +72,23 @@ Patch64:        systemd-meson-do-not-fail-if-rsync-is-not-installed-with-mes.pat
 # compiler warnings.
 Patch99:        systemd-238_fix_build_with_glibc228.patch
 
+%if %{without systemd_bootstrap}
+BuildRequires:  pkgconfig(glib-2.0)
+BuildRequires:  pkgconfig(dbus-1) >= 1.3.2
+BuildRequires:  pkgconfig(dbus-glib-1)
+BuildRequires:  pkgconfig(libcrypt)
+BuildRequires:  pkgconfig(audit)
+BuildRequires:  pkgconfig(libcryptsetup) >= 1.6.0
+BuildRequires:  pkgconfig(liblzma)
+BuildRequires:  pkgconfig(libgcrypt)
+BuildRequires:  pkgconfig(libselinux)
+%endif
+BuildRequires:  pkgconfig(libacl)
+BuildRequires:  pkgconfig(libcap)
+BuildRequires:  pkgconfig(libkmod) >= 15
+BuildRequires:  pkgconfig(blkid) >= 2.20
+BuildRequires:  pkgconfig(mount)
+BuildRequires:  pkgconfig(libcrypt)
 BuildRequires:  cmake
 BuildRequires:  fdupes
 BuildRequires:  gperf
@@ -75,40 +97,32 @@ BuildRequires:  libtool
 BuildRequires:  libxslt
 BuildRequires:  meson
 BuildRequires:  pam-devel
-BuildRequires:  pkgconfig(glib-2.0)
-BuildRequires:  pkgconfig(dbus-1) >= 1.3.2
-BuildRequires:  pkgconfig(dbus-glib-1)
-BuildRequires:  pkgconfig(libcrypt)
-BuildRequires:  pkgconfig(audit)
-BuildRequires:  pkgconfig(libkmod) >= 15
-BuildRequires:  pkgconfig(libacl)
-BuildRequires:  pkgconfig(libcap)
-BuildRequires:  pkgconfig(blkid) >= 2.20
-BuildRequires:  pkgconfig(mount)
-BuildRequires:  pkgconfig(libcryptsetup) >= 1.6.0
-BuildRequires:  pkgconfig(liblzma)
-BuildRequires:  pkgconfig(libgcrypt)
-BuildRequires:  pkgconfig(libselinux)
 BuildRequires:  libstdc++-devel
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
 Requires:       %{name}-libs = %{version}-%{release}
-Requires:       dbus
 Requires:       filesystem >= 3
-Requires:       systemd-config
+Requires:       %{_name}-config
 # fsck with -l option was introduced in 2.21.2 packaging
 Requires:       util-linux >= 2.21.2
 Requires:       which
 # pidof command
 Requires:       psmisc
+%if %{without systemd_bootstrap}
 # For vgchange tool and LVM udev rules. Workaround for JB#36605.
 # Should be removed after implementing UDEV events handling in initramfs.
 Requires:       lvm2
+%endif
 
 Provides:       udev = %{version}
 Obsoletes:      udev < 184
 Provides:       systemd-sysv = %{version}
 Obsoletes:      systemd-sysv < %{version}
+%if %{with systemd_bootstrap}
+#!BuildIgnore:  dbus-1
+Requires:       this-is-only-for-build-envs
+Provides:       %{_name} = %{version}-%{release}
+%endif
 
 %description
 systemd is a system and service manager for Linux, compatible with
@@ -123,7 +137,7 @@ work as a drop-in replacement for sysvinit.
 %package config-mer
 Summary:    Default configuration for systemd
 Requires:   %{name} = %{version}-%{release}
-Provides:   systemd-config
+Provides:   %{_name}-config
 
 %description config-mer
 This package provides default configuration for systemd
@@ -143,8 +157,6 @@ Summary:        systemd libraries
 License:        LGPLv2+ and MIT
 Provides:       libudev = %{version}
 Obsoletes:      libudev < %{version}
-Obsoletes:      systemd <= 187
-Conflicts:      systemd <= 187
 Requires:       pam >= 1.3.1
 
 %description libs
@@ -158,11 +170,15 @@ Requires:       %{name}-libs = %{version}-%{release}
 Requires:       %{name} = %{version}-%{release}
 Provides:       libudev-devel = %{version}
 Obsoletes:      libudev-devel < %{version}
+%if %{with systemd_bootstrap}
+Conflicts:      systemd-devel
+%endif
 
 %description devel
 Development headers and auxiliary files for developing applications linking
 to libudev or libsystemd.
 
+%if %{without systemd_bootstrap}
 %package doc
 Summary:   System and session manager documentation
 Requires:  %{name} = %{version}-%{release}
@@ -179,6 +195,7 @@ Requires:  acl
 
 %description tests
 This package includes tests for systemd.
+%endif
 
 %prep
 %autosetup -p1 -n %{name}-%{version}/systemd
@@ -190,43 +207,52 @@ CONFIGURE_OPTS=(
         -Drootprefix=/usr
         -Dacl=true
         -Dapparmor=false
-        -Daudit=true
         -Dbacklight=false
         -Dblkid=true
         -Db_pie=true
         -Dbzip2=false
         -Dcoredump=false
-        -Ddbus=true
         -Defi=false
         -Delfutils=false
         -Dfirstboot=false
-        -Dgcrypt=true
         -Dglib=false
         -Dgnu-efi=false
         -Dgnutls=false
         -Dhibernate=false
         -Dimportd=false
+%if %{without systemd_bootstrap}
+        -Dtests=true
         -Dinstall-tests=true
-        -Dkmod=true
+        -Ddbus=true
+        -Daudit=true
+        -Dxz=true
         -Dlibcryptsetup=true
+        -Dgcrypt=true
+        -Dselinux=true
+%else
+        -Dtests=false
+        -Dinstall-tests=false
+%endif
+        # those also will not work during boostrap if enabled
+        -Dresolve=false
+        -Dmyhostname=false
+        -Dmachined=false
+        # end
+        -Dkmod=true
         -Dlibcurl=false
         -Dlibidn=false
         -Dlibiptc=false
         -Dlocaled=false
         -Dlz4=false
-        -Dmachined=false
         -Dman=false
         -Dmicrohttpd=false
-        -Dmyhostname=false
         -Dnetworkd=false
         -Dntp-servers="${ntp_servers[*]}"
         -Dpam=true
         -Dqrencode=false
         -Dquotacheck=false
-        -Dresolve=false
         -Drfkill=false
         -Dseccomp=false
-        -Dselinux=true
         -Dsmack=false
         -Dsplit-usr=false
         -Dsystem-gid-max=999
@@ -234,13 +260,11 @@ CONFIGURE_OPTS=(
         -Dsysusers=false
         -Dsysvinit-path=
         -Dsysvrcnd-path=
-        -Dtests=true
         -Dtimedated=false
         -Dtimesyncd=false
         -Dtpm=false
         -Dusers-gid=100
         -Dxkbcommon=false
-        -Dxz=true
         -Dzlib=false
         -Dzshcompletiondir=no
 )
@@ -320,9 +344,13 @@ install -D -m 754 %{SOURCE3} %{buildroot}%{_bindir}/systemctl-user
 
 %fdupes  %{buildroot}/%{_datadir}/man/
 
+%if %{without systemd_bootstrap}
 # Install tests.xml
 install -d -m 755 %{buildroot}/opt/tests/systemd-tests
 install -m 644 %{SOURCE2} %{buildroot}/opt/tests/systemd-tests
+%else
+rm -rf %{buildroot}/%{_docdir}
+%endif
 
 # systemd macros
 # Old rpm versions assume macros in /etc/rpm/
@@ -335,7 +363,7 @@ ln -s %{_libdir}/rpm/macros.d/macros.systemd %{buildroot}%{_sysconfdir}/rpm/macr
 # Remove unneeded files
 rm %{buildroot}%{_sysconfdir}/X11/xinit/xinitrc.d/50-systemd-user.sh
 
-%find_lang %{name}
+%find_lang %{_name}
 
 %check
 #% meson_test
@@ -390,7 +418,7 @@ for a in `find /etc/systemd/system -type l ! -exec test -e {} \; -print`; do sta
 %post libs -p /sbin/ldconfig
 %postun libs -p /sbin/ldconfig
 
-%files -f %{name}.lang
+%files -f %{_name}.lang
 %defattr(-,root,root,-)
 %dir %{_sysconfdir}/systemd
 %dir %{_sysconfdir}/systemd/system
@@ -516,15 +544,17 @@ for a in `find /etc/systemd/system -type l ! -exec test -e {} \; -print`; do sta
 %{system_unit_dir}/default.target
 %{system_unit_dir}/user@.service
 
+%if %{without systemd_bootstrap}
 %files doc
 %defattr(-,root,root,-)
-%{_docdir}/%{name}-%{version}
+%{_docdir}/%{_name}-%{version}
 
 %files tests
 %defattr(-,root,root,-)
 %dir /opt/tests/systemd-tests
 /opt/tests/systemd-tests/tests.xml
 %{pkgdir}/tests
+%endif
 
 %files analyze
 %defattr(-,root,root,-)
