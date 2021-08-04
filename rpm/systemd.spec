@@ -84,6 +84,7 @@ BuildRequires:  pkgconfig(libacl)
 BuildRequires:  pkgconfig(libcap)
 BuildRequires:  pkgconfig(blkid) >= 2.20
 BuildRequires:  pkgconfig(mount)
+BuildRequires:  pkgconfig(libcrypt)
 BuildRequires:  pkgconfig(libcryptsetup) >= 1.6.0
 BuildRequires:  pkgconfig(liblzma)
 BuildRequires:  pkgconfig(libgcrypt)
