@@ -89,6 +89,7 @@ BuildRequires:  pkgconfig(libcryptsetup) >= 1.6.0
 BuildRequires:  pkgconfig(liblzma)
 BuildRequires:  pkgconfig(libgcrypt)
 BuildRequires:  pkgconfig(libselinux)
+BuildRequires:  libstdc++-devel
 Requires(post): /sbin/ldconfig
 Requires(postun): /sbin/ldconfig
 Requires:       %{name}-libs = %{version}-%{release}
