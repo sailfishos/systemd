@@ -29,5 +29,7 @@
 
 USER_ID=$(id -u $(loginctl list-sessions | grep seat0 | tr -s " " | cut -d " " -f 4))
 export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$USER_ID/dbus/user_bus_socket"
+export USER=$(getent passwd $USER_ID | cut -d: -f1)
+export HOME=$(getent passwd $USER_ID | cut -d: -f6)
 
 systemctl --user $@
