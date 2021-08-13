@@ -1,0 +1,3 @@
+# We need to disable false positive rpmlint's error in systemd.pc.
+# Can be removed after fixing: https://bugs.merproject.org/show_bug.cgi?id=1341
+setBadness('invalid-pkgconfig-file', 0)
