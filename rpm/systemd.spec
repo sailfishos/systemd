@@ -87,7 +87,7 @@ BuildRequires:  pkgconfig(libcap)
 BuildRequires:  pkgconfig(libkmod) >= 15
 BuildRequires:  pkgconfig(blkid) >= 2.20
 BuildRequires:  pkgconfig(mount)
-BuildRequires:  pkgconfig(libcrypt)
+#BuildRequires:  pkgconfig(libcrypt)
 BuildRequires:  cmake
 BuildRequires:  fdupes
 BuildRequires:  gperf
