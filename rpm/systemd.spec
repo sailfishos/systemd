@@ -86,6 +86,7 @@ BuildRequires:  pam-devel
 BuildRequires:  pkgconfig(blkid) >= 2.20
 BuildRequires:  pkgconfig(dbus-1) >= 1.3.2
 BuildRequires:  pkgconfig(dbus-glib-1)
+BuildRequires:  pkgconfig(libcrypt)
 BuildRequires:  pkgconfig(libcryptsetup) >= 1.6.0
 BuildRequires:  xz-devel
 Requires(post): /sbin/ldconfig
