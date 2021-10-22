@@ -23,7 +23,7 @@ Source3:        systemctl-user
 Source4:        systemd-rpmlintrc
 Source5:        precheckin.sh
 
-%if %{with bootstrap}
+%if %{with systemd_bootstrap}
 Source6:        systemd-mini-rpmlintrc
 %endif
 
