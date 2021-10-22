@@ -21,6 +21,11 @@ Source3:        systemctl-user
 # We need to disable false positive rpmlint's error in systemd.pc.
 # Can be removed after fixing: https://bugs.merproject.org/show_bug.cgi?id=1341
 Source4:        systemd-rpmlintrc
+Source5:        precheckin.sh
+
+%if %{with bootstrap}
+Source6:        systemd-mini-rpmlintrc
+%endif
 
 Patch0:         systemd-208-video.patch
 Patch2:         systemd-187-remove-display-manager.service.patch
