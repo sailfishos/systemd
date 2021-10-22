@@ -5,9 +5,10 @@
 %global _name systemd
 # In case of bootstrapping systemd to fix circuclar dependency
 # enable this
-%bcond_with     systemd_bootstrap
+##### WARNING: please do not edit this auto generated spec file. Use the systemd.spec! #####
+%bcond_without     systemd_bootstrap
 
-Name:           systemd
+Name:           systemd-mini
 Url:            https://www.freedesktop.org/wiki/Software/systemd
 Version:        238
 Release:        1
