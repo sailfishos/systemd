@@ -87,6 +87,8 @@ BuildRequires:  pkgconfig(libcryptsetup) >= 1.6.0
 BuildRequires:  pkgconfig(liblzma)
 BuildRequires:  pkgconfig(libgcrypt)
 BuildRequires:  pkgconfig(libselinux)
+# this is needed for OBS workaround
+BuildRequires:  pkgconfig(libsystemd)
 %endif
 BuildRequires:  pkgconfig(libacl)
 BuildRequires:  pkgconfig(libcap)
