@@ -262,6 +262,7 @@ CONFIGURE_OPTS=(
         -Dseccomp=false
         -Dsmack=false
         -Dsplit-usr=false
+        -Dsupport-url=https://forum.sailfishos.org/
         -Dsystem-gid-max=999
         -Dsystem-uid-max=999
         -Dsysusers=false
