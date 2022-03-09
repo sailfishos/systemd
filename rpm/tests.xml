@@ -197,6 +197,10 @@
       <case name="test-event">
         <step> /usr/lib/systemd/tests/test-event </step>
       </case>
+<!-- Note: This has patches to skip parts
+     Some of those require either linux > 4.17 or systemd >= 240.
+     Others use features not available on busybox.
+-->
       <case name="test-execute">
         <step> /usr/sbin/run-blts-root /usr/lib/systemd/tests/test-execute </step>
       </case>

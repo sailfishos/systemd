@@ -1,0 +1,33 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Zbigniew=20J=C4=99drzejewski-Szmek?= <zbyszek@in.waw.pl>
+Date: Thu, 22 Mar 2018 08:50:10 +0100
+Subject: [PATCH] test-execute: allow sit0@ to exist in private network
+ namespace
+
+It's always visible:
+
+$ sudo modprobe sit
+$ sudo unshare -n ip l
+1: lo: <LOOPBACK> mtu 65536 qdisc noop state DOWN mode DEFAULT group default qlen 1000
+    ...
+2: sit0@NONE: <NOARP> mtu 1480 qdisc noop state DOWN mode DEFAULT group default qlen 1000
+    ...
+---
+ test/test-execute/exec-privatenetwork-yes.service | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/test/test-execute/exec-privatenetwork-yes.service b/test/test-execute/exec-privatenetwork-yes.service
+index 5077f7eed2..a38d24912f 100644
+--- a/test/test-execute/exec-privatenetwork-yes.service
++++ b/test/test-execute/exec-privatenetwork-yes.service
+@@ -2,6 +2,6 @@
+ Description=Test for PrivateNetwork
+ 
+ [Service]
+-ExecStart=/bin/sh -x -c '! ip link | grep ": " | grep -v ": lo:"'
++ExecStart=/bin/sh -x -c '! ip link | grep ": " | grep -Ev ": (lo|sit0@.*):"'
+ Type=oneshot
+ PrivateNetwork=yes
+-- 
+2.35.1
+

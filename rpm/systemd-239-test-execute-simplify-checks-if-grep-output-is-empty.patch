@@ -1,0 +1,40 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Zbigniew=20J=C4=99drzejewski-Szmek?= <zbyszek@in.waw.pl>
+Date: Thu, 22 Mar 2018 08:42:02 +0100
+Subject: [PATCH] test-execute: simplify checks if grep output is empty
+
+grep already indicates if it matched anything by return value.
+Additional advantage is then that if the test fails, the unexpected
+matching lines are visible in the log output.
+---
+ test/test-execute/exec-capabilityboundingset-invert.service | 2 +-
+ test/test-execute/exec-privatenetwork-yes.service           | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/test/test-execute/exec-capabilityboundingset-invert.service b/test/test-execute/exec-capabilityboundingset-invert.service
+index fd5d248702..1abe390601 100644
+--- a/test/test-execute/exec-capabilityboundingset-invert.service
++++ b/test/test-execute/exec-capabilityboundingset-invert.service
+@@ -2,6 +2,6 @@
+ Description=Test for CapabilityBoundingSet
+ 
+ [Service]
+-ExecStart=/bin/sh -x -c 'c=$$(capsh --print | grep "^Bounding set .*cap_chown"); test -z "$$c"'
++ExecStart=/bin/sh -x -c '! capsh --print | grep "^Bounding set .*cap_chown"'
+ Type=oneshot
+ CapabilityBoundingSet=~CAP_CHOWN
+diff --git a/test/test-execute/exec-privatenetwork-yes.service b/test/test-execute/exec-privatenetwork-yes.service
+index 3df543ec93..5077f7eed2 100644
+--- a/test/test-execute/exec-privatenetwork-yes.service
++++ b/test/test-execute/exec-privatenetwork-yes.service
+@@ -2,6 +2,6 @@
+ Description=Test for PrivateNetwork
+ 
+ [Service]
+-ExecStart=/bin/sh -x -c 'i=$$(ip link | grep ": " | grep -v ": lo:"); test -z "$$i"'
++ExecStart=/bin/sh -x -c '! ip link | grep ": " | grep -v ": lo:"'
+ Type=oneshot
+ PrivateNetwork=yes
+-- 
+2.35.1
+

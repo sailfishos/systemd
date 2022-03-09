@@ -74,6 +74,13 @@ Patch63:        systemd-249-journald-Retry-if-posix_fallocate-returned-1-EINTR.p
 Patch64:        systemd-meson-do-not-fail-if-rsync-is-not-installed-with-mes.patch
 # Unit test fixes JB#52768
 Patch70:        0003-Move-large-array-out-of-stack.patch
+Patch71:        systemd-239-test-execute-simplify-checks-if-grep-output-is-empty.patch
+Patch72:        systemd-239-test-execute-allow-sit0-to-exist-in-private-network-.patch
+Patch73:        systemd-240-test-execute-filter-out-ip6tnl0-and-ip6gre0-interfac.patch
+Patch74:        systemd-241-test-network-ignore-tunnel-devices-automatically-add.patch
+Patch75:        systemd-240-test-fix-tests-for-supplementary-groups.patch
+Patch76:        0004-Fix-busybox-compatibility-for-test-execute.patch
+Patch77:        0005-Skip-tests-in-test-execute-that-don-t-work.patch
 # This patch serves two purposes: it adds needed "#include <sys/sysmacros.h>"
 # and initializes variables with automatic cleanup functions to silence
 # compiler warnings.
@@ -201,6 +208,7 @@ Summary:   Systemd tests
 Requires:  %{name} = %{version}-%{release}
 Requires:  blts-tools
 Requires:  acl
+Requires:  perl
 
 %description tests
 This package includes tests for systemd.
