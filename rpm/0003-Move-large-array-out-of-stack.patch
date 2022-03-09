@@ -1,0 +1,31 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Tomi=20Lepp=C3=A4nen?= <tomi.leppanen@jolla.com>
+Date: Wed, 9 Mar 2022 11:15:36 +0200
+Subject: [PATCH] Move large array out of stack
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+This avoids segfault.
+
+Signed-off-by: Tomi Leppänen <tomi.leppanen@jolla.com>
+---
+ src/journal/test-compress.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/journal/test-compress.c b/src/journal/test-compress.c
+index ea1ffcc4af..f6e7e3457f 100644
+--- a/src/journal/test-compress.c
++++ b/src/journal/test-compress.c
+@@ -267,7 +267,7 @@ int main(int argc, char *argv[]) {
+ 
+         char data[512] = "random\0";
+ 
+-        char huge[4096*1024];
++        static char huge[4096*1024];
+         memset(huge, 'x', sizeof(huge));
+         memcpy(huge, "HUGE=", 5);
+         char_array_0(huge);
+-- 
+2.35.1
+
