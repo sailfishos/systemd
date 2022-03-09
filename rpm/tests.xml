@@ -38,24 +38,25 @@
       <case name="test-audit-type">
         <step> /usr/lib/systemd/tests/test-audit-type </step>
       </case>
+<!-- Has a dummy argument -->
       <case name="test-barrier">
-        <step> /usr/lib/systemd/tests/test-barrier </step>
+        <step> /usr/lib/systemd/tests/test-barrier run </step>
       </case>
       <case name="test-bitmap">
         <step> /usr/lib/systemd/tests/test-bitmap </step>
       </case>
+<!-- Bpf support from kernel, so it depends on device whether this will pass. Needs root. -->
       <case name="test-bpf">
-        <step> /usr/lib/systemd/tests/test-bpf </step>
+        <step> /usr/sbin/run-blts-root /usr/lib/systemd/tests/test-bpf </step>
       </case>
-<!--
-      Looks like this test needs to be run with root permissions.
-      Could be fixed if needed.
+<!-- Needs block device with btrfs to work.
       <case name="test-btrfs">
         <step> /usr/lib/systemd/tests/manual/test-btrfs </step>
       </case>
 -->
+<!-- This is also a benchmark so displaying some data would be appropriate. -->
       <case name="test-bus-benchmark">
-        <step> /usr/lib/systemd/tests/manual/test-bus-benchmark </step>
+        <step> /usr/lib/systemd/tests/manual/test-bus-benchmark chart </step>
       </case>
       <case name="test-bus-chat">
         <step> /usr/lib/systemd/tests/test-bus-chat </step>
@@ -105,10 +106,9 @@
       <case name="test-calendarspec">
         <step> /usr/lib/systemd/tests/test-calendarspec </step>
       </case>
-      <!-- Will fail on kernels <= v4.3 because of lack of ambient
-           capabilities support -->
+<!-- Will fail on kernels <= v4.3 because of lack of ambient capabilities support. Requires root. -->
       <case name="test-capability">
-        <step> /usr/lib/systemd/tests/test-capability </step>
+        <step> /usr/sbin/run-blts-root /usr/lib/systemd/tests/test-capability </step>
       </case>
       <case name="test-cap-list">
         <step> /usr/lib/systemd/tests/test-cap-list </step>
@@ -119,6 +119,7 @@
         <step> /usr/lib/systemd/tests/test-catalog </step>
       </case>
 -->
+<!-- Not working, unclear why -->
       <case name="test-cgroup">
         <step> /usr/lib/systemd/tests/manual/test-cgroup </step>
       </case>
@@ -213,6 +214,7 @@
       <case name="test-fdset">
         <step> /usr/lib/systemd/tests/test-fdset </step>
       </case>
+<!-- Not working, unclear why -->
       <case name="test-fd-util">
         <step> /usr/lib/systemd/tests/test-fd-util </step>
       </case>
@@ -231,10 +233,9 @@
       <case name="test-glob-util">
         <step> /usr/lib/systemd/tests/test-glob-util </step>
       </case>
-      <!-- Could fail if the kernel is built without CONFIG_CRYPTO_USER*
-           options. -->
+<!-- Fails if the kernel is built without CONFIG_CRYPTO_USER* options, expecting skipped status. -->
       <case name="test-hash">
-        <step> /usr/lib/systemd/tests/test-hash </step>
+        <step expected_result="77"> /usr/lib/systemd/tests/test-hash </step>
       </case>
       <case name="test-hashmap">
         <step> /usr/lib/systemd/tests/test-hashmap </step>
@@ -501,7 +502,8 @@
       <case name="test-tmpfiles">
         <step> /usr/lib/systemd/tests/test-tmpfiles </step>
       </case>
-<!--  The test doesn't work.
+<!-- This would need an udev action and a device path to work.
+     It could be made to work with more effort probably.
       <case name="test-udev">
         <step> /usr/sbin/run-blts-root /usr/lib/systemd/tests/manual/test-udev </step>
       </case>
