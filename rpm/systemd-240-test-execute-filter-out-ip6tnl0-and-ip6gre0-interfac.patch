@@ -1,0 +1,28 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Zbigniew=20J=C4=99drzejewski-Szmek?= <zbyszek@in.waw.pl>
+Date: Tue, 9 Oct 2018 14:08:09 +0200
+Subject: [PATCH] test-execute: filter out ip6tnl0@ and ip6gre0@ interfaces
+
+Those interfaces are created automatically when ip6_tunnel and ip6_gre loaded.
+They break the test with exec-privatenetwork-yes.service.
+
+C.f. 6b08180ca6f1ceb913f6a69ffcaf96e9818fbdf5.
+---
+ test/test-execute/exec-privatenetwork-yes.service | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/test/test-execute/exec-privatenetwork-yes.service b/test/test-execute/exec-privatenetwork-yes.service
+index a38d24912f..ded8d55126 100644
+--- a/test/test-execute/exec-privatenetwork-yes.service
++++ b/test/test-execute/exec-privatenetwork-yes.service
+@@ -2,6 +2,6 @@
+ Description=Test for PrivateNetwork
+ 
+ [Service]
+-ExecStart=/bin/sh -x -c '! ip link | grep ": " | grep -Ev ": (lo|sit0@.*):"'
++ExecStart=/bin/sh -x -c '! ip link | grep ": " | grep -Ev ": (lo|(sit0|ip6tnl0|ip6gre0)@.*):"'
+ Type=oneshot
+ PrivateNetwork=yes
+-- 
+2.35.1
+

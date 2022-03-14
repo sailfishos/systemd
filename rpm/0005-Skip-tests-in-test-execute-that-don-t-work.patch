@@ -1,0 +1,51 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Tomi=20Lepp=C3=A4nen?= <tomi.leppanen@jolla.com>
+Date: Wed, 9 Mar 2022 16:55:21 +0200
+Subject: [PATCH] Skip tests in test-execute that don't work
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Those readonlypaths tests do not currently work on linux <= 4.17. They
+should work after systemd is updated to 240.
+
+That dynamicuser-statedir test requires find with -writable argument
+support which is not available in busybox find.
+
+Signed-off-by: Tomi Leppänen <tomi.leppanen@jolla.com>
+---
+ src/test/test-execute.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/src/test/test-execute.c b/src/test/test-execute.c
+index 645e0b3d47..3def74d916 100644
+--- a/src/test/test-execute.c
++++ b/src/test/test-execute.c
+@@ -291,9 +291,12 @@ static void test_exec_readonlypaths(Manager *m) {
+                 return;
+         }
+ 
++// This test does not work with linux <= 4.17 and systemd < 240 combination
++#if 0
+         test(m, "exec-readonlypaths.service", 0, CLD_EXITED);
+-        test(m, "exec-readonlypaths-mount-propagation.service", 0, CLD_EXITED);
+         test(m, "exec-readonlypaths-with-bindpaths.service", 0, CLD_EXITED);
++#endif
++        test(m, "exec-readonlypaths-mount-propagation.service", 0, CLD_EXITED);
+ }
+ 
+ static void test_exec_readwritepaths(Manager *m) {
+@@ -441,7 +444,10 @@ static void test_exec_dynamicuser(Manager *m) {
+         test(m, "exec-dynamicuser-fixeduser.service", 0, CLD_EXITED);
+         test(m, "exec-dynamicuser-fixeduser-one-supplementarygroup.service", 0, CLD_EXITED);
+         test(m, "exec-dynamicuser-supplementarygroups.service", 0, CLD_EXITED);
++// This test does not work with busybox find that's missing -writeable
++#if 0
+         test(m, "exec-dynamicuser-statedir.service", 0, CLD_EXITED);
++#endif
+ 
+         test(m, "exec-dynamicuser-statedir-migrate-step1.service", 0, CLD_EXITED);
+         test(m, "exec-dynamicuser-statedir-migrate-step2.service", 0, CLD_EXITED);
+-- 
+2.35.1
+

@@ -1,0 +1,43 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Tomi=20Lepp=C3=A4nen?= <tomi.leppanen@jolla.com>
+Date: Wed, 9 Mar 2022 14:14:53 +0200
+Subject: [PATCH] Fix busybox compatibility for test-execute
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Signed-off-by: Tomi Leppänen <tomi.leppanen@jolla.com>
+---
+ test/test-execute/exec-specifier.service  | 2 +-
+ test/test-execute/exec-specifier@.service | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/test/test-execute/exec-specifier.service b/test/test-execute/exec-specifier.service
+index 37852390ac..2c4d882da9 100644
+--- a/test/test-execute/exec-specifier.service
++++ b/test/test-execute/exec-specifier.service
+@@ -14,7 +14,7 @@ ExecStart=/usr/bin/test %t = /run
+ ExecStart=/usr/bin/test %S = /var/lib
+ ExecStart=/usr/bin/test %C = /var/cache
+ ExecStart=/usr/bin/test %L = /var/log
+-ExecStart=/bin/sh -c 'test %u = $$(id -un 0)'
++ExecStart=/bin/sh -c 'test %u = $$(getent passwd 0 | cut -d: -f 1)'
+ ExecStart=/usr/bin/test %U = 0
+ ExecStart=/bin/sh -c 'test %h = $$(getent passwd 0 | cut -d: -f 6)
+ ExecStart=/bin/sh -c 'test %s = $$(getent passwd 0 | cut -d: -f 7)
+diff --git a/test/test-execute/exec-specifier@.service b/test/test-execute/exec-specifier@.service
+index 0015dffca6..1f45d6807a 100644
+--- a/test/test-execute/exec-specifier@.service
++++ b/test/test-execute/exec-specifier@.service
+@@ -14,7 +14,7 @@ ExecStart=/usr/bin/test %t = /run
+ ExecStart=/usr/bin/test %S = /var/lib
+ ExecStart=/usr/bin/test %C = /var/cache
+ ExecStart=/usr/bin/test %L = /var/log
+-ExecStart=/bin/sh -c 'test %u = $$(id -un 0)'
++ExecStart=/bin/sh -c 'test %u = $$(getent passwd 0 | cut -d: -f 1)'
+ ExecStart=/usr/bin/test %U = 0
+ ExecStart=/bin/sh -c 'test %h = $$(getent passwd 0 | cut -d: -f 6)
+ ExecStart=/bin/sh -c 'test %s = $$(getent passwd 0 | cut -d: -f 7)
+-- 
+2.35.1
+
