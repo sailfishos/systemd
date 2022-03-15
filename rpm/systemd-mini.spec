@@ -199,7 +199,6 @@ to libudev or libsystemd.
 %package doc
 Summary:   System and session manager documentation
 Requires:  %{name} = %{version}-%{release}
-Obsoletes: %{name}-docs
 
 %description doc
 %{summary}.
