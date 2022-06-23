@@ -8,14 +8,14 @@
 %bcond_with     systemd_bootstrap
 
 Name:           systemd
-Url:            https://www.freedesktop.org/wiki/Software/systemd
+Url:            https://github.com/sailfishos/systemd
 Version:        238
 Release:        1
 # For a breakdown of the licensing, see README
 License:        LGPLv2+ and MIT and GPLv2+
 Summary:        A System and Service Manager
 
-Source0:        https://github.com/systemd/systemd/archive/v%{version}.tar.gz#/%{name}-%{version}.tar.gz
+Source0:        %{name}-%{version}.tar.gz
 Source2:        tests.xml
 Source3:        systemctl-user
 # We need to disable false positive rpmlint's error in systemd.pc.
