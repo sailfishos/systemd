@@ -1,3 +1,3 @@
 [submodule "systemd"]
 	path = systemd
-	url = https://github.com/systemd/systemd.git
+	url = https://github.com/sailfishos-mirror/systemd.git
