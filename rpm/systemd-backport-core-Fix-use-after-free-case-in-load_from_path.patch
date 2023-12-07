@@ -1,0 +1,36 @@
+From baa162cecd00e122a626656d25b8eae92b767519 Mon Sep 17 00:00:00 2001
+From: Khem Raj <raj.khem@gmail.com>
+Date: Sun, 16 Dec 2018 20:58:35 -0800
+Subject: [PATCH] core: Fix use after free case in load_from_path()
+
+ensure that mfree() on filename is called after the logging function
+which uses the string pointed by filename
+
+Signed-off-by: Khem Raj <raj.khem@gmail.com>
+---
+ src/core/load-fragment.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/core/load-fragment.c b/src/core/load-fragment.c
+index fc5644f489..4ebe92fd45 100644
+--- a/src/core/load-fragment.c
++++ b/src/core/load-fragment.c
+@@ -4531,7 +4531,6 @@ static int load_from_path(Unit *u, const char *path) {
+                                 r = open_follow(&filename, &f, symlink_names, &id);
+                         if (r >= 0)
+                                 break;
+-                        filename = mfree(filename);
+ 
+                         /* ENOENT means that the file is missing or is a dangling symlink.
+                          * ENOTDIR means that one of paths we expect to be is a directory
+@@ -4543,6 +4542,7 @@ static int load_from_path(Unit *u, const char *path) {
+                         else if (!IN_SET(r, -ENOENT, -ENOTDIR))
+                                 return r;
+ 
++                        filename = mfree(filename);
+                         /* Empty the symlink names for the next run */
+                         set_clear_free(symlink_names);
+                 }
+-- 
+2.34.1
+
