@@ -81,6 +81,8 @@ Patch74:        systemd-241-test-network-ignore-tunnel-devices-automatically-add
 Patch75:        systemd-240-test-fix-tests-for-supplementary-groups.patch
 Patch76:        0004-Fix-busybox-compatibility-for-test-execute.patch
 Patch77:        0005-Skip-tests-in-test-execute-that-don-t-work.patch
+Patch78:        systemd-backport-core-Fix-use-after-free-case-in-load_from_path.patch
+Patch79:        systemd-backport-sysctl-Don-t-pass-null-directive-argument-to-s.patch
 # This patch serves two purposes: it adds needed "#include <sys/sysmacros.h>"
 # and initializes variables with automatic cleanup functions to silence
 # compiler warnings.
