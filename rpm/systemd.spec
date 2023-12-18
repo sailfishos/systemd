@@ -110,7 +110,7 @@ BuildRequires:  pkgconfig(libcrypt)
 BuildRequires:  cmake
 BuildRequires:  fdupes
 BuildRequires:  gperf
-BuildRequires:  intltool >= 0.40.0
+BuildRequires:  gettext
 BuildRequires:  libtool
 BuildRequires:  libxslt
 BuildRequires:  meson
