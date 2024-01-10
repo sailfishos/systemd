@@ -13,7 +13,7 @@ sys/stat.h for example defines 'struct statx' conditionally.
 diff -purN systemd/meson.build systemd-izh/meson.build
 --- systemd/meson.build	2020-10-13 14:07:06.552552990 +0000
 +++ systemd-izh/meson.build	2020-10-15 16:08:55.058347496 +0000
-@@ -467,7 +467,6 @@ decl_headers = '''
+@@ -467,11 +467,9 @@ decl_headers = '''
  #include <uchar.h>
  #include <linux/ethtool.h>
  #include <linux/fib_rules.h>
@@ -21,7 +21,11 @@ diff -purN systemd/meson.build systemd-izh/meson.build
  #include <sys/stat.h>
  '''
  # FIXME: key_serial_t is only defined in keyutils.h, this is bound to fail
-@@ -481,10 +480,24 @@ foreach decl : ['char16_t',
+-# FIXME: these should use -D_GNU_SOURCE, since that is defined at build time
+ 
+ foreach decl : ['char16_t',
+                 'char32_t',
+@@ -482,13 +481,23 @@ foreach decl : ['char16_t',
                 ]
  
          # We get -1 if the size cannot be determined
@@ -42,24 +46,22 @@ diff -purN systemd/meson.build systemd-izh/meson.build
          conf.set10('HAVE_' + decl.underscorify().to_upper(), have)
  endforeach
  
+-conf.set10('HAVE_STRUCT_STATX_IN_SYS_STAT_H', cc.sizeof('struct statx', prefix : '''
+-#include <sys/stat.h>
+-''', args : '-D_GNU_SOURCE') > 0)
 +conf.set10('WANT_LINUX_STAT_H', want_linux_stat_h)
-+
+ 
  foreach decl : [['IFLA_INET6_ADDR_GEN_MODE',         'linux/if_link.h'],
                  ['IN6_ADDR_GEN_MODE_STABLE_PRIVACY', 'linux/if_link.h'],
-                 ['IFLA_VRF_TABLE',                   'linux/if_link.h'],
 diff -purN systemd/src/basic/missing.h systemd-izh/src/basic/missing.h
---- systemd/src/basic/missing.h	2020-10-13 10:34:00.118952190 +0000
-+++ systemd-izh/src/basic/missing.h	2020-10-15 16:09:39.066538168 +0000
-@@ -34,7 +34,11 @@
- #include <linux/neighbour.h>
- #include <linux/oom.h>
- #include <linux/rtnetlink.h>
-+
+--- systemd/src/basic/missing.h        2020-10-13 10:34:00.118952190 +0000
++++ systemd-izh/src/basic/missing.h    2020-10-15 16:09:39.066538168 +0000
+@@ -43,7 +43,7 @@
+ #include <uchar.h>
+ #include <unistd.h>
+ 
+-#if !HAVE_STRUCT_STATX_IN_SYS_STAT_H
 +#if WANT_LINUX_STAT_H
  #include <linux/stat.h>
-+#endif
-+
- #include <net/ethernet.h>
- #include <stdlib.h>
- #include <sys/resource.h>
+ #endif
 
