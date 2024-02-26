@@ -9,14 +9,14 @@
 %bcond_without     systemd_bootstrap
 
 Name:           systemd-mini
-Url:            https://www.freedesktop.org/wiki/Software/systemd
+Url:            https://github.com/sailfishos/systemd
 Version:        238
 Release:        1
 # For a breakdown of the licensing, see README
 License:        LGPLv2+ and MIT and GPLv2+
 Summary:        A System and Service Manager
 
-Source0:        https://github.com/systemd/systemd/archive/v%{version}.tar.gz#/%{name}-%{version}.tar.gz
+Source0:        %{name}-%{version}.tar.gz
 Source2:        tests.xml
 Source3:        systemctl-user
 # We need to disable false positive rpmlint's error in systemd.pc.
@@ -85,6 +85,8 @@ Patch76:        0004-Fix-busybox-compatibility-for-test-execute.patch
 Patch77:        0005-Skip-tests-in-test-execute-that-don-t-work.patch
 Patch78:        systemd-backport-core-Fix-use-after-free-case-in-load_from_path.patch
 Patch79:        systemd-backport-sysctl-Don-t-pass-null-directive-argument-to-s.patch
+Patch80:        systemd-backport-Change-job-mode-of-manager-triggered-restarts-to-JOB.patch
+
 # This patch serves two purposes: it adds needed "#include <sys/sysmacros.h>"
 # and initializes variables with automatic cleanup functions to silence
 # compiler warnings.
