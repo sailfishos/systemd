@@ -1,0 +1,45 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Lennart Poettering <lennart@poettering.net>
+Date: Wed, 16 Jan 2019 00:13:38 +0100
+Subject: [PATCH] strv: rework FOREACH_STRING() macro
+
+So it's apparently problematic that we use STRV_MAKE() (i.e. a compound
+initializer) outside of the {} block we use it in (and that includes
+outside of the ({}) block, too). Hence, let's rework the macro to not
+need that.
+
+This also makes the macro shorter, which is definitely a good and more
+readable. Moreover, it will now complain if the iterator is a "char*"
+instead of a "const char*", which is good too.
+
+Fixes: #11394
+---
+ src/basic/strv.h | 15 ++++-----------
+ 1 file changed, 4 insertions(+), 11 deletions(-)
+
+diff --git a/src/basic/strv.h b/src/basic/strv.h
+index f169ac5d4f611884fe1e52cf898cde1253834626..9344cd1ed72efd5c1cae20eab33282057ba55848 100644
+--- a/src/basic/strv.h
++++ b/src/basic/strv.h
+@@ -155,17 +155,10 @@ void strv_print(char **l);
+                 _x && strv_contains(STRV_MAKE(__VA_ARGS__), _x); \
+         })
+ 
+-#define FOREACH_STRING(x, ...)                               \
+-        for (char **_l = ({                                  \
+-                char **_ll = STRV_MAKE(__VA_ARGS__);         \
+-                x = _ll ? _ll[0] : NULL;                     \
+-                _ll;                                         \
+-        });                                                  \
+-        _l && *_l;                                           \
+-        x = ({                                               \
+-                _l ++;                                       \
+-                _l[0];                                       \
+-        }))
++#define FOREACH_STRING(x, y, ...)                                       \
++        for (char **_l = STRV_MAKE(({ x = y; }), ##__VA_ARGS__);        \
++             x;                                                         \
++             x = *(++_l))
+ 
+ char **strv_reverse(char **l);
+ char **strv_shell_escape(char **l, const char *bad);
