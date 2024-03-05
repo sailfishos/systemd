@@ -1,0 +1,56 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Wen Yang <wenyang@linux.alibaba.com>
+Date: Wed, 1 Jul 2020 04:45:33 +0800
+Subject: [PATCH] mount-setup: fix segfault in mount_cgroup_controllers when
+ using gcc9 compiler
+
+According to the documentation:
+https://gcc.gnu.org/gcc-9/porting_to.html#complit
+
+The 'join_controllers' that relied on the extended lifetime needs
+to be fixed, move the compound literals to the function scope it
+need to accessible in.
+
+Resolves: #1868877
+---
+ src/core/mount-setup.c | 24 +++++++++++++-----------
+ 1 file changed, 13 insertions(+), 11 deletions(-)
+
+diff --git a/src/core/mount-setup.c b/src/core/mount-setup.c
+index 9a5ee06dc9d02b1c2b1e2b89ae53e991200b53d1..5b5fcc03a77aaabb4298c75367af9310d779d518 100644
+--- a/src/core/mount-setup.c
++++ b/src/core/mount-setup.c
+@@ -255,20 +255,22 @@ int mount_cgroup_controllers(char ***join_controllers) {
+         if (!cg_is_legacy_wanted())
+                 return 0;
+ 
++        /* The defaults:
++         * mount "cpu" + "cpuacct" together, and "net_cls" + "net_prio".
++         *
++         * We'd like to add "cpuset" to the mix, but "cpuset" doesn't really
++         * work for groups with no initialized attributes.
++         */
++        char ***default_join_controllers = (char**[]) {
++                STRV_MAKE("cpu", "cpuacct"),
++                STRV_MAKE("net_cls", "net_prio"),
++                NULL,
++        };
++
+         /* Mount all available cgroup controllers that are built into the kernel. */
+ 
+         if (!has_argument)
+-                /* The defaults:
+-                 * mount "cpu" + "cpuacct" together, and "net_cls" + "net_prio".
+-                 *
+-                 * We'd like to add "cpuset" to the mix, but "cpuset" doesn't really
+-                 * work for groups with no initialized attributes.
+-                 */
+-                join_controllers = (char**[]) {
+-                        STRV_MAKE("cpu", "cpuacct"),
+-                        STRV_MAKE("net_cls", "net_prio"),
+-                        NULL,
+-                };
++                join_controllers = default_join_controllers;
+ 
+         r = cg_kernel_controllers(&controllers);
+         if (r < 0)
