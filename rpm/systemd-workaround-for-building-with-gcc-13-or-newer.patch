@@ -1,0 +1,23 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Matti=20Lehtim=C3=A4ki?= <matti.lehtimaki@jolla.com>
+Date: Wed, 8 Jan 2025 04:19:29 +0200
+Subject: [PATCH] Workaround for building with gcc 13 or newer
+
+Should be removed when updating systemd.
+---
+ src/core/job.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/core/job.c b/src/core/job.c
+index 0cba4957f578dad017ffc51972d68fdb4161892d..62df9068e178687ec5fad37eb7a1269cc0ac6ef3 100644
+--- a/src/core/job.c
++++ b/src/core/job.c
+@@ -871,7 +871,7 @@ int job_finish_and_invalidate(Job *j, JobResult result, bool recursive, bool alr
+ 
+         j->result = result;
+ 
+-        log_unit_debug(u, "Job %s/%s finished, result=%s", u->id, job_type_to_string(t), job_result_to_string(result));
++        log_unit_debug(u, "Job %s/%s finished, result=%s", u->id, job_type_to_string(t) ? : "invalid", job_result_to_string(result) ? : "invalid");
+ 
+         /* If this job did nothing to respective unit we don't log the status message */
+         if (!already)
