@@ -378,14 +378,6 @@ install -m 644 %{SOURCE2} %{buildroot}/opt/tests/systemd-tests
 rm -rf %{buildroot}/%{_docdir}
 %endif
 
-# systemd macros
-# Old rpm versions assume macros in /etc/rpm/
-# New ones support /usr/lib/rpm/macros.d/
-# Systemd naturually uses later one
-# But we support both by adding link
-mkdir -p %{buildroot}%{_sysconfdir}/rpm
-ln -s %{_libdir}/rpm/macros.d/macros.systemd %{buildroot}%{_sysconfdir}/rpm/macros.systemd
-
 # Remove unneeded files
 rm %{buildroot}%{_sysconfdir}/X11/xinit/xinitrc.d/50-systemd-user.sh
 
@@ -479,7 +471,6 @@ for a in `find /etc/systemd/system -type l ! -exec test -e {} \; -print`; do sta
 %ghost %{_sysconfdir}/udev/hwdb.bin
 %{_rpmconfigdir}/macros.d/macros.systemd
 %dir %{_sysconfdir}/xdg/systemd
-%{_sysconfdir}/rpm/macros.systemd
 %{_bindir}/systemctl
 %{_bindir}/systemd-notify
 %{_bindir}/systemd-escape
