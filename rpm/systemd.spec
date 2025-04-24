@@ -435,6 +435,11 @@ setfacl -Rnm g:wheel:rx,d:g:wheel:rx,g:adm:rx,d:g:adm:rx /var/log/journal/ >/dev
 # remove obsolete systemd-readahead file
 rm -f /.readahead > /dev/null 2>&1 || :
 
+# Only for 32bit, i.e, arm devices because of CONFIG_ANDROID_PARANOID_NETWORK.
+# Group "inet" is required in this case for creating a socket, which otherwise
+# fails on those devices having the kernel option mentioned above.
+if [ %{_arch} = "arm" ] ; then echo "add systemd-resolve to \"inet\" group" ; usermod -a -G inet systemd-resolve ; fi
+
 %posttrans
 # Make sure all symlinks in /etc/systemd/system point to the new units in
 # /usr/lib/systemd/system and not in /lib/systemd/system
