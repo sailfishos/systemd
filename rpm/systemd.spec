@@ -21,7 +21,6 @@ Source3:        systemctl-user
 # We need to disable false positive rpmlint's error in systemd.pc.
 # Can be removed after fixing: https://bugs.merproject.org/show_bug.cgi?id=1341
 Source4:        systemd-rpmlintrc
-Source5:        precheckin.sh
 
 %if %{with systemd_bootstrap}
 Source6:        systemd-mini-rpmlintrc
