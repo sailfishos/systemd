@@ -254,13 +254,15 @@ CONFIGURE_OPTS=(
         -Dlibcryptsetup=true
         -Dgcrypt=true
         -Dselinux=true
+        -Dresolve=true
+        -Dmyhostname=true
 %else
         -Dtests=false
         -Dinstall-tests=false
-%endif
-        # those also will not work during boostrap if enabled
         -Dresolve=false
         -Dmyhostname=false
+%endif
+        # those also will not work during boostrap if enabled
         -Dmachined=false
         # end
         -Dkmod=true
@@ -410,8 +412,10 @@ getent group systemd-journal >/dev/null 2>&1 || groupadd -r -g 190 systemd-journ
 getent group systemd-network >/dev/null 2>&1 || groupadd -r systemd-network 2>&1 || :
 getent passwd systemd-network >/dev/null 2>&1 || useradd -r -l -g systemd-network -d / -s /sbin/nologin -c "systemd Network Management" systemd-network >/dev/null 2>&1 || :
 
-#getent group systemd-resolve >/dev/null 2>&1 || groupadd -r systemd-resolve 2>&1 || :
-#getent passwd systemd-resolve >/dev/null 2>&1 || useradd -r -l -g systemd-resolve -d / -s /sbin/nologin -c "systemd Resolver" systemd-resolve >/dev/null 2>&1 || :
+%if %{without systemd_bootstrap}
+getent group systemd-resolve >/dev/null 2>&1 || groupadd -r systemd-resolve 2>&1 || :
+getent passwd systemd-resolve >/dev/null 2>&1 || useradd -r -l -g systemd-resolve -d / -s /sbin/nologin -c "systemd Resolver" systemd-resolve >/dev/null 2>&1 || :
+%endif
 
 systemctl stop systemd-udevd-control.socket systemd-udevd-kernel.socket systemd-udevd.service >/dev/null 2>&1 || :
 
@@ -551,6 +555,13 @@ for a in `find /etc/systemd/system -type l ! -exec test -e {} \; -print`; do sta
 %license LICENSE.GPL2
 %license LICENSE.LGPL2.1
 
+%if %{without systemd_bootstrap}
+%{_bindir}/systemd-resolve
+%{_datadir}/dbus-1/system-services/org.freedesktop.resolve1.service
+%{_datadir}/dbus-1/system.d/org.freedesktop.resolve1.conf
+%{_datadir}/polkit-1/actions/org.freedesktop.resolve1.policy
+%endif
+
 # Just make sure we don't package these by default
 %exclude %{_prefix}/lib/systemd/system/default.target
 %exclude %{user_unit_dir}/default.target
@@ -569,6 +580,9 @@ for a in `find /etc/systemd/system -type l ! -exec test -e {} \; -print`; do sta
 %{_sysconfdir}/udev/udev.conf
 %{system_unit_dir}/default.target
 %{system_unit_dir}/user@.service
+%if %{without systemd_bootstrap}
+%{_sysconfdir}/systemd/resolved.conf
+%endif
 
 %if %{without systemd_bootstrap}
 %files doc
@@ -591,6 +605,10 @@ for a in `find /etc/systemd/system -type l ! -exec test -e {} \; -print`; do sta
 %{_libdir}/libudev.so.*
 %{_libdir}/libsystemd.so.*
 %{_libdir}/libnss_systemd.so.*
+%if %{without systemd_bootstrap}
+%{_libdir}/libnss_resolve.so.2
+%{_libdir}/libnss_myhostname.so.2
+%endif
 
 %files devel
 %dir %{_includedir}/systemd
