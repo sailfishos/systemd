@@ -448,7 +448,6 @@ for a in `find /etc/systemd/system -type l ! -exec test -e {} \; -print`; do sta
 %postun libs -p /sbin/ldconfig
 
 %files -f %{_name}.lang
-%defattr(-,root,root,-)
 %dir %{_sysconfdir}/systemd
 %dir %{_sysconfdir}/systemd/system
 %exclude %{_sysconfdir}/systemd/system/getty.target.wants/getty@tty1.service
@@ -571,7 +570,6 @@ for a in `find /etc/systemd/system -type l ! -exec test -e {} \; -print`; do sta
 %exclude %{pkgdir}/tests
 
 %files config-mer
-%defattr(-,root,root,-)
 %{_sysconfdir}/systemd/journald.conf
 %{_sysconfdir}/systemd/logind.conf
 %{_sysconfdir}/systemd/system.conf
@@ -585,18 +583,15 @@ for a in `find /etc/systemd/system -type l ! -exec test -e {} \; -print`; do sta
 
 %if %{without systemd_bootstrap}
 %files doc
-%defattr(-,root,root,-)
 %{_docdir}/%{_name}-%{version}
 
 %files tests
-%defattr(-,root,root,-)
 %dir /opt/tests/systemd-tests
 /opt/tests/systemd-tests/tests.xml
 %{pkgdir}/tests
 %endif
 
 %files analyze
-%defattr(-,root,root,-)
 %{_bindir}/systemd-analyze
 
 %files libs
