@@ -254,6 +254,8 @@ CONFIGURE_OPTS=(
         -Dselinux=true
         -Dresolve=true
         -Dmyhostname=true
+        # Disable DNSSEC by default, until systemd update. JB#63704
+        -Ddefault-dnssec=no
 %else
         -Dtests=false
         -Dinstall-tests=false
