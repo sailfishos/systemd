@@ -3,6 +3,7 @@
 # This script is based on libcdio_spec-prepare.sh (thanks to sbrabec@suse.cz)
 # create a -mini spec for systemd for bootstrapping
 
+pushd rpm
 ORIG_SPEC=systemd
 EDIT_WARNING="##### WARNING: please do not edit this auto generated spec file. Use the ${ORIG_SPEC}.spec! #####\n"
 sed "s/^%bcond_with     systemd_bootstrap.*$/${EDIT_WARNING}%bcond_without     systemd_bootstrap/;

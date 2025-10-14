@@ -21,7 +21,6 @@ Source3:        systemctl-user
 # We need to disable false positive rpmlint's error in systemd.pc.
 # Can be removed after fixing: https://bugs.merproject.org/show_bug.cgi?id=1341
 Source4:        systemd-rpmlintrc
-Source5:        precheckin.sh
 
 %if %{with systemd_bootstrap}
 Source6:        systemd-mini-rpmlintrc
@@ -255,6 +254,8 @@ CONFIGURE_OPTS=(
         -Dselinux=true
         -Dresolve=true
         -Dmyhostname=true
+        # Disable DNSSEC by default, until systemd update. JB#63704
+        -Ddefault-dnssec=no
 %else
         -Dtests=false
         -Dinstall-tests=false
@@ -411,8 +412,10 @@ getent group systemd-journal >/dev/null 2>&1 || groupadd -r -g 190 systemd-journ
 getent group systemd-network >/dev/null 2>&1 || groupadd -r systemd-network 2>&1 || :
 getent passwd systemd-network >/dev/null 2>&1 || useradd -r -l -g systemd-network -d / -s /sbin/nologin -c "systemd Network Management" systemd-network >/dev/null 2>&1 || :
 
+%if %{without systemd_bootstrap}
 getent group systemd-resolve >/dev/null 2>&1 || groupadd -r systemd-resolve 2>&1 || :
 getent passwd systemd-resolve >/dev/null 2>&1 || useradd -r -l -g systemd-resolve -d / -s /sbin/nologin -c "systemd Resolver" systemd-resolve >/dev/null 2>&1 || :
+%endif
 
 systemctl stop systemd-udevd-control.socket systemd-udevd-kernel.socket systemd-udevd.service >/dev/null 2>&1 || :
 
@@ -446,7 +449,6 @@ for a in `find /etc/systemd/system -type l ! -exec test -e {} \; -print`; do sta
 %postun libs -p /sbin/ldconfig
 
 %files -f %{_name}.lang
-%defattr(-,root,root,-)
 %dir %{_sysconfdir}/systemd
 %dir %{_sysconfdir}/systemd/system
 %exclude %{_sysconfdir}/systemd/system/getty.target.wants/getty@tty1.service
@@ -476,7 +478,6 @@ for a in `find /etc/systemd/system -type l ! -exec test -e {} \; -print`; do sta
 %{_datadir}/dbus-1/system.d/org.freedesktop.systemd1.conf
 %{_datadir}/dbus-1/system.d/org.freedesktop.hostname1.conf
 %{_datadir}/dbus-1/system.d/org.freedesktop.login1.conf
-%{_datadir}/dbus-1/system.d/org.freedesktop.resolve1.conf
 %{_sysconfdir}/pam.d/systemd-user
 %ghost %{_sysconfdir}/udev/hwdb.bin
 %{_rpmconfigdir}/macros.d/macros.systemd
@@ -513,7 +514,6 @@ for a in `find /etc/systemd/system -type l ! -exec test -e {} \; -print`; do sta
 %{_bindir}/systemd-inhibit
 %{_bindir}/systemd-path
 %{_bindir}/systemd-hwdb
-%{_bindir}/systemd-resolve
 %{_bindir}/hostnamectl
 %{_prefix}/lib/tmpfiles.d/systemd.conf
 %{_prefix}/lib/tmpfiles.d/systemd-nologin.conf
@@ -544,17 +544,22 @@ for a in `find /etc/systemd/system -type l ! -exec test -e {} \; -print`; do sta
 %{_datadir}/dbus-1/*/org.freedesktop.systemd1.service
 %{_datadir}/dbus-1/system-services/org.freedesktop.hostname1.service
 %{_datadir}/dbus-1/system-services/org.freedesktop.login1.service
-%{_datadir}/dbus-1/system-services/org.freedesktop.resolve1.service
 %{_datadir}/polkit-1/actions/org.freedesktop.systemd1.policy
 %{_datadir}/polkit-1/actions/org.freedesktop.hostname1.policy
 %{_datadir}/polkit-1/actions/org.freedesktop.login1.policy
-%{_datadir}/polkit-1/actions/org.freedesktop.resolve1.policy
 %{_datadir}/bash-completion/completions/*
 # These 2 files should land in /usr/lib without depending on 32/64 bits.
 %{_prefix}/lib/environment.d/99-environment.conf
 %{_prefix}/lib/modprobe.d/systemd.conf
 %license LICENSE.GPL2
 %license LICENSE.LGPL2.1
+
+%if %{without systemd_bootstrap}
+%{_bindir}/systemd-resolve
+%{_datadir}/dbus-1/system-services/org.freedesktop.resolve1.service
+%{_datadir}/dbus-1/system.d/org.freedesktop.resolve1.conf
+%{_datadir}/polkit-1/actions/org.freedesktop.resolve1.policy
+%endif
 
 # Just make sure we don't package these by default
 %exclude %{_prefix}/lib/systemd/system/default.target
@@ -566,30 +571,28 @@ for a in `find /etc/systemd/system -type l ! -exec test -e {} \; -print`; do sta
 %exclude %{pkgdir}/tests
 
 %files config-mer
-%defattr(-,root,root,-)
 %{_sysconfdir}/systemd/journald.conf
 %{_sysconfdir}/systemd/logind.conf
-%{_sysconfdir}/systemd/resolved.conf
 %{_sysconfdir}/systemd/system.conf
 %{_sysconfdir}/systemd/user.conf
 %{_sysconfdir}/udev/udev.conf
 %{system_unit_dir}/default.target
 %{system_unit_dir}/user@.service
+%if %{without systemd_bootstrap}
+%{_sysconfdir}/systemd/resolved.conf
+%endif
 
 %if %{without systemd_bootstrap}
 %files doc
-%defattr(-,root,root,-)
 %{_docdir}/%{_name}-%{version}
 
 %files tests
-%defattr(-,root,root,-)
 %dir /opt/tests/systemd-tests
 /opt/tests/systemd-tests/tests.xml
 %{pkgdir}/tests
 %endif
 
 %files analyze
-%defattr(-,root,root,-)
 %{_bindir}/systemd-analyze
 
 %files libs
@@ -597,8 +600,10 @@ for a in `find /etc/systemd/system -type l ! -exec test -e {} \; -print`; do sta
 %{_libdir}/libudev.so.*
 %{_libdir}/libsystemd.so.*
 %{_libdir}/libnss_systemd.so.*
+%if %{without systemd_bootstrap}
 %{_libdir}/libnss_resolve.so.2
 %{_libdir}/libnss_myhostname.so.2
+%endif
 
 %files devel
 %dir %{_includedir}/systemd
