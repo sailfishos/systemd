@@ -87,6 +87,7 @@ Patch80:        systemd-backport-Change-job-mode-of-manager-triggered-restarts-t
 Patch81:        systemd-backport-mount-setup-fix-segfault-in-mount_cgroup_controllers.patch
 Patch82:        systemd-backport-strv-rework-FOREACH_STRING-macro.patch
 Patch83:        systemd-workaround-for-building-with-gcc-13-or-newer.patch
+Patch84:        systemd-backport-udev-networkd-use-the-interface-name-as-fal.patch
 
 # This patch serves two purposes: it adds needed "#include <sys/sysmacros.h>"
 # and initializes variables with automatic cleanup functions to silence
