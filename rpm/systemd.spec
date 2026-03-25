@@ -126,6 +126,8 @@ Requires(postun): /sbin/ldconfig
 Requires:       %{name}-libs = %{version}-%{release}
 Requires:       filesystem >= 3
 Requires:       %{_name}-config
+# Backwards compatibility for things expecting rpm macros in the main package
+Requires:       %{name}-rpm-macros
 # fsck with -l option was introduced in 2.21.2 packaging
 Requires:       util-linux >= 2.21.2
 Requires:       which
@@ -145,6 +147,7 @@ Obsoletes:      systemd-sysv < %{version}
 #!BuildIgnore:  dbus-1
 Requires:       this-is-only-for-build-envs
 Provides:       %{_name} = %{version}-%{release}
+Conflicts:      %{_name}
 %endif
 
 %description
@@ -161,6 +164,10 @@ work as a drop-in replacement for sysvinit.
 Summary:    Default configuration for systemd
 Requires:   %{name} = %{version}-%{release}
 Provides:   %{_name}-config
+%if %{with systemd_bootstrap}
+Provides:   %{_name}-config-mer = %{version}-%{release}
+Conflicts:  %{_name}-config-mer
+%endif
 
 %description config-mer
 This package provides default configuration for systemd
@@ -190,16 +197,26 @@ Summary:        Development headers for systemd
 License:        LGPLv2+ and MIT
 Requires:       %{name}-libs = %{version}-%{release}
 # For macros.systemd
-Requires:       %{name} = %{version}-%{release}
+Requires:       %{name}-rpm-macros = %{version}-%{release}
 Provides:       libudev-devel = %{version}
 Obsoletes:      libudev-devel < %{version}
 %if %{with systemd_bootstrap}
-Conflicts:      systemd-devel
+Provides:       %{_name}-devel = %{version}-%{release}
+Conflicts:      %{_name}-devel
 %endif
 
 %description devel
 Development headers and auxiliary files for developing applications linking
 to libudev or libsystemd.
+
+%package rpm-macros
+Summary:   Macros that define paths and scriptlets related to systemd
+%if %{with systemd_bootstrap}
+Provides:  %{_name}-rpm-macros
+%endif
+
+%description rpm-macros
+%{summary}.
 
 %if %{without systemd_bootstrap}
 %package doc
@@ -380,14 +397,6 @@ install -m 644 %{SOURCE2} %{buildroot}/opt/tests/systemd-tests
 rm -rf %{buildroot}/%{_docdir}
 %endif
 
-# systemd macros
-# Old rpm versions assume macros in /etc/rpm/
-# New ones support /usr/lib/rpm/macros.d/
-# Systemd naturually uses later one
-# But we support both by adding link
-mkdir -p %{buildroot}%{_sysconfdir}/rpm
-ln -s %{_libdir}/rpm/macros.d/macros.systemd %{buildroot}%{_sysconfdir}/rpm/macros.systemd
-
 # Remove unneeded files
 rm %{buildroot}%{_sysconfdir}/X11/xinit/xinitrc.d/50-systemd-user.sh
 
@@ -480,9 +489,7 @@ for a in `find /etc/systemd/system -type l ! -exec test -e {} \; -print`; do sta
 %{_datadir}/dbus-1/system.d/org.freedesktop.login1.conf
 %{_sysconfdir}/pam.d/systemd-user
 %ghost %{_sysconfdir}/udev/hwdb.bin
-%{_rpmconfigdir}/macros.d/macros.systemd
 %dir %{_sysconfdir}/xdg/systemd
-%{_sysconfdir}/rpm/macros.systemd
 %{_bindir}/systemctl
 %{_bindir}/systemd-notify
 %{_bindir}/systemd-escape
@@ -624,3 +631,6 @@ for a in `find /etc/systemd/system -type l ! -exec test -e {} \; -print`; do sta
 %{_libdir}/pkgconfig/libsystemd.pc
 %{_datadir}/pkgconfig/systemd.pc
 %{_datadir}/pkgconfig/udev.pc
+
+%files rpm-macros
+%{_rpmconfigdir}/macros.d/macros.systemd
