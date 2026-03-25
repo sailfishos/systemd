@@ -147,6 +147,7 @@ Obsoletes:      systemd-sysv < %{version}
 #!BuildIgnore:  dbus-1
 Requires:       this-is-only-for-build-envs
 Provides:       %{_name} = %{version}-%{release}
+Conflicts:      %{_name}
 %endif
 
 %description
@@ -163,6 +164,10 @@ work as a drop-in replacement for sysvinit.
 Summary:    Default configuration for systemd
 Requires:   %{name} = %{version}-%{release}
 Provides:   %{_name}-config
+%if %{with systemd_bootstrap}
+Provides:   %{_name}-config-mer = %{version}-%{release}
+Conflicts:  %{_name}-config-mer
+%endif
 
 %description config-mer
 This package provides default configuration for systemd
@@ -196,7 +201,8 @@ Requires:       %{name}-rpm-macros = %{version}-%{release}
 Provides:       libudev-devel = %{version}
 Obsoletes:      libudev-devel < %{version}
 %if %{with systemd_bootstrap}
-Conflicts:      systemd-devel
+Provides:       %{_name}-devel = %{version}-%{release}
+Conflicts:      %{_name}-devel
 %endif
 
 %description devel
@@ -205,6 +211,10 @@ to libudev or libsystemd.
 
 %package rpm-macros
 Summary:   Macros that define paths and scriptlets related to systemd
+%if %{with systemd_bootstrap}
+Provides:  %{_name}-rpm-macros = %{version}-%{release}
+Conflicts: %{_name}-rpm-macros
+%endif
 
 %description rpm-macros
 %{summary}.
