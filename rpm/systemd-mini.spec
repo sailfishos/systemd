@@ -214,7 +214,6 @@ to libudev or libsystemd.
 Summary:   Macros that define paths and scriptlets related to systemd
 %if %{with systemd_bootstrap}
 Provides:  %{_name}-rpm-macros
-Conflicts: %{_name}-rpm-macros
 %endif
 
 %description rpm-macros
