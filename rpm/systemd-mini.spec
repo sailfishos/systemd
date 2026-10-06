@@ -94,6 +94,9 @@ Patch83:        systemd-workaround-for-building-with-gcc-13-or-newer.patch
 # compiler warnings.
 Patch99:        systemd-238_fix_build_with_glibc228.patch
 
+# Downstream local DNS domain-suffix blocking in systemd-resolved.
+Patch100:       systemd-resolved-domain-blocking.patch
+
 %if %{without systemd_bootstrap}
 BuildRequires:  pkgconfig(glib-2.0)
 BuildRequires:  pkgconfig(dbus-1) >= 1.3.2
@@ -223,6 +226,12 @@ This package includes tests for systemd.
 
 %prep
 %autosetup -p1 -n %{name}-%{version}/systemd
+
+# Carry downstream additions separately; the patch only modifies existing upstream files.
+for file in resolved-dns-blocklist.c resolved-dns-blocklist.h test-dns-blocklist.c test-resolved-blocklist.c; do
+    test -f "../resolved-domain-blocking/$file" || exit 1
+    ln -s "../../../resolved-domain-blocking/$file" "src/resolve/$file" || exit 1
+done
 
 %build
 ntp_servers=({0..3}.sailfishos.pool.ntp.org)
