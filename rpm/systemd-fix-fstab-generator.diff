@@ -1,19 +1,27 @@
-diff -purN systemd/src/fstab-generator/fstab-generator.c systemd-izh/src/fstab-generator/fstab-generator.c
---- systemd/src/fstab-generator/fstab-generator.c	2020-10-13 13:34:00.170952415 +0300
-+++ systemd-izh/src/fstab-generator/fstab-generator.c	2020-10-28 23:39:10.575809715 +0300
-@@ -376,7 +376,14 @@ static int add_mount(
-                 SET_FLAG(flags, NOFAIL, true);
+diff --git a/src/core/mount.c b/src/core/mount.c
+index b4721b0c2e..49d7bebb41 100644
+--- a/src/core/mount.c
++++ b/src/core/mount.c
+@@ -486,7 +486,7 @@ static int mount_add_default_ordering_dependencies(
+                 before = SPECIAL_LOCAL_FS_TARGET;
          }
  
--        if (!(flags & NOFAIL) && !(flags & AUTOMOUNT))
-+
-+        /* IZh: Before the commit bd6bcce4d7fd9f34f84588888fa9d0e664e0500b
-+         * thed ependency wasn't added when "noauto" option is set. But now
-+         * the dependency on the local-fs.target for the home.mount prevent
-+         * the system from booting because the device can't be mounted without
-+         * asking a user for a password, but we can't ask because the
-+         * graphical UI is not stated yet. So let's skip the dependency. */
-+        if (!(flags & NOFAIL) && !(flags & AUTOMOUNT) && !path_equal(where, "/home"))
+-        if (!mount_is_nofail(m)) {
++        if (!mount_is_nofail(m) && !path_equal(m->where, "/home")) {
+                 r = unit_add_dependency_by_name(UNIT(m), UNIT_BEFORE, before, true, mask);
+                 if (r < 0)
+                         return r;
+diff --git a/src/fstab-generator/fstab-generator.c b/src/fstab-generator/fstab-generator.c
+index 9b32383a76..fa6260de0b 100644
+--- a/src/fstab-generator/fstab-generator.c
++++ b/src/fstab-generator/fstab-generator.c
+@@ -437,7 +437,7 @@ static int add_mount(
+ 
+         /* Order the mount unit we generate relative to the post unit, so that DefaultDependencies= on the
+          * target unit won't affect us. */
+-        if (post && !FLAGS_SET(flags, MOUNT_NOFAIL))
++        if (post && !FLAGS_SET(flags, MOUNT_NOFAIL) && !path_equal(where, "/home"))
                  fprintf(f, "Before=%s\n", post);
  
-         if (!(flags & AUTOMOUNT) && opts) {
+         if (passno != 0) {
+

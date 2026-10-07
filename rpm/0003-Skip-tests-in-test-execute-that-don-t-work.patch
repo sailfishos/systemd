@@ -1,0 +1,32 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Tomi=20Lepp=C3=A4nen?= <tomi.leppanen@jolla.com>
+Date: Wed, 9 Mar 2022 16:55:21 +0200
+Subject: [PATCH] Skip tests in test-execute that don't work
+MIME-Version: 1.0
+
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+That dynamicuser-statedir test requires find with -writable argument
+support which is not available in busybox find.
+
+Signed-off-by: Tomi Leppänen <tomi.leppanen@jolla.com>
+---
+ src/test/test-execute.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/src/test/test-execute.c b/src/test/test-execute.c
+index f37034eb9185c7005d9079516c735f62f7a68183..aefd208ae724434cba661eab1abbd17a7af16e30 100644
+--- a/src/test/test-execute.c
++++ b/src/test/test-execute.c
+@@ -877,7 +877,10 @@ static void test_exec_dynamicuser(Manager *m) {
+                 test(m, "exec-dynamicuser-fixeduser-games.service", can_unshare ? 0 : EXIT_NAMESPACE, CLD_EXITED);
+         test(m, "exec-dynamicuser-fixeduser-one-supplementarygroup.service", can_unshare ? 0 : EXIT_NAMESPACE, CLD_EXITED);
+         test(m, "exec-dynamicuser-supplementarygroups.service", can_unshare ? 0 : EXIT_NAMESPACE, CLD_EXITED);
++// This test does not work with busybox find that's missing -writeable
++#if 0
+         test(m, "exec-dynamicuser-statedir.service", can_unshare ? 0 : EXIT_NAMESPACE, CLD_EXITED);
++#endif
+ 
+         (void) rm_rf("/var/lib/quux", REMOVE_ROOT|REMOVE_PHYSICAL);
+         (void) rm_rf("/var/lib/test-dynamicuser-migrate", REMOVE_ROOT|REMOVE_PHYSICAL);

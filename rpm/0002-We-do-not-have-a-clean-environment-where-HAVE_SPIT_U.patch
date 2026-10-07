@@ -1,20 +1,29 @@
-From 5449d538f07df476e7341ee704803d240c8733e5 Mon Sep 17 00:00:00 2001
+From 9ce0ad3e01c2525876ddb3c1b0c0e10eb61bfcac Mon Sep 17 00:00:00 2001
 From: Niels Breet <niels.breet@jolla.com>
 Date: Mon, 6 Jul 2020 15:11:42 +0300
 Subject: [PATCH] We do not have a clean environment where HAVE_SPIT_USR will
  actually work, so adding /sbin and /bin to path
 
-diff -purN systemd41/src/basic/path-util.h systemd42/src/basic/path-util.h
---- systemd/src/basic/path-util.h	2020-10-13 13:34:00.118952190 +0300
-+++ systemd-izh/src/basic/path-util.h	2020-10-13 18:09:42.674740348 +0300
-@@ -34,8 +34,8 @@
- #  define PATH_SBIN_BIN(x) x "bin"
+---
+ src/basic/path-util.h | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/src/basic/path-util.h b/src/basic/path-util.h
+index 9c194ea4d6..abca49e606 100644
+--- a/src/basic/path-util.h
++++ b/src/basic/path-util.h
+@@ -24,10 +24,10 @@
+ #  define PATH_SBIN_BIN_NULSTR(x) PATH_NORMAL_SBIN_BIN_NULSTR(x)
  #endif
  
 -#define DEFAULT_PATH_NORMAL PATH_SBIN_BIN("/usr/local/") ":" PATH_SBIN_BIN("/usr/")
+-#define DEFAULT_PATH_NORMAL_NULSTR PATH_SBIN_BIN_NULSTR("/usr/local/") PATH_SBIN_BIN_NULSTR("/usr/")
 -#define DEFAULT_PATH_SPLIT_USR DEFAULT_PATH_NORMAL ":" PATH_SBIN_BIN("/")
+-#define DEFAULT_PATH_SPLIT_USR_NULSTR DEFAULT_PATH_NORMAL_NULSTR PATH_SBIN_BIN_NULSTR("/")
 +#define DEFAULT_PATH_NORMAL PATH_SBIN_BIN("/usr/local/") ":" PATH_SBIN_BIN("/usr/") ":" PATH_SBIN_BIN("/")
++#define DEFAULT_PATH_NORMAL_NULSTR PATH_SBIN_BIN_NULSTR("/usr/local/") PATH_SBIN_BIN_NULSTR("/usr/") PATH_SBIN_BIN_NULSTR("/")
 +#define DEFAULT_PATH_SPLIT_USR DEFAULT_PATH_NORMAL
++#define DEFAULT_PATH_SPLIT_USR_NULSTR DEFAULT_PATH_NORMAL_NULSTR
+ #define DEFAULT_PATH_COMPAT PATH_SPLIT_SBIN_BIN("/usr/local/") ":" PATH_SPLIT_SBIN_BIN("/usr/") ":" PATH_SPLIT_SBIN_BIN("/")
  
  #if HAVE_SPLIT_USR
- #  define DEFAULT_PATH DEFAULT_PATH_SPLIT_USR

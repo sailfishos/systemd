@@ -41,21 +41,27 @@ even though it really isn't.
 
 Fixes: #6632
 
-diff -purN systemd/man/systemd.service.xml systemd-izh/man/systemd.service.xml
---- systemd/man/systemd.service.xml	2020-10-29 13:44:30.133422990 +0000
-+++ systemd-izh/man/systemd.service.xml	2020-11-26 13:39:22.904564444 +0000
-@@ -264,14 +264,16 @@
+diff --git a/man/systemd.service.xml b/man/systemd.service.xml
+index 95cb0aca3d467e07e782ac779e4ae4d130f71f0d..bdaf798bc0e4ef83d66fe5c05b398fe0be407285 100644
+--- a/man/systemd.service.xml
++++ b/man/systemd.service.xml
+@@ -309,19 +309,16 @@
        <varlistentry>
          <term><varname>PIDFile=</varname></term>
  
--        <listitem><para>Takes an absolute path referring to the PID file of the service. Usage of this option is
--        recommended for services where <varname>Type=</varname> is set to <option>forking</option>. The service manager
--        will read the PID of the main process of the service from this file after start-up of the service. The service
--        manager will not write to the file configured here, although it will remove the file after the service has shut
--        down if it still exists. The PID file does not need to be owned by a privileged user, but if it is owned by an
--        unprivileged user additional safety restrictions are enforced: the file may not be a symlink to a file owned by
--        a different user (neither directly nor indirectly), and the PID file must refer to a process already belonging
--        to the service.</para></listitem>
+-        <listitem><para>Takes a path referring to the PID file of the service. Usage of this option is recommended for
+-        services where <varname>Type=</varname> is set to <option>forking</option>. The path specified typically points
+-        to a file below <filename>/run/</filename>. If a relative path is specified it is hence prefixed with
+-        <filename>/run/</filename>. The service manager will read the PID of the main process of the service from this
+-        file after start-up of the service. The service manager will not write to the file configured here, although it
+-        will remove the file after the service has shut down if it still exists. The PID file does not need to be owned
+-        by a privileged user, but if it is owned by an unprivileged user additional safety restrictions are enforced:
+-        the file may not be a symlink to a file owned by a different user (neither directly nor indirectly), and the
+-        PID file must refer to a process already belonging to the service.</para>
+-
+-        <para>Note that PID files should be avoided in modern projects. Use <option>Type=notify</option> or
+-        <option>Type=simple</option> where possible, which does not require use of PID files to determine the
+-        main process of a service and avoids needless forking.</para></listitem>
 +        <listitem><para>Takes an absolute filename pointing to the
 +        PID file of this daemon. Use of this option is recommended for
 +        services where <varname>Type=</varname> is set to
@@ -69,61 +75,64 @@ diff -purN systemd/man/systemd.service.xml systemd-izh/man/systemd.service.xml
        </varlistentry>
  
        <varlistentry>
-diff -purN systemd/src/core/manager.c systemd-izh/src/core/manager.c
---- systemd/src/core/manager.c	2020-11-26 13:33:41.363978913 +0000
-+++ systemd-izh/src/core/manager.c	2020-11-26 13:39:22.908564403 +0000
-@@ -1989,16 +1989,10 @@ static int manager_dispatch_cgroups_agen
-         return 0;
+diff --git a/src/core/manager.c b/src/core/manager.c
+index 93e34867f4b7d6d719934ba518348f545c34d9f9..8a36e5d51a4edcc14cd3458f44a406939974b8dc 100644
+--- a/src/core/manager.c
++++ b/src/core/manager.c
+@@ -2382,16 +2382,9 @@ static bool manager_process_barrier_fd(char * const *tags, FDSet *fds) {
+         return false;
  }
  
 -static void manager_invoke_notify_message(
 -                Manager *m,
 -                Unit *u,
 -                const struct ucred *ucred,
--                const char *buf,
+-                char * const *tags,
 -                FDSet *fds) {
-+static void manager_invoke_notify_message(Manager *m, Unit *u, pid_t pid, const char *buf, FDSet *fds) {
- 
+-
++static void manager_invoke_notify_message(Manager *m, Unit *u, pid_t pid, char * const *tags, FDSet *fds) {
          assert(m);
          assert(u);
 -        assert(ucred);
-         assert(buf);
+         assert(tags);
  
          if (u->notifygen == m->notifygen) /* Already invoked on this same unit in this same iteration? */
-@@ -2014,7 +2008,7 @@ static void manager_invoke_notify_messag
-                         return;
-                 }
+@@ -2399,8 +2392,7 @@ static void manager_invoke_notify_message(
+         u->notifygen = m->notifygen;
  
+         if (UNIT_VTABLE(u)->notify_message)
 -                UNIT_VTABLE(u)->notify_message(u, ucred, tags, fds);
+-
 +                UNIT_VTABLE(u)->notify_message(u, pid, tags, fds);
+         else if (DEBUG_LOGGING) {
+                 _cleanup_free_ char *buf = NULL, *x = NULL, *y = NULL;
  
-         } else if (DEBUG_LOGGING) {
-                 _cleanup_free_ char *x = NULL, *y = NULL;
-@@ -2145,16 +2139,16 @@ static int manager_dispatch_notify_fd(sd
+@@ -2541,16 +2533,16 @@ static int manager_dispatch_notify_fd(sd_event_source *source, int fd, uint32_t
          /* And now invoke the per-unit callbacks. Note that manager_invoke_notify_message() will handle duplicate units
           * make sure we only invoke each unit's handler once. */
          if (u1) {
--                manager_invoke_notify_message(m, u1, ucred, buf, fds);
-+                manager_invoke_notify_message(m, u1, ucred->pid, buf, fds);
+-                manager_invoke_notify_message(m, u1, ucred, tags, fds);
++                manager_invoke_notify_message(m, u1, ucred->pid, tags, fds);
                  found = true;
          }
          if (u2) {
--                manager_invoke_notify_message(m, u2, ucred, buf, fds);
-+                manager_invoke_notify_message(m, u2, ucred->pid, buf, fds);
+-                manager_invoke_notify_message(m, u2, ucred, tags, fds);
++                manager_invoke_notify_message(m, u2, ucred->pid, tags, fds);
                  found = true;
          }
          if (array_copy)
                  for (size_t i = 0; array_copy[i]; i++) {
--                        manager_invoke_notify_message(m, array_copy[i], ucred, buf, fds);
-+                        manager_invoke_notify_message(m, array_copy[i], ucred->pid, buf, fds);
+-                        manager_invoke_notify_message(m, array_copy[i], ucred, tags, fds);
++                        manager_invoke_notify_message(m, array_copy[i], ucred->pid, tags, fds);
                          found = true;
                  }
  
-diff -purN systemd/src/core/service.c systemd-izh/src/core/service.c
---- systemd/src/core/service.c	2020-11-26 13:33:41.367978874 +0000
-+++ systemd-izh/src/core/service.c	2020-11-26 13:39:22.908564403 +0000
-@@ -885,46 +885,9 @@ static void service_dump(Unit *u, FILE *
-         cgroup_context_dump(&s->cgroup_context, f, prefix);
+diff --git a/src/core/service.c b/src/core/service.c
+index e02c2e38adb981fe58f8814e029bdaffa6be4b7d..910bc7d95f0ff1df1654ec3c9783c606a9285c47 100644
+--- a/src/core/service.c
++++ b/src/core/service.c
+@@ -930,39 +930,9 @@ static void service_dump(Unit *u, FILE *f, const char *prefix) {
+         cgroup_context_dump(UNIT(s), f, prefix);
  }
  
 -static int service_is_suitable_main_pid(Service *s, pid_t pid, int prio) {
@@ -136,20 +145,14 @@ diff -purN systemd/src/core/service.c systemd-izh/src/core/service.c
 -         * PID is questionnable but should be accepted if the source of configuration is trusted. > 0 if the PID is
 -         * good */
 -
--        if (pid == getpid_cached() || pid == 1) {
--                log_unit_full(UNIT(s), prio, 0, "New main PID "PID_FMT" is the manager, refusing.", pid);
--                return -EPERM;
--        }
+-        if (pid == getpid_cached() || pid == 1)
+-                return log_unit_full_errno(UNIT(s), prio, SYNTHETIC_ERRNO(EPERM), "New main PID "PID_FMT" is the manager, refusing.", pid);
 -
--        if (pid == s->control_pid) {
--                log_unit_full(UNIT(s), prio, 0, "New main PID "PID_FMT" is the control process, refusing.", pid);
--                return -EPERM;
--        }
+-        if (pid == s->control_pid)
+-                return log_unit_full_errno(UNIT(s), prio, SYNTHETIC_ERRNO(EPERM), "New main PID "PID_FMT" is the control process, refusing.", pid);
 -
--        if (!pid_is_alive(pid)) {
--                log_unit_full(UNIT(s), prio, 0, "New main PID "PID_FMT" does not exist or is a zombie.", pid);
--                return -ESRCH;
--        }
+-        if (!pid_is_alive(pid))
+-                return log_unit_full_errno(UNIT(s), prio, SYNTHETIC_ERRNO(ESRCH), "New main PID "PID_FMT" does not exist or is a zombie.", pid);
 -
 -        owner = manager_get_unit_by_pid(UNIT(s)->manager, pid);
 -        if (owner == UNIT(s)) {
@@ -161,7 +164,6 @@ diff -purN systemd/src/core/service.c systemd-izh/src/core/service.c
 -}
 -
  static int service_load_pid_file(Service *s, bool may_warn) {
--        char procfs[STRLEN("/proc/self/fd/") + DECIMAL_STR_MAX(int)];
 -        bool questionable_pid_file = false;
          _cleanup_free_ char *k = NULL;
 -        _cleanup_close_ int fd = -1;
@@ -170,37 +172,41 @@ diff -purN systemd/src/core/service.c systemd-izh/src/core/service.c
          pid_t pid;
  
          assert(s);
-@@ -932,57 +895,30 @@ static int service_load_pid_file(Service
+@@ -970,59 +940,30 @@ static int service_load_pid_file(Service *s, bool may_warn) {
          if (!s->pid_file)
                  return -ENOENT;
  
 -        prio = may_warn ? LOG_INFO : LOG_DEBUG;
 -
--        fd = chase_symlinks(s->pid_file, NULL, CHASE_OPEN|CHASE_SAFE, NULL);
--        if (fd == -EPERM) {
--                log_unit_full(UNIT(s), LOG_DEBUG, fd, "Permission denied while opening PID file or potentially unsafe symlink chain, will now retry with relaxed checks: %s", s->pid_file);
+-        r = chase_symlinks(s->pid_file, NULL, CHASE_SAFE, NULL, &fd);
+-        if (r == -ENOLINK) {
+-                log_unit_debug_errno(UNIT(s), r,
+-                                     "Potentially unsafe symlink chain, will now retry with relaxed checks: %s", s->pid_file);
 -
 -                questionable_pid_file = true;
 -
--                fd = chase_symlinks(s->pid_file, NULL, CHASE_OPEN, NULL);
+-                r = chase_symlinks(s->pid_file, NULL, 0, NULL, &fd);
 +        r = read_one_line_file(s->pid_file, &k);
 +        if (r < 0) {
 +                if (may_warn)
 +                        log_unit_info_errno(UNIT(s), r, "PID file %s not readable (yet?) after %s: %m", s->pid_file, service_state_to_string(s->state));
 +                return r;
          }
--        if (fd < 0)
--                return log_unit_full(UNIT(s), prio, fd, "Can't open PID file %s (yet?) after %s: %m", s->pid_file, service_state_to_string(s->state));
--
--        /* Let's read the PID file now that we chased it down. But we need to convert the O_PATH fd chase_symlinks() returned us into a proper fd first. */
--        xsprintf(procfs, "/proc/self/fd/%i", fd);
--        r = read_one_line_file(procfs, &k);
 -        if (r < 0)
--                return log_unit_error_errno(UNIT(s), r, "Can't convert PID files %s O_PATH file descriptor to proper file descriptor: %m", s->pid_file);
+-                return log_unit_full_errno(UNIT(s), prio, fd,
+-                                           "Can't open PID file %s (yet?) after %s: %m", s->pid_file, service_state_to_string(s->state));
+-
+-        /* Let's read the PID file now that we chased it down. But we need to convert the O_PATH fd
+-         * chase_symlinks() returned us into a proper fd first. */
+-        r = read_one_line_file(FORMAT_PROC_FD_PATH(fd), &k);
+-        if (r < 0)
+-                return log_unit_error_errno(UNIT(s), r,
+-                                            "Can't convert PID files %s O_PATH file descriptor to proper file descriptor: %m",
+-                                            s->pid_file);
  
          r = parse_pid(k, &pid);
 -        if (r < 0)
--                return log_unit_full(UNIT(s), prio, r, "Failed to parse PID from file %s: %m", s->pid_file);
+-                return log_unit_full_errno(UNIT(s), prio, r, "Failed to parse PID from file %s: %m", s->pid_file);
 -
 -        if (s->main_pid_known && pid == s->main_pid)
 -                return 0;
@@ -214,20 +220,18 @@ diff -purN systemd/src/core/service.c systemd-izh/src/core/service.c
 -        if (r == 0) {
 -                struct stat st;
 -
--                if (questionable_pid_file) {
--                        log_unit_error(UNIT(s), "Refusing to accept PID outside of service control group, acquired through unsafe symlink chain: %s", s->pid_file);
--                        return -EPERM;
--                }
+-                if (questionable_pid_file)
+-                        return log_unit_error_errno(UNIT(s), SYNTHETIC_ERRNO(EPERM),
+-                                                    "Refusing to accept PID outside of service control group, acquired through unsafe symlink chain: %s", s->pid_file);
 -
 -                /* Hmm, it's not clear if the new main PID is safe. Let's allow this if the PID file is owned by root */
 -
 -                if (fstat(fd, &st) < 0)
 -                        return log_unit_error_errno(UNIT(s), errno, "Failed to fstat() PID file O_PATH fd: %m");
 -
--                if (st.st_uid != 0) {
--                        log_unit_error(UNIT(s), "New main PID "PID_FMT" does not belong to service, and PID file is not owned by root. Refusing.", pid);
--                        return -EPERM;
--                }
+-                if (st.st_uid != 0)
+-                        return log_unit_error_errno(UNIT(s), SYNTHETIC_ERRNO(EPERM),
+-                                                    "New main PID "PID_FMT" does not belong to service, and PID file is not owned by root. Refusing.", pid);
 +        }
  
 -                log_unit_debug(UNIT(s), "New main PID "PID_FMT" does not belong to service, but we'll accept it since PID file is owned by root.", pid);
@@ -244,7 +248,7 @@ diff -purN systemd/src/core/service.c systemd-izh/src/core/service.c
                  log_unit_debug(UNIT(s), "Main PID changing: "PID_FMT" -> "PID_FMT, s->main_pid, pid);
  
                  service_unwatch_main_pid(s);
-@@ -998,7 +934,7 @@ static int service_load_pid_file(Service
+@@ -1038,7 +979,7 @@ static int service_load_pid_file(Service *s, bool may_warn) {
          if (r < 0) /* FIXME: we need to do something here */
                  return log_unit_warning_errno(UNIT(s), r, "Failed to watch PID "PID_FMT" for service: %m", pid);
  
@@ -253,7 +257,7 @@ diff -purN systemd/src/core/service.c systemd-izh/src/core/service.c
  }
  
  static void service_search_main_pid(Service *s) {
-@@ -3040,7 +2976,7 @@ static void service_sigchld_event(Unit *
+@@ -3451,7 +3392,7 @@ static void service_sigchld_event(Unit *u, pid_t pid, int code, int status) {
                  /* Forking services may occasionally move to a new PID.
                   * As long as they update the PID file before exiting the old
                   * PID, they're fine. */
@@ -262,28 +266,28 @@ diff -purN systemd/src/core/service.c systemd-izh/src/core/service.c
                          return;
  
                  s->main_pid = 0;
-@@ -3467,55 +3403,37 @@ static bool service_notify_message_autho
-         return true;
+@@ -4034,59 +3975,37 @@ static void service_force_watchdog(Service *s) {
+         service_enter_signal(s, SERVICE_STOP_WATCHDOG, SERVICE_FAILURE_WATCHDOG);
  }
  
 -static void service_notify_message(
 -                Unit *u,
 -                const struct ucred *ucred,
--                char **tags,
+-                char * const *tags,
 -                FDSet *fds) {
 -
-+static void service_notify_message(Unit *u, pid_t pid, char **tags, FDSet *fds) {
++static void service_notify_message(Unit *u, pid_t pid, char * const *tags, FDSet *fds) {
          Service *s = SERVICE(u);
          bool notify_dbus = false;
          const char *e;
-         char **i;
+         char * const *i;
 -        int r;
  
          assert(u);
 -        assert(ucred);
  
--        if (!service_notify_message_authorized(SERVICE(u), ucred->pid, tags, fds))
-+        if (!service_notify_message_authorized(SERVICE(u), pid, tags, fds))
+-        if (!service_notify_message_authorized(SERVICE(u), ucred->pid, fds))
++        if (!service_notify_message_authorized(SERVICE(u), pid, fds))
                  return;
  
          if (DEBUG_LOGGING) {
@@ -305,7 +309,7 @@ diff -purN systemd/src/core/service.c systemd-izh/src/core/service.c
 -
 -                        r = service_is_suitable_main_pid(s, new_main_pid, LOG_WARNING);
 -                        if (r == 0) {
--                                /* The new main PID is a bit suspicous, which is OK if the sender is privileged. */
+-                                /* The new main PID is a bit suspicious, which is OK if the sender is privileged. */
 -
 -                                if (ucred->uid == 0) {
 -                                        log_unit_debug(u, "New main PID "PID_FMT" does not belong to service, but we'll accept it as the request to change it came from a privileged process.", new_main_pid);
@@ -315,7 +319,11 @@ diff -purN systemd/src/core/service.c systemd-izh/src/core/service.c
 -                        }
 -                        if (r > 0) {
 -                                service_set_main_pid(s, new_main_pid);
--                                unit_watch_pid(UNIT(s), new_main_pid);
+-
+-                                r = unit_watch_pid(UNIT(s), new_main_pid, false);
+-                                if (r < 0)
+-                                        log_unit_warning_errno(UNIT(s), r, "Failed to watch new main PID "PID_FMT" for service: %m", new_main_pid);
+-
 -                                notify_dbus = true;
 -                        }
 +                if (parse_pid(e, &pid) < 0)
@@ -326,231 +334,66 @@ diff -purN systemd/src/core/service.c systemd-izh/src/core/service.c
 +                        log_unit_warning(u, "Service manager can't be main process, ignoring sd_notify() MAINPID= field");
 +                else if (pid != s->main_pid) {
 +                        service_set_main_pid(s, pid);
-+                        unit_watch_pid(UNIT(s), pid);
++                        unit_watch_pid(UNIT(s), pid, false);
 +                        notify_dbus = true;
                  }
          }
  
-diff -purN systemd/src/core/unit.h systemd-izh/src/core/unit.h
---- systemd/src/core/unit.h	2020-11-26 13:33:41.263979887 +0000
-+++ systemd-izh/src/core/unit.h	2020-11-26 13:39:22.908564403 +0000
-@@ -497,7 +497,7 @@ typedef struct UnitVTable {
-         void (*notify_cgroup_empty)(Unit *u);
+diff --git a/src/core/unit.h b/src/core/unit.h
+index 94f2180951cdc51ed1d936ebe2861744e278f260..da1892ed24f440f9d3136dc4a4bb2c90f59928cb 100644
+--- a/src/core/unit.h
++++ b/src/core/unit.h
+@@ -599,7 +599,7 @@ typedef struct UnitVTable {
+         void (*notify_cgroup_oom)(Unit *u);
  
          /* Called whenever a process of this unit sends us a message */
--        void (*notify_message)(Unit *u, const struct ucred *ucred, char **tags, FDSet *fds);
-+        void (*notify_message)(Unit *u, pid_t pid, char **tags, FDSet *fds);
+-        void (*notify_message)(Unit *u, const struct ucred *ucred, char * const *tags, FDSet *fds);
++        void (*notify_message)(Unit *u, pid_t pid, char * const *tags, FDSet *fds);
  
          /* Called whenever a name this Unit registered for comes or goes away. */
-         void (*bus_name_owner_change)(Unit *u, const char *name, const char *old_owner, const char *new_owner);
-diff -purN systemd/test/TEST-20-MAINPIDGAMES/Makefile systemd-izh/test/TEST-20-MAINPIDGAMES/Makefile
---- systemd/test/TEST-20-MAINPIDGAMES/Makefile	2020-10-29 13:44:30.309422400 +0000
-+++ systemd-izh/test/TEST-20-MAINPIDGAMES/Makefile	1970-01-01 00:00:00.000000000 +0000
-@@ -1,4 +0,0 @@
--BUILD_DIR=$(shell ../../tools/find-build-dir.sh)
--
--all setup clean run:
--	@basedir=../.. TEST_BASE_DIR=../ BUILD_DIR=$(BUILD_DIR) ./test.sh --$@
-diff -purN systemd/test/TEST-20-MAINPIDGAMES/test.sh systemd-izh/test/TEST-20-MAINPIDGAMES/test.sh
---- systemd/test/TEST-20-MAINPIDGAMES/test.sh	2020-10-29 13:44:30.309422400 +0000
-+++ systemd-izh/test/TEST-20-MAINPIDGAMES/test.sh	1970-01-01 00:00:00.000000000 +0000
-@@ -1,42 +0,0 @@
--#!/bin/bash
--# -*- mode: shell-script; indent-tabs-mode: nil; sh-basic-offset: 4; -*-
--# ex: ts=8 sw=4 sts=4 et filetype=sh
+         void (*bus_name_owner_change)(Unit *u, const char *new_owner);
+diff --git a/test/TEST-20-MAINPIDGAMES/Makefile b/test/TEST-20-MAINPIDGAMES/Makefile
+deleted file mode 120000
+index e9f93b1104cd21161bfe11fb1b3b534ce2ae82b5..0000000000000000000000000000000000000000
+--- a/test/TEST-20-MAINPIDGAMES/Makefile
++++ /dev/null
+@@ -1 +0,0 @@
+-../TEST-01-BASIC/Makefile
+\ No newline at end of file
+diff --git a/test/TEST-20-MAINPIDGAMES/test.sh b/test/TEST-20-MAINPIDGAMES/test.sh
+deleted file mode 100755
+index b663201efb023c31d2f54380e4b349ab27207bfb..0000000000000000000000000000000000000000
+--- a/test/TEST-20-MAINPIDGAMES/test.sh
++++ /dev/null
+@@ -1,10 +0,0 @@
+-#!/usr/bin/env bash
+-# SPDX-License-Identifier: LGPL-2.1-or-later
 -set -e
+-
 -TEST_DESCRIPTION="test changing main PID"
 -
--. $TEST_BASE_DIR/test-functions
--
--test_setup() {
--    create_empty_image
--    mkdir -p $TESTDIR/root
--    mount ${LOOPDEV}p1 $TESTDIR/root
--
--    (
--        LOG_LEVEL=5
--        eval $(udevadm info --export --query=env --name=${LOOPDEV}p2)
--
--        setup_basic_environment
--
--        # setup the testsuite service
--        cat >$initdir/etc/systemd/system/testsuite.service <<EOF
--[Unit]
--Description=Testsuite service
--
--[Service]
--ExecStart=/bin/bash -x /testsuite.sh
--Type=oneshot
--StandardOutput=tty
--StandardError=tty
--NotifyAccess=all
--EOF
--        cp testsuite.sh $initdir/
--
--        setup_testsuite
--    ) || return 1
--    setup_nspawn_root
--
--    ddebug "umount $TESTDIR/root"
--    umount $TESTDIR/root
--}
+-# shellcheck source=test/test-functions
+-. "${TEST_BASE_DIR:?}/test-functions"
 -
 -do_test "$@"
-diff -purN systemd/test/TEST-20-MAINPIDGAMES/testsuite.sh systemd-izh/test/TEST-20-MAINPIDGAMES/testsuite.sh
---- systemd/test/TEST-20-MAINPIDGAMES/testsuite.sh	2020-10-29 13:44:30.309422400 +0000
-+++ systemd-izh/test/TEST-20-MAINPIDGAMES/testsuite.sh	1970-01-01 00:00:00.000000000 +0000
-@@ -1,141 +0,0 @@
--#!/bin/bash
--# -*- mode: shell-script; indent-tabs-mode: nil; sh-basic-offset: 4; -*-
--# ex: ts=8 sw=4 sts=4 et filetype=sh
--set -ex
--set -o pipefail
--
--systemd-analyze set-log-level debug
--systemd-analyze set-log-target console
--
--test `systemctl show -p MainPID --value testsuite.service` -eq $$
--
--# Start a test process inside of our own cgroup
--sleep infinity &
--INTERNALPID=$!
--disown
--
--# Start a test process outside of our own cgroup
--systemd-run -p DynamicUser=1 --unit=sleep.service /bin/sleep infinity
--EXTERNALPID=`systemctl show -p MainPID --value sleep.service`
--
--# Update our own main PID to the external test PID, this should work
--systemd-notify MAINPID=$EXTERNALPID
--test `systemctl show -p MainPID --value testsuite.service` -eq $EXTERNALPID
--
--# Update our own main PID to the internal test PID, this should work, too
--systemd-notify MAINPID=$INTERNALPID
--test `systemctl show -p MainPID --value testsuite.service` -eq $INTERNALPID
--
--# Update it back to our own PID, this should also work
--systemd-notify MAINPID=$$
--test `systemctl show -p MainPID --value testsuite.service` -eq $$
--
--# Try to set it to PID 1, which it should ignore, because that's the manager
--systemd-notify MAINPID=1
--test `systemctl show -p MainPID --value testsuite.service` -eq $$
--
--# Try to set it to PID 0, which is invalid and should be ignored
--systemd-notify MAINPID=0
--test `systemctl show -p MainPID --value testsuite.service` -eq $$
--
--# Try to set it to a valid but non-existing PID, which should be ignored. (Note
--# that we set the PID to a value well above any known /proc/sys/kernel/pid_max,
--# which means we can be pretty sure it doesn't exist by coincidence)
--systemd-notify MAINPID=1073741824
--test `systemctl show -p MainPID --value testsuite.service` -eq $$
--
--# Change it again to the external PID, without priviliges this time. This should be ignored, because the PID is from outside of our cgroup and we lack privileges.
--systemd-notify --uid=1000 MAINPID=$EXTERNALPID
--test `systemctl show -p MainPID --value testsuite.service` -eq $$
--
--# Change it again to the internal PID, without priviliges this time. This should work, as the process is on our cgroup, and that's enough even if we lack privileges.
--systemd-notify --uid=1000 MAINPID=$INTERNALPID
--test `systemctl show -p MainPID --value testsuite.service` -eq $INTERNALPID
--
--# Update it back to our own PID, this should also work
--systemd-notify --uid=1000 MAINPID=$$
--test `systemctl show -p MainPID --value testsuite.service` -eq $$
--
--cat >/tmp/mainpid.sh <<EOF
--#!/bin/bash
--
--set -eux
--set -o pipefail
--
--# Create a number of children, and make one the main one
--sleep infinity &
--disown
--
--sleep infinity &
--MAINPID=\$!
--disown
--
--sleep infinity &
--disown
--
--echo \$MAINPID > /run/mainpidsh/pid
--EOF
--chmod +x /tmp/mainpid.sh
--
--systemd-run --unit=mainpidsh.service -p StandardOutput=tty -p StandardError=tty -p Type=forking -p RuntimeDirectory=mainpidsh -p PIDFile=/run/mainpidsh/pid /tmp/mainpid.sh
--test `systemctl show -p MainPID --value mainpidsh.service` -eq `cat /run/mainpidsh/pid`
--
--cat >/tmp/mainpid2.sh <<EOF
--#!/bin/bash
--
--set -eux
--set -o pipefail
--
--# Create a number of children, and make one the main one
--sleep infinity &
--disown
--
--sleep infinity &
--MAINPID=\$!
--disown
--
--sleep infinity &
--disown
--
--echo \$MAINPID > /run/mainpidsh2/pid
--chown 1001:1001 /run/mainpidsh2/pid
--EOF
--chmod +x /tmp/mainpid2.sh
--
--systemd-run --unit=mainpidsh2.service -p StandardOutput=tty -p StandardError=tty -p Type=forking -p RuntimeDirectory=mainpidsh2 -p PIDFile=/run/mainpidsh2/pid /tmp/mainpid2.sh
--test `systemctl show -p MainPID --value mainpidsh2.service` -eq `cat /run/mainpidsh2/pid`
--
--cat >/dev/shm/mainpid3.sh <<EOF
--#!/bin/bash
--
--set -eux
--set -o pipefail
--
--sleep infinity &
--disown
--
--sleep infinity &
--disown
--
--sleep infinity &
--disown
--
--# Let's try to play games, and link up a privileged PID file
--ln -s ../mainpidsh/pid /run/mainpidsh3/pid
--
--# Quick assertion that the link isn't dead
--test -f /run/mainpidsh3/pid
--EOF
--chmod 755 /dev/shm/mainpid3.sh
--
--# This has to fail, as we shouldn't accept the dangerous PID file, and then inotify-wait on it to be corrected which we never do
--! systemd-run --unit=mainpidsh3.service -p StandardOutput=tty -p StandardError=tty -p Type=forking -p RuntimeDirectory=mainpidsh3 -p PIDFile=/run/mainpidsh3/pid -p DynamicUser=1 -p TimeoutStartSec=2s /dev/shm/mainpid3.sh
--
--# Test that this failed due to timeout, and not some other error
--test `systemctl show -p Result --value mainpidsh3.service` = timeout
--
--systemd-analyze set-log-level info
--
--echo OK > /testok
--
--exit 0
-diff -purN systemd/test/test-functions systemd-izh/test/test-functions
---- systemd/test/test-functions	2020-10-29 13:44:30.321422360 +0000
-+++ systemd-izh/test/test-functions	2020-11-26 13:39:22.908564403 +0000
-@@ -21,7 +21,7 @@ if ! ROOTLIBDIR=$(pkg-config --variable=
-     ROOTLIBDIR=/usr/lib/systemd
- fi
- 
--BASICTOOLS="test sh bash setsid loadkeys setfont login sulogin gzip sleep echo mount umount cryptsetup date dmsetup modprobe sed cmp tee rm true false chmod chown ln"
-+BASICTOOLS="test sh bash setsid loadkeys setfont login sulogin gzip sleep echo mount umount cryptsetup date dmsetup modprobe sed cmp tee rm true false"
- DEBUGTOOLS="df free ls stty cat ps ln ip route dmesg dhclient mkdir cp ping dhclient strace less grep id tty touch du sort hostname find"
- 
- STATEDIR="${BUILD_DIR:-.}/test/$(basename $(dirname $(realpath $0)))"
+diff --git a/test/test-functions b/test/test-functions
+index 1dbeb6404325934489dd629989b9fb6a4c375d6a..78ae8a159a918ef68049763d4fd509b147983aa8 100644
+--- a/test/test-functions
++++ b/test/test-functions
+@@ -128,8 +128,6 @@ BASICTOOLS=(
+     bash
+     capsh
+     cat
+-    chmod
+-    chown
+     cmp
+     cryptsetup
+     cut
+@@ -151,7 +149,6 @@ BASICTOOLS=(
+     ionice
+     ip
+     ldd
+-    ln
+     loadkeys
+     login
+     losetup

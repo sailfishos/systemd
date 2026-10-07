@@ -1,18 +1,119 @@
-From 23218f74c103cdd8205b68c1b1ab8416006f13af Mon Sep 17 00:00:00 2001
+From f95826eed0b053340522af445e26ce824d119b59 Mon Sep 17 00:00:00 2001
 From: Niels Breet <niels.breet@jolla.com>
 Date: Mon, 6 Jul 2020 12:25:23 +0300
 Subject: [PATCH] [aarch64] Force udev path. Contributes to JB#49681
 
-diff -purN systemd00/meson.build systemd-izh/meson.build
---- systemd00/meson.build	2020-10-13 13:34:00.082952034 +0300
-+++ systemd-izh/meson.build	2020-10-13 16:55:27.214675827 +0300
-@@ -143,7 +143,8 @@ systemshutdowndir = join_paths(rootlibex
- systemsleepdir = join_paths(rootlibexecdir, 'system-sleep')
- systemunitdir = join_paths(rootprefixdir, 'lib/systemd/system')
- systempresetdir = join_paths(rootprefixdir, 'lib/systemd/system-preset')
--udevlibexecdir = join_paths(rootprefixdir, 'lib/udev')
+This reverts also commit 116b91e8ccfee1d44fc2b140d831d688e3747902.
+---
+ man/udev.xml          | 29 +++++++++++++++--------------
+ meson.build           |  3 ++-
+ src/udev/udev-rules.c | 14 +++++++++-----
+ 3 files changed, 26 insertions(+), 20 deletions(-)
+
+diff --git a/man/udev.xml b/man/udev.xml
+index f6ea2abc12..3555e0888c 100644
+--- a/man/udev.xml
++++ b/man/udev.xml
+@@ -45,20 +45,21 @@
+     sources is provided by the library libudev.</para>
+   </refsect1>
+ 
+-  <refsect1>
+-      <title>Rules Files</title>
+-      <para>The udev rules are read from the files located in the system rules directories
+-      <filename>/usr/lib/udev/rules.d</filename> and <filename>/usr/local/lib/udev/rules.d</filename>, the
+-      volatile runtime directory <filename>/run/udev/rules.d</filename> and the local administration
+-      directory <filename>/etc/udev/rules.d</filename>.  All rules files are collectively sorted and
+-      processed in lexical order, regardless of the directories in which they live. However, files with
+-      identical filenames replace each other. Files in <filename>/etc/</filename> have the highest priority,
+-      files in <filename>/run/</filename> take precedence over files with the same name under
+-      <filename>/usr/</filename>. This can be used to override a system-supplied rules file with a local
+-      file if needed; a symlink in <filename>/etc/</filename> with the same name as a rules file in
+-      <filename>/usr/lib/</filename>, pointing to <filename>/dev/null</filename>, disables the rules file
+-      entirely. Rule files must have the extension <filename>.rules</filename>; other extensions are
+-      ignored.</para>
++  <refsect1><title>Rules Files</title>
++      <para>The udev rules are read from the files located in the
++      system rules directory <filename>/usr/lib/udev/rules.d</filename>,
++      the volatile runtime directory <filename>/run/udev/rules.d</filename>
++      and the local administration directory <filename>/etc/udev/rules.d</filename>.
++      All rules files are collectively sorted and processed in lexical order,
++      regardless of the directories in which they live. However, files with
++      identical filenames replace each other. Files in <filename>/etc</filename>
++      have the highest priority, files in <filename>/run</filename> take precedence
++      over files with the same name in <filename>/usr/lib</filename>. This can be
++      used to override a system-supplied rules file with a local file if needed;
++      a symlink in <filename>/etc</filename> with the same name as a rules file in
++      <filename>/usr/lib</filename>, pointing to <filename>/dev/null</filename>,
++      disables the rules file entirely. Rule files must have the extension
++      <filename>.rules</filename>; other extensions are ignored.</para>
+ 
+       <para>Every line in the rules file contains at least one key-value pair.
+       Except for empty lines or lines beginning with <literal>#</literal>, which are ignored.
+diff --git a/meson.build b/meson.build
+index 01c4b4dc70..59f6650946 100644
+--- a/meson.build
++++ b/meson.build
+@@ -168,7 +168,8 @@ systemshutdowndir = rootlibexecdir / 'system-shutdown'
+ systemsleepdir = rootlibexecdir / 'system-sleep'
+ systemunitdir = rootprefixdir / 'lib/systemd/system'
+ systempresetdir = rootprefixdir / 'lib/systemd/system-preset'
+-udevlibexecdir = rootprefixdir / 'lib/udev'
 +# Force this to udevlibexecdir to /lib/udev for now, to make transition easier
 +udevlibexecdir = '/lib/udev'
- udevhomedir = udevlibexecdir
- udevrulesdir = join_paths(udevlibexecdir, 'rules.d')
- udevhwdbdir = join_paths(udevlibexecdir, 'hwdb.d')
+ udevrulesdir = udevlibexecdir / 'rules.d'
+ udevhwdbdir = udevlibexecdir / 'hwdb.d'
+ catalogdir = prefixdir / 'lib/systemd/catalog'
+diff --git a/src/udev/udev-rules.c b/src/udev/udev-rules.c
+index cf461e1e68..de9f271b69 100644
+--- a/src/udev/udev-rules.c
++++ b/src/udev/udev-rules.c
+@@ -5,7 +5,6 @@
+ #include "alloc-util.h"
+ #include "architecture.h"
+ #include "conf-files.h"
+-#include "def.h"
+ #include "device-private.h"
+ #include "device-util.h"
+ #include "dirent-util.h"
+@@ -35,8 +34,6 @@
+ #include "user-util.h"
+ #include "virt.h"
+ 
+-#define RULES_DIRS (const char* const*) CONF_PATHS_STRV("udev/rules.d")
+-
+ typedef enum {
+         OP_MATCH,        /* == */
+         OP_NOMATCH,      /* != */
+@@ -176,6 +173,13 @@ struct UdevRuleFile {
+         LIST_FIELDS(UdevRuleFile, rule_files);
+ };
+ 
++static const char* const rules_dirs[] = {
++        "/etc/udev/rules.d",
++        "/run/udev/rules.d",
++        UDEVLIBEXECDIR "/rules.d",
++        NULL
++};
++
+ struct UdevRules {
+         usec_t dirs_ts_usec;
+         ResolveNameTiming resolve_name_timing;
+@@ -1309,7 +1313,7 @@ int udev_rules_load(UdevRules **ret_rules, ResolveNameTiming resolve_name_timing
+ 
+         (void) udev_rules_check_timestamp(rules);
+ 
+-        r = conf_files_list_strv(&files, ".rules", NULL, 0, RULES_DIRS);
++        r = conf_files_list_strv(&files, ".rules", NULL, 0, rules_dirs);
+         if (r < 0)
+                 return log_debug_errno(r, "Failed to enumerate rules files: %m");
+ 
+@@ -1327,7 +1331,7 @@ bool udev_rules_check_timestamp(UdevRules *rules) {
+         if (!rules)
+                 return false;
+ 
+-        return paths_check_timestamp(RULES_DIRS, &rules->dirs_ts_usec, true);
++        return paths_check_timestamp(rules_dirs, &rules->dirs_ts_usec, true);
+ }
+ 
+ static bool token_match_string(UdevRuleToken *token, const char *str) {

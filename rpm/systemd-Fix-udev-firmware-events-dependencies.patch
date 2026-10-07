@@ -13,34 +13,49 @@ for firmware loading events.
 
 See: https://github.com/systemd/systemd/issues/18259
 
-diff -purN systemd/src/udev/udevd.c systemd-izh/src/udev/udevd.c
---- systemd/src/udev/udevd.c	2021-01-15 16:29:27.280576575 +0000
-+++ systemd-izh/src/udev/udevd.c	2021-01-15 16:39:27.146112548 +0000
-@@ -125,6 +125,7 @@ struct event {
-         dev_t devnum;
-         int ifindex;
-         bool is_block;
+diff --git a/src/udev/udevd.c b/src/udev/udevd.c
+index 9320284be6..b618fd5e1f 100644
+--- a/src/udev/udevd.c
++++ b/src/udev/udevd.c
+@@ -127,6 +127,8 @@ typedef struct Event {
+         uint64_t seqnum;
+         uint64_t blocker_seqnum;
+ 
 +        bool nodelay;
-         sd_event_source *timeout_warning;
-         sd_event_source *timeout;
- };
-@@ -609,6 +610,8 @@ static int event_queue_insert(Manager *m
-         event->devnum = udev_device_get_devnum(dev);
-         event->is_block = streq("block", udev_device_get_subsystem(dev));
-         event->ifindex = udev_device_get_ifindex(dev);
-+        if (streq(udev_device_get_subsystem(dev), "firmware"))
-+                event->nodelay = true;
- 
-         log_debug("seq %llu queued, '%s' '%s'", udev_device_get_seqnum(dev),
-              udev_device_get_action(dev), udev_device_get_subsystem(dev));
-@@ -692,6 +695,10 @@ static bool is_devpath_busy(Manager *man
-                         return true;
-                 }
- 
-+                /* allow to bypass the dependency tracking */
-+                if (event->nodelay)
-+                        continue;
 +
-                 /* parent device event found */
-                 if (event->devpath[common] == '/') {
-                         event->delaying_seqnum = loop_event->seqnum;
+         sd_event_source *timeout_warning_event;
+         sd_event_source *timeout_event;
+ 
+@@ -789,6 +791,10 @@ static int event_is_blocked(Event *event) {
+         assert(event->manager);
+         assert(event->blocker_seqnum <= event->seqnum);
+ 
++        /* allow to bypass the dependency tracking */
++        if (event->nodelay)
++                return false;
++
+         if (event->blocker_seqnum == event->seqnum)
+                 /* we have checked previously and no blocker found */
+                 return false;
+@@ -979,6 +985,7 @@ static int event_queue_insert(Manager *manager, sd_device *dev) {
+         _cleanup_(sd_device_unrefp) sd_device *clone = NULL;
+         Event *event;
+         uint64_t seqnum;
++        const char *val;
+         int r;
+ 
+         assert(manager);
+@@ -1013,6 +1020,13 @@ static int event_queue_insert(Manager *manager, sd_device *dev) {
+                 .state = EVENT_QUEUED,
+         };
+ 
++        r = sd_device_get_subsystem(dev, &val);
++        if (r < 0)
++                return r;
++
++        if (streq(val, "firmware"))
++                event->nodelay = true;
++
+         if (LIST_IS_EMPTY(manager->events)) {
+                 r = touch("/run/udev/queue");
+                 if (r < 0)

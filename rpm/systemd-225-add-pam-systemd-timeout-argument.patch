@@ -1,4 +1,4 @@
-From 2936884c5d5705e6ebafec4669e79dc754574b6b Mon Sep 17 00:00:00 2001
+From 15d28855ceb49aac963c007b4e2fbed47bcb6750 Mon Sep 17 00:00:00 2001
 From: Simo Piiroinen <simo.piiroinen@jollamobile.com>
 Date: Thu, 13 Apr 2017 09:53:13 +0300
 Subject: [PATCH] [pam_systemd] Add timeout=<seconds> argument. JB#37881
@@ -17,135 +17,72 @@ longer than default D-Bus method call timeouts are needed.
 
 Signed-off-by: Simo Piiroinen <simo.piiroinen@jollamobile.com>
 ---
- src/libsystemd/sd-bus/bus-convenience.c | 42 +++++++++++++++++++++++++++++++++
- src/login/pam_systemd.c                 | 16 ++++++++++---
- src/systemd/sd-bus.h                    |  1 +
- 3 files changed, 56 insertions(+), 3 deletions(-)
+ src/login/pam_systemd.c | 20 ++++++++++++++++----
+ 1 file changed, 16 insertions(+), 4 deletions(-)
 
-diff --git a/src/libsystemd/sd-bus/bus-convenience.c b/src/libsystemd/sd-bus/bus-convenience.c
-index af5f7da..90d9034 100644
---- a/src/libsystemd/sd-bus/bus-convenience.c
-+++ b/src/libsystemd/sd-bus/bus-convenience.c
-@@ -138,6 +138,48 @@ fail:
-         return sd_bus_error_set_errno(error, r);
- }
- 
-+_public_ int sd_bus_call_method_with_timeout(
-+                sd_bus *bus,
-+                const char *destination,
-+                const char *path,
-+                const char *interface,
-+                const char *member,
-+                uint64_t usec,
-+                sd_bus_error *error,
-+                sd_bus_message **reply,
-+                const char *types, ...) {
-+
-+        _cleanup_(sd_bus_message_unrefp) sd_bus_message *m = NULL;
-+        int r;
-+
-+        bus_assert_return(bus, -EINVAL, error);
-+        bus_assert_return(!bus_pid_changed(bus), -ECHILD, error);
-+
-+        if (!BUS_IS_OPEN(bus->state)) {
-+                r = -ENOTCONN;
-+                goto fail;
-+        }
-+
-+        r = sd_bus_message_new_method_call(bus, &m, destination, path, interface, member);
-+        if (r < 0)
-+                goto fail;
-+
-+        if (!isempty(types)) {
-+                va_list ap;
-+
-+                va_start(ap, types);
-+                r = sd_bus_message_appendv(m, types, ap);
-+                va_end(ap);
-+                if (r < 0)
-+                        goto fail;
-+        }
-+
-+        return sd_bus_call(bus, m, usec, error, reply);
-+
-+fail:
-+        return sd_bus_error_set_errno(error, r);
-+}
-+
- _public_ int sd_bus_reply_method_return(
-                 sd_bus_message *call,
-                 const char *types, ...) {
 diff --git a/src/login/pam_systemd.c b/src/login/pam_systemd.c
-index f83d18b..e85b640 100644
+index 5bd7efc3e8..53d66e69f8 100644
 --- a/src/login/pam_systemd.c
 +++ b/src/login/pam_systemd.c
-@@ -54,7 +54,8 @@ static int parse_argv(
-                 int argc, const char **argv,
+@@ -52,7 +52,8 @@ static int parse_argv(
                  const char **class,
                  const char **type,
+                 const char **desktop,
 -                bool *debug) {
 +                bool *debug,
 +                unsigned *timeout) {
  
          unsigned i;
  
-@@ -83,6 +84,9 @@ static int parse_argv(
+@@ -87,6 +88,11 @@ static int parse_argv(
                          else if (debug)
                                  *debug = k;
  
 +                } else if (startswith(argv[i], "timeout=")) {
 +                        if (safe_atou(argv[i] + 8, timeout) != 0)
 +                                pam_syslog(handle, LOG_WARNING, "Failed to parse timeout= argument, ignoring.");
++                        else if (timeout)
++                                *timeout = (*timeout * USEC_PER_SEC);
                  } else
                          pam_syslog(handle, LOG_WARNING, "Unknown parameter '%s', ignoring", argv[i]);
          }
-@@ -229,6 +233,7 @@ _public_ PAM_EXTERN int pam_sm_open_sess
-         _cleanup_(sd_bus_flush_close_unrefp) sd_bus *bus = NULL;
+@@ -689,6 +695,7 @@ _public_ PAM_EXTERN int pam_sm_open_session(
+         _cleanup_(user_record_unrefp) UserRecord *ur = NULL;
          int session_fd = -1, existing, r;
          bool debug = false, remote;
-+        unsigned  timeout = 0;
-         struct passwd *pw;
++        unsigned  timeout = LOGIN_SLOW_BUS_CALL_TIMEOUT_USEC;
          uint32_t vtnr = 0;
          uid_t original_uid;
-@@ -243,7 +248,8 @@ _public_ PAM_EXTERN int pam_sm_open_sess
-                        argc, argv,
+ 
+@@ -699,7 +706,8 @@ _public_ PAM_EXTERN int pam_sm_open_session(
                         &class_pam,
                         &type_pam,
+                        &desktop_pam,
 -                       &debug) < 0)
 +                       &debug,
 +                       &timeout) < 0)
                  return PAM_SESSION_ERR;
  
          if (debug)
-@@ -383,11 +389,15 @@ _public_ PAM_EXTERN int pam_sm_open_sess
-                            strempty(seat), vtnr, strempty(tty), strempty(display),
-                            yes_no(remote), strempty(remote_user), strempty(remote_host));
+@@ -917,7 +925,10 @@ _public_ PAM_EXTERN int pam_sm_open_session(
+         if (r < 0)
+                 return pam_bus_log_create_error(handle, r);
  
--        r = sd_bus_call_method(bus,
-+        if (timeout)
-+                pam_syslog(handle, LOG_DEBUG, "Using %us D-Bus method call timeout", timeout);
+-        r = sd_bus_call(bus, m, LOGIN_SLOW_BUS_CALL_TIMEOUT_USEC, &error, &reply);
++        if (timeout != LOGIN_SLOW_BUS_CALL_TIMEOUT_USEC)
++                pam_syslog(handle, LOG_DEBUG, "Using %us D-Bus method call timeout", (unsigned int)(timeout / USEC_PER_SEC));
 +
-+        r = sd_bus_call_method_with_timeout(bus,
-                                "org.freedesktop.login1",
-                                "/org/freedesktop/login1",
-                                "org.freedesktop.login1.Manager",
-                                "CreateSession",
-+                               timeout * USEC_PER_SEC,
-                                &error,
-                                &reply,
-                                "uusssssussbssa(sv)",
-diff --git a/src/systemd/sd-bus.h b/src/systemd/sd-bus.h
-index 5439a19..a8f3d4f 100644
---- a/src/systemd/sd-bus.h
-+++ b/src/systemd/sd-bus.h
-@@ -326,6 +326,7 @@ int sd_bus_get_name_machine_id(sd_bus *b
- /* Convenience calls */
++        r = sd_bus_call(bus, m, timeout, &error, &reply);
+         if (r < 0) {
+                 if (sd_bus_error_has_name(&error, BUS_ERROR_SESSION_BUSY)) {
+                         if (debug)
+@@ -1042,7 +1053,8 @@ _public_ PAM_EXTERN int pam_sm_close_session(
+                        NULL,
+                        NULL,
+                        NULL,
+-                       &debug) < 0)
++                       &debug,
++                       NULL) < 0)
+                 return PAM_SESSION_ERR;
  
- int sd_bus_call_method(sd_bus *bus, const char *destination, const char *path, const char *interface, const char *member, sd_bus_error *ret_error, sd_bus_message **reply, const char *types, ...);
-+int sd_bus_call_method_with_timeout(sd_bus *bus, const char *destination, const char *path, const char *interface, const char *member, uint64_t usec, sd_bus_error *ret_error, sd_bus_message **reply, const char *types, ...);
- int sd_bus_call_method_async(sd_bus *bus, sd_bus_slot **slot, const char *destination, const char *path, const char *interface, const char *member, sd_bus_message_handler_t callback, void *userdata, const char *types, ...);
- int sd_bus_get_property(sd_bus *bus, const char *destination, const char *path, const char *interface, const char *member, sd_bus_error *ret_error, sd_bus_message **reply, const char *type);
- int sd_bus_get_property_trivial(sd_bus *bus, const char *destination, const char *path, const char *interface, const char *member, sd_bus_error *ret_error, char type, void *ret_ptr);
--- 
-2.7.4
-
+         if (debug)

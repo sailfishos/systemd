@@ -1,4 +1,4 @@
-From 4b397a131461ebb574aeffa0826b1d314add3d49 Mon Sep 17 00:00:00 2001
+From 082ba73fbbec470bbdfeaee4616aefcc88d8dc37 Mon Sep 17 00:00:00 2001
 From: Igor Zhbanov <igor.zhbanov@jolla.com>
 Date: Sat, 5 Sep 2015 17:54:48 +0000
 Subject: [systemd] Define __NR_kcmp if it is not defined. Contributes to JB#32104
@@ -10,14 +10,14 @@ defined.
 
 Signed-off-by: Igor Zhbanov <igor.zhbanov@jolla.com>
 ---
- src/basic/missing.h | 12 ++++++++++++
+ src/basic/missing_syscall.h | 12 ++++++++++++
  1 file changed, 12 insertions(+)
 
-diff --git a/src/basic/missing.h b/src/basic/missing.h
-index dc1f244..21ea0b4 100644
+diff --git a/src/basic/missing_syscall.h b/src/basic/missing_syscall.h
+index 793d111c55..5a4f53d3ab 100644
 --- a/src/basic/missing_syscall.h
 +++ b/src/basic/missing_syscall.h
-@@ -257,6 +257,18 @@ static inline int missing_renameat2(int 
+@@ -170,6 +170,18 @@ static inline int missing_renameat2(int oldfd, const char *oldname, int newfd, c
  /* ======================================================================= */
  
  #if !HAVE_KCMP
@@ -34,5 +34,5 @@ index dc1f244..21ea0b4 100644
 +#endif
 +
  static inline int missing_kcmp(pid_t pid1, pid_t pid2, int type, unsigned long idx1, unsigned long idx2) {
- #  ifdef __NR_kcmp
+ #  if defined __NR_kcmp && __NR_kcmp >= 0
          return syscall(__NR_kcmp, pid1, pid2, type, idx1, idx2);
